@@ -119,6 +119,41 @@ async function main() {
       score: 75,
     },
   });
+
+  await prisma.tag.upsert({
+    where: { name: "warm lead" },
+    update: {},
+    create: {
+      name: "warm lead",
+      color: "#b8572f",
+    },
+  });
+
+  await prisma.suppression.upsert({
+    where: { email: "bounced@example.com" },
+    update: {},
+    create: {
+      email: "bounced@example.com",
+      reason: "BOUNCE",
+      source: "seed",
+    },
+  });
+
+  await prisma.appSetting.upsert({
+    where: { key: "general" },
+    update: {},
+    create: {
+      key: "general",
+      value: {
+        defaultFromName: "Field Notes CRM",
+        defaultFromEmail: "campaigns@example.com",
+        defaultReplyTo: "replies@example.com",
+        emailProvider: "dry-run",
+        internalTestEmail: "ops@example.com",
+        targetStates: ["TX", "OK"],
+      },
+    },
+  });
 }
 
 main()
