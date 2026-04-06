@@ -1,0 +1,275 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CompanyStatus {
+  CLIENT
+  LEAD
+  PROSPECT
+  INACTIVE
+}
+
+enum ContactStatus {
+  ACTIVE
+  UNSUBSCRIBED
+  BOUNCED
+  INVALID
+  DO_NOT_CONTACT
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  PAUSED
+  FAILED
+}
+
+enum CampaignRecipientStatus {
+  PENDING
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  BOUNCED
+  UNSUBSCRIBED
+  FAILED
+}
+
+enum ProspectStatus {
+  NEW
+  REVIEWING
+  QUALIFIED
+  REJECTED
+  CONVERTED
+}
+
+enum SuppressionReason {
+  UNSUBSCRIBE
+  BOUNCE
+  MANUAL
+  COMPLAINT
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Company {
+  id               String        @id @default(cuid())
+  name             String
+  businessType     String?
+  industry         String?
+  website          String?
+  phone            String?
+  emailDomain      String?
+  addressLine1     String?
+  addressLine2     String?
+  city             String?
+  state            String?
+  postalCode       String?
+  country          String?       @default("US")
+  latitude         Float?
+  longitude        Float?
+  employeeEstimate Int?
+  revenueEstimate  Int?
+  status           CompanyStatus @default(LEAD)
+  source           String?
+  notes            String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  contacts Contact[]
+  tags     CompanyTag[]
+
+  @@index([industry])
+  @@index([state])
+  @@index([name])
+}
+
+model Contact {
+  id                String        @id @default(cuid())
+  companyId         String?
+  firstName         String?
+  lastName          String?
+  fullName          String?
+  jobTitle          String?
+  email             String?       @unique
+  phone             String?
+  linkedinUrl       String?
+  status            ContactStatus @default(ACTIVE)
+  source            String?
+  notes             String?
+  lastContactedAt   DateTime?
+  lastRepliedAt     DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  company            Company?             @relation(fields: [companyId], references: [id])
+  tags               ContactTag[]
+  campaignRecipients CampaignRecipient[]
+
+  @@index([status])
+  @@index([companyId])
+}
+
+model Tag {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  color       String?
+  createdAt   DateTime     @default(now())
+  contactTags ContactTag[]
+  companyTags CompanyTag[]
+}
+
+model ContactTag {
+  contactId String
+  tagId     String
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, tagId])
+}
+
+model CompanyTag {
+  companyId String
+  tagId     String
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, tagId])
+}
+
+model Segment {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  entityType  String
+  filterJson  Json
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Campaign {
+  id           String         @id @default(cuid())
+  name         String
+  subject      String
+  fromName     String?
+  fromEmail    String
+  replyTo      String?
+  templateHtml String
+  templateText String?
+  segmentId    String?
+  status       CampaignStatus @default(DRAFT)
+  scheduledAt  DateTime?
+  sentAt       DateTime?
+  createdById  String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  recipients CampaignRecipient[]
+}
+
+model CampaignRecipient {
+  id                String                  @id @default(cuid())
+  campaignId        String
+  contactId         String?
+  email             String
+  snapshotDataJson  Json
+  status            CampaignRecipientStatus @default(PENDING)
+  providerMessageId String?
+  sentAt            DateTime?
+  openedAt          DateTime?
+  clickedAt         DateTime?
+  bouncedAt         DateTime?
+  errorMessage      String?
+
+  campaign Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  events   EmailEvent[]
+
+  @@index([campaignId])
+}
+
+model EmailEvent {
+  id                  String   @id @default(cuid())
+  campaignRecipientId String
+  eventType           String
+  eventPayloadJson    Json
+  occurredAt          DateTime
+
+  campaignRecipient CampaignRecipient @relation(fields: [campaignRecipientId], references: [id], onDelete: Cascade)
+}
+
+model Suppression {
+  id        String            @id @default(cuid())
+  email     String            @unique
+  reason    SuppressionReason
+  source    String?
+  createdAt DateTime          @default(now())
+}
+
+model Prospect {
+  id                  String         @id @default(cuid())
+  companyName         String
+  contactName         String?
+  email               String?
+  phone               String?
+  website             String?
+  industry            String?
+  businessType        String?
+  addressLine1        String?
+  city                String?
+  state               String?
+  postalCode          String?
+  country             String?        @default("US")
+  latitude            Float?
+  longitude           Float?
+  employeeEstimate    Int?
+  source              String?
+  sourceUrl           String?
+  qualificationStatus ProspectStatus @default(NEW)
+  score               Int?           @default(0)
+  notes               String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@index([qualificationStatus])
+  @@index([state])
+}
+
+model ImportJob {
+  id          String   @id @default(cuid())
+  filename    String
+  rowCount    Int?
+  status      String
+  mappingJson Json?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  rows ImportRow[]
+}
+
+model ImportRow {
+  id           String   @id @default(cuid())
+  importJobId  String
+  rawJson      Json
+  status       String
+  errorMessage String?
+
+  importJob ImportJob @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+}
