@@ -1,12 +1,21 @@
 import { AppShell } from "@/components/app-shell";
+import { CampaignForm } from "@/components/campaign-form";
 import { prisma } from "@/lib/db";
 
 export default async function CampaignsPage() {
-  const campaigns = await prisma.campaign.findMany({
-    include: { recipients: true },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const [campaigns, segments] = await Promise.all([
+    prisma.campaign.findMany({
+      include: { recipients: true },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    prisma.segment.findMany({
+      select: { id: true, name: true },
+      where: { entityType: "contact" },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+  ]);
 
   return (
     <AppShell>
@@ -17,6 +26,10 @@ export default async function CampaignsPage() {
           <p>
             Campaigns should preview recipients before send, then keep delivery outcomes tied to the frozen audience snapshot.
           </p>
+        </section>
+        <section className="card">
+          <h3>Create Campaign Draft</h3>
+          <CampaignForm segments={segments} />
         </section>
         <section className="card">
           <table className="table">

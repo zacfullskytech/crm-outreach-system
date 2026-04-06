@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app-shell";
+import { SegmentForm } from "@/components/segment-form";
 import { prisma } from "@/lib/db";
 
 export default async function SegmentsPage() {
@@ -16,6 +17,10 @@ export default async function SegmentsPage() {
           <p>
             Segment definitions stay in JSON so the same logic can drive previews, campaigns, and prospect review queues.
           </p>
+        </section>
+        <section className="card">
+          <h3>Create Segment</h3>
+          <SegmentForm />
         </section>
         <section className="card">
           <table className="table">
