@@ -2,6 +2,8 @@ import { AppShell } from "@/components/app-shell";
 import { CompanyForm } from "@/components/company-form";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 export default async function CompaniesPage() {
   const companies = await prisma.company.findMany({
     include: { contacts: true },

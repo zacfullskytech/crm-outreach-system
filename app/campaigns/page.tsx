@@ -2,6 +2,8 @@ import { AppShell } from "@/components/app-shell";
 import { CampaignForm } from "@/components/campaign-form";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 export default async function CampaignsPage() {
   const [campaigns, segments] = await Promise.all([
     prisma.campaign.findMany({

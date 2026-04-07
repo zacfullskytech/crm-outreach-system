@@ -2,6 +2,8 @@ import { AppShell } from "@/components/app-shell";
 import { SegmentForm } from "@/components/segment-form";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 export default async function SegmentsPage() {
   const segments = await prisma.segment.findMany({
     orderBy: { createdAt: "desc" },

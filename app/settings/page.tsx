@@ -5,6 +5,8 @@ import { TagForm } from "@/components/tag-form";
 import { prisma } from "@/lib/db";
 import { getGeneralSettings } from "@/lib/settings";
 
+export const dynamic = "force-dynamic";
+
 const envRows = [
   ["DATABASE_URL", "Primary PostgreSQL connection string"],
   ["DEFAULT_FROM_EMAIL", "Default sender email for campaigns"],

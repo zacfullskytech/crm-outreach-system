@@ -2,6 +2,8 @@ import { AppShell } from "@/components/app-shell";
 import { ImportWizard } from "@/components/import-wizard";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 export default async function ImportsPage() {
   const importJobs = await prisma.importJob.findMany({
     include: { rows: true },

@@ -2,6 +2,8 @@ import { AppShell } from "@/components/app-shell";
 import { ProspectForm } from "@/components/prospect-form";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProspectsPage() {
   const prospects = await prisma.prospect.findMany({
     orderBy: [{ score: "desc" }, { createdAt: "desc" }],

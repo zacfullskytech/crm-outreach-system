@@ -1,6 +1,8 @@
 import { AppShell } from "@/components/app-shell";
 import { getDashboardSummary } from "@/lib/dashboard";
 
+export const dynamic = "force-dynamic";
+
 const cardLabels = [
   ["Contacts", "contacts"],
   ["Companies", "companies"],
