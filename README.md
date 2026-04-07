@@ -20,7 +20,7 @@ Targets veterinary clinics and private medical practices.
 
 ```bash
 cp .env.example .env
-# Set DATABASE_URL and email provider keys in .env
+# Set DATABASE_URL / DIRECT_URL and email provider values in .env
 
 npm install
 npm run prisma:generate
@@ -29,14 +29,27 @@ npm run db:seed
 npm run dev
 ```
 
+## Azure App Service
+
+If you want to deploy publicly on Azure App Service, use the guide in:
+
+- `AZURE_DEPLOYMENT.md`
+
+Recommended production runtime layout:
+- Azure App Service for the Next.js app
+- Supabase Postgres for the database
+- Supabase pooler URL for `DATABASE_URL`
+- Supabase direct URL for `DIRECT_URL`
+
 ---
 
 ## Environment Variables
 
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `EMAIL_PROVIDER` | `resend` or `mailgun` |
+| `DATABASE_URL` | PostgreSQL runtime connection string (Supabase pooler recommended in production) |
+| `DIRECT_URL` | Direct PostgreSQL connection string for Prisma schema operations |
+| `EMAIL_PROVIDER` | `dry-run`, `resend`, or `mailgun` |
 | `RESEND_API_KEY` | Resend API key |
 | `MAILGUN_API_KEY` | Mailgun API key |
 | `MAILGUN_DOMAIN` | Mailgun sending domain |

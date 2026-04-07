@@ -18,7 +18,12 @@ export async function POST(request: NextRequest) {
     const parsed = segmentSchema.parse(payload);
 
     const segment = await prisma.segment.create({
-      data: parsed,
+      data: {
+        name: parsed.name,
+        description: parsed.description ?? null,
+        entityType: parsed.entityType,
+        filterJson: parsed.filterJson,
+      },
     });
 
     return NextResponse.json({ data: segment }, { status: 201 });

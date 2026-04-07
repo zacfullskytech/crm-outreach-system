@@ -16,7 +16,9 @@ export async function POST(request: NextRequest) {
     emailProvider: typeof payload.emailProvider === "string" ? payload.emailProvider.trim() : "resend",
     internalTestEmail: typeof payload.internalTestEmail === "string" ? payload.internalTestEmail.trim() : "",
     targetStates: Array.isArray(payload.targetStates)
-      ? payload.targetStates.map((value) => String(value).trim().toUpperCase()).filter(Boolean)
+      ? payload.targetStates
+          .map((value: unknown) => String(value).trim().toUpperCase())
+          .filter((value: string) => Boolean(value))
       : [],
   };
 
