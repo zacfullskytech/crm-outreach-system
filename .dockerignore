@@ -1,0 +1,17 @@
+node_modules
+.next
+.env
+.env.local
+.git
+.github
+README.md
+AZURE_DEPLOYMENT.md
+memory
+.openclaw
+BOOTSTRAP.md
+SOUL.md
+USER.md
+TOOLS.md
+HEARTBEAT.md
+IDENTITY.md
+AGENTS.md

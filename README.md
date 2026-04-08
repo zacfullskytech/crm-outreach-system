@@ -29,14 +29,15 @@ npm run db:seed
 npm run dev
 ```
 
-## Azure App Service
+## Azure Deployment
 
-If you want to deploy publicly on Azure App Service, use the guide in:
+There are now two documented Azure paths:
 
-- `AZURE_DEPLOYMENT.md`
+- `AZURE_DEPLOYMENT.md` for Azure App Service
+- `AZURE_CONTAINER_APPS.md` for Azure Container Apps
 
-Recommended production runtime layout:
-- Azure App Service for the Next.js app
+Recommended path from current experience:
+- Azure Container Apps for the Next.js app
 - Supabase Postgres for the database
 - Supabase pooler URL for `DATABASE_URL`
 - Supabase direct URL for `DIRECT_URL`
