@@ -36,6 +36,7 @@ jobs:
           cp package-lock.json release/
           cp next.config.ts release/
           cp -R .next release/.next
+          cp -R node_modules release/node_modules
           cp -R app release/app
           cp -R components release/components
           cp -R lib release/lib
