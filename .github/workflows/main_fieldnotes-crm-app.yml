@@ -26,14 +26,28 @@ jobs:
       - name: npm install, build, and test
         run: |
           npm install
-          npm run build --if-present
+          npm run build
           npm run test --if-present
+
+      - name: Prepare deployment package
+        run: |
+          mkdir -p release
+          cp package.json release/
+          cp package-lock.json release/
+          cp next.config.ts release/
+          cp -R .next release/.next
+          cp -R app release/app
+          cp -R components release/components
+          cp -R lib release/lib
+          cp -R prisma release/prisma
+          cp -R scripts release/scripts
+          if [ -d public ]; then cp -R public release/public; fi
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: release
 
   deploy:
     runs-on: ubuntu-latest
