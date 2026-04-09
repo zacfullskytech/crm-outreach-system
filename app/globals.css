@@ -605,3 +605,47 @@ main {
     align-items: flex-start;
   }
 }
+
+/* Sidebar footer */
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.user-email {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 14px;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--gray-500);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.logout-btn:hover {
+  background: var(--gray-100);
+  color: var(--blue-deep);
+  border-color: var(--gray-300);
+}
+
+.logout-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}

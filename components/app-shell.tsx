@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { useEffect, useState } from "react";
 
 const navItems: { label: string; href: string; icon: React.ReactNode }[] = [
   {
@@ -97,6 +99,21 @@ const navItems: { label: string; href: string; icon: React.ReactNode }[] = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserEmail(data.user?.email ?? null);
+    });
+  }, []);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <div className="shell">
@@ -115,6 +132,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
+        <div className="sidebar-footer">
+          {userEmail && (
+            <p className="user-email" title={userEmail}>{userEmail}</p>
+          )}
+          <button className="logout-btn" onClick={handleLogout}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            Sign out
+          </button>
+        </div>
       </aside>
       <main className="content">{children}</main>
     </div>
