@@ -160,7 +160,12 @@ main {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
-/* Cards */
+/* Form section — full width, more spacious */
+.form-section {
+  padding: 28px 32px;
+}
+
+/* Card */
 .card {
   background: var(--white);
   border: 1px solid var(--line);

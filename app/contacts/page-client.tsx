@@ -46,7 +46,7 @@ export function ContactsPageClient({
           </p>
         </section>
 
-        <section className="card">
+        <section className="card form-section">
           <div className="card-header">
             <h3>Add Contact</h3>
           </div>

@@ -1,12 +1,12 @@
 .form-grid {
   display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px 28px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
 .field {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .field label {
@@ -18,16 +18,26 @@
 .field select,
 .field textarea {
   width: 100%;
-  padding: 10px 12px;
+  padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #fff;
   color: var(--blue-deep);
   font: inherit;
+  font-size: 0.95rem;
+}
+
+.field input {
+  height: 48px;
+}
+
+.field select {
+  height: 48px;
+  cursor: pointer;
 }
 
 .field textarea {
-  min-height: 110px;
+  min-height: 140px;
   resize: vertical;
 }
 

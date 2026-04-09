@@ -41,7 +41,7 @@ export function ProspectsPageClient({ initialProspects }: { initialProspects: Pr
           </p>
         </section>
 
-        <section className="card">
+        <section className="card form-section">
           <div className="card-header">
             <h3>Add Prospect</h3>
           </div>

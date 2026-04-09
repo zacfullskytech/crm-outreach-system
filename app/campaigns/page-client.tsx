@@ -50,7 +50,7 @@ export function CampaignsPageClient({
           </p>
         </section>
 
-        <section className="card">
+        <section className="card form-section">
           <div className="card-header">
             <h3>Create Campaign Draft</h3>
           </div>
