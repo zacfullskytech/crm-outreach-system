@@ -41,6 +41,7 @@ Recommended path from current experience:
 - Supabase Postgres for the database
 - Supabase pooler URL for `DATABASE_URL`
 - Supabase direct URL for `DIRECT_URL`
+- build the image with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `NEXT_PUBLIC_APP_BASE_URL`
 
 ---
 
@@ -50,6 +51,9 @@ Recommended path from current experience:
 |---|---|
 | `DATABASE_URL` | PostgreSQL runtime connection string (Supabase pooler recommended in production) |
 | `DIRECT_URL` | Direct PostgreSQL connection string for Prisma schema operations |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL used by server and browser auth clients |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon public key used by server and browser auth clients |
+| `NEXT_PUBLIC_APP_BASE_URL` | Public URL used by client-side fetches; for container builds this must be injected at build time |
 | `EMAIL_PROVIDER` | `dry-run`, `resend`, or `mailgun` |
 | `RESEND_API_KEY` | Resend API key |
 | `MAILGUN_API_KEY` | Mailgun API key |
@@ -60,6 +64,8 @@ Recommended path from current experience:
 | `APP_BASE_URL` | Public URL for unsubscribe links |
 
 If `EMAIL_PROVIDER` is not set, the app runs in dry-run mode and logs emails to console without sending.
+
+For Azure Container Apps, the `NEXT_PUBLIC_*` variables used in browser code must be present during the image build, not only at runtime. See [AZURE_CONTAINER_APPS.md](/home/ubuntu/.openclaw/workspace/AZURE_CONTAINER_APPS.md).
 
 ---
 

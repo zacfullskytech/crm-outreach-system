@@ -26,14 +26,37 @@ npm run start:azure
 
 ## Environment Variables Required
 
+### Build-time required
+
+These must be present during `docker build`, not just at container runtime, because the browser bundle reads them from `process.env.NEXT_PUBLIC_*`.
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_APP_BASE_URL`
+
+### Runtime required
+
 - `DATABASE_URL`
 - `DIRECT_URL`
-- `NEXTAUTH_SECRET`
-- `NEXTAUTH_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `APP_BASE_URL`
+- `NEXT_PUBLIC_APP_BASE_URL`
 - `EMAIL_PROVIDER`
 - `DEFAULT_FROM_EMAIL`
 - `DEFAULT_FROM_NAME`
+
+### Optional runtime vars
+
+- `RESEND_API_KEY` when `EMAIL_PROVIDER=resend`
+- `MAILGUN_API_KEY` when `EMAIL_PROVIDER=mailgun`
+- `MAILGUN_DOMAIN` when `EMAIL_PROVIDER=mailgun`
+- `EMAIL_WEBHOOK_SECRET` when using `/api/email/webhook`
+
+### Not used by this app
+
+- `NEXTAUTH_SECRET`
+- `NEXTAUTH_URL`
 
 ## Azure Resources Needed
 
@@ -55,12 +78,19 @@ az acr create \
 
 ### 2. Build and push image
 
+Pass the public Supabase values at build time so Next.js can embed them in the client bundle.
+
 ```bash
 az acr build \
   --registry <your-acr-name> \
   --image crm-outreach-system:latest \
-  .
+  --build-arg NEXT_PUBLIC_SUPABASE_URL='https://<your-project>.supabase.co' \
+  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY='<your-anon-key>' \
+  --build-arg NEXT_PUBLIC_APP_BASE_URL='https://<container-app-fqdn>' \
+  https://github.com/<owner>/<repo>.git#main
 ```
+
+If you skip these `--build-arg` values, the container can start successfully while the login page still crashes in the browser with missing Supabase config.
 
 ### 3. Create Container Apps environment
 
@@ -89,17 +119,40 @@ az containerapp create \
 
 Use Azure Portal or CLI to set app secrets and environment variables.
 
+Recommended runtime set:
+
+```env
+DATABASE_URL=postgresql://<pooler-user>:<encoded-password>@<pooler-host>:6543/postgres?pgbouncer=true
+DIRECT_URL=postgresql://<direct-user>:<encoded-password>@<direct-host>:5432/postgres
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+APP_BASE_URL=https://<container-app-fqdn>
+NEXT_PUBLIC_APP_BASE_URL=https://<container-app-fqdn>
+EMAIL_PROVIDER=dry-run
+DEFAULT_FROM_EMAIL=campaigns@example.com
+DEFAULT_FROM_NAME=Field Notes CRM
+```
+
+Notes:
+
+- `DATABASE_URL` should use the Supabase pooler.
+- `DIRECT_URL` should use the direct Postgres host on port `5432`.
+- Do not leave spaces after `=` when setting values in Azure.
+- If the app URL changes, rebuild the image with the new `NEXT_PUBLIC_APP_BASE_URL` and update the runtime `APP_BASE_URL` to match.
+
 ## Runtime Notes
 
 - The container includes the built `.next` output
 - The container includes `node_modules`
 - No Oryx source-build behavior is involved at runtime
+- A healthy revision does not prove the login page will work; missing build-time `NEXT_PUBLIC_*` values only show up in the browser at request time
 
 ## First Validation
 
-After deployment, test:
+After deployment, test in this order:
 
-- `/`
+- `/login`
+- create an account / sign in
 - `/contacts`
 - `/companies`
 - `/segments`
@@ -107,6 +160,8 @@ After deployment, test:
 - `/prospects`
 - `/imports`
 - `/settings`
+
+If `/login` briefly renders and then fails, check the browser console first. That usually means the image was built without `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 
 ## Optional Next Step
 
