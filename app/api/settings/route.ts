@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/supabase/auth";
 import { getGeneralSettings, setGeneralSettings } from "@/lib/settings";
 
 export async function GET() {
+  await requireAdmin();
   const settings = await getGeneralSettings();
   return NextResponse.json({ data: settings });
 }
 
 export async function POST(request: NextRequest) {
+  await requireAdmin();
+
   const payload = await request.json();
 
   const data = {

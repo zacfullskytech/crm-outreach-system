@@ -81,11 +81,11 @@ const statCards = [
 ] as const;
 
 export default async function HomePage() {
-  await requireAuth();
+  const { appUser } = await requireAuth();
   const summary = await getDashboardSummary();
 
   return (
-    <AppShell>
+    <AppShell isAdmin={appUser.role === "admin"}>
       <section className="hero">
         <span className="kicker">Full Sky Technologies CRM</span>
         <h2>Outbound CRM for veterinary and private practice markets.</h2>

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export default async function CompaniesPage() {
-  await requireAuth();
+  const { appUser } = await requireAuth();
 
   const companies = await prisma.company.findMany({
     include: { contacts: { select: { id: true } } },
@@ -13,5 +13,5 @@ export default async function CompaniesPage() {
     take: 200,
   });
 
-  return <CompaniesPageClient initialCompanies={companies} />;
+  return <CompaniesPageClient initialCompanies={companies} isAdmin={appUser.role === "admin"} />;
 }

@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { DEFAULT_ADMIN_EMAIL } from "@/lib/users";
 
 const prisma = new PrismaClient();
 
@@ -152,6 +153,16 @@ async function main() {
         internalTestEmail: "ops@example.com",
         targetStates: ["TX", "OK"],
       },
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: DEFAULT_ADMIN_EMAIL },
+    update: { role: "admin", name: "Zac" },
+    create: {
+      email: DEFAULT_ADMIN_EMAIL,
+      name: "Zac",
+      role: "admin",
     },
   });
 }

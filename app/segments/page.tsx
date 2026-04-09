@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export default async function SegmentsPage() {
-  await requireAuth();
+  const { appUser } = await requireAuth();
 
   const segments = await prisma.segment.findMany({
     orderBy: { createdAt: "desc" },
@@ -14,7 +14,7 @@ export default async function SegmentsPage() {
   });
 
   return (
-    <AppShell>
+    <AppShell isAdmin={appUser.role === "admin"}>
       <div className="stack">
         <section className="hero">
           <span className="kicker">Segments</span>

@@ -5,7 +5,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
-const navItems: { label: string; href: string; icon: React.ReactNode }[] = [
+type NavItem = { label: string; href: string; icon: React.ReactNode; adminOnly?: boolean };
+
+const navItems: NavItem[] = [
   {
     label: "Dashboard",
     href: "/",
@@ -95,9 +97,22 @@ const navItems: { label: string; href: string; icon: React.ReactNode }[] = [
       </svg>
     ),
   },
+  {
+    label: "Users",
+    href: "/users",
+    adminOnly: true,
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M19 8v6" />
+        <path d="M22 11h-6" />
+      </svg>
+    ),
+  },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, isAdmin = false }: { children: React.ReactNode; isAdmin?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -125,12 +140,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <nav className="nav">
-          {navItems.map(({ label, href, icon }) => (
-            <Link key={href} href={href as any} className={pathname === href ? "active" : ""}>
-              <span className="nav-icon">{icon}</span>
-              {label}
-            </Link>
-          ))}
+          {navItems
+            .filter((item) => !item.adminOnly || isAdmin)
+            .map(({ label, href, icon }) => (
+              <Link key={href} href={href as any} className={pathname === href ? "active" : ""}>
+                <span className="nav-icon">{icon}</span>
+                {label}
+              </Link>
+            ))}
         </nav>
         <div className="sidebar-footer">
           {userEmail && (

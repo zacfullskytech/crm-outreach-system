@@ -11,9 +11,11 @@ type SegmentOption = Pick<Segment, "id" | "name">;
 export function CampaignsPageClient({
   initialCampaigns,
   initialSegments,
+  isAdmin,
 }: {
   initialCampaigns: CampaignWithRecipients[];
   initialSegments: SegmentOption[];
+  isAdmin: boolean;
 }) {
   const [campaigns] = useState(initialCampaigns);
   const [search, setSearch] = useState("");
@@ -40,7 +42,7 @@ export function CampaignsPageClient({
   };
 
   return (
-    <AppShell>
+    <AppShell isAdmin={isAdmin}>
       <div className="stack">
         <section className="hero">
           <span className="kicker">Campaigns</span>

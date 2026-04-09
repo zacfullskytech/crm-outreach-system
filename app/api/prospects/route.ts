@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/supabase/auth";
 import { scoreProspect } from "@/lib/prospects";
 import { prospectSchema } from "@/lib/validators";
 
 export async function GET() {
+  await requireAuth();
   const prospects = await prisma.prospect.findMany({
     orderBy: [{ score: "desc" }, { createdAt: "desc" }],
     take: 100,
@@ -14,6 +16,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  await requireAuth();
+
   try {
     const payload = await request.json();
     const parsed = prospectSchema.parse(payload);

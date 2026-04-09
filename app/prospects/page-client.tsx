@@ -5,7 +5,7 @@ import { ProspectForm } from "@/components/prospect-form";
 import { AppShell } from "@/components/app-shell";
 import type { Prospect } from "@prisma/client";
 
-export function ProspectsPageClient({ initialProspects }: { initialProspects: Prospect[] }) {
+export function ProspectsPageClient({ initialProspects, isAdmin }: { initialProspects: Prospect[]; isAdmin: boolean }) {
   const [prospects] = useState(initialProspects);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -31,7 +31,7 @@ export function ProspectsPageClient({ initialProspects }: { initialProspects: Pr
   };
 
   return (
-    <AppShell>
+    <AppShell isAdmin={isAdmin}>
       <div className="stack">
         <section className="hero">
           <span className="kicker">Prospects</span>

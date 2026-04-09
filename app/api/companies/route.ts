@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/supabase/auth";
 import { companySchema } from "@/lib/validators";
 import { normalizeWebsite } from "@/lib/utils";
 
 export async function GET() {
+  await requireAuth();
   const companies = await prisma.company.findMany({
     include: { contacts: true, tags: { include: { tag: true } } },
     orderBy: { createdAt: "desc" },
@@ -15,6 +17,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  await requireAuth();
+
   try {
     const payload = await request.json();
     const parsed = companySchema.parse(payload);

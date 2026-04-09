@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export default async function CampaignsPage() {
-  await requireAuth();
+  const { appUser } = await requireAuth();
 
   const [campaigns, segments] = await Promise.all([
     prisma.campaign.findMany({
@@ -21,5 +21,5 @@ export default async function CampaignsPage() {
     }),
   ]);
 
-  return <CampaignsPageClient initialCampaigns={campaigns} initialSegments={segments} />;
+  return <CampaignsPageClient initialCampaigns={campaigns} initialSegments={segments} isAdmin={appUser.role === "admin"} />;
 }

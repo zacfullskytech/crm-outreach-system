@@ -6,7 +6,7 @@ import { requireAuth } from "@/lib/supabase/auth";
 export const dynamic = "force-dynamic";
 
 export default async function ContactsPage() {
-  await requireAuth();
+  const { appUser } = await requireAuth();
 
   const [contacts, companies] = await Promise.all([
     prisma.contact.findMany({
@@ -21,5 +21,5 @@ export default async function ContactsPage() {
     }),
   ]);
 
-  return <ContactsPageClient initialContacts={contacts} initialCompanies={companies} />;
+  return <ContactsPageClient initialContacts={contacts} initialCompanies={companies} isAdmin={appUser.role === "admin"} />;
 }

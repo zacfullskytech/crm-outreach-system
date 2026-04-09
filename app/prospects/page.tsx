@@ -5,12 +5,12 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export default async function ProspectsPage() {
-  await requireAuth();
+  const { appUser } = await requireAuth();
 
   const prospects = await prisma.prospect.findMany({
     orderBy: [{ score: "desc" }, { createdAt: "desc" }],
     take: 200,
   });
 
-  return <ProspectsPageClient initialProspects={prospects} />;
+  return <ProspectsPageClient initialProspects={prospects} isAdmin={appUser.role === "admin"} />;
 }

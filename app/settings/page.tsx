@@ -17,7 +17,7 @@ const envRows = [
 ] as const;
 
 export default async function SettingsPage() {
-  await requireAuth();
+  const { appUser } = await requireAuth();
 
   const [settings, suppressions, tags] = await Promise.all([
     getGeneralSettings(),
@@ -26,7 +26,7 @@ export default async function SettingsPage() {
   ]);
 
   return (
-    <AppShell>
+    <AppShell isAdmin={appUser.role === "admin"}>
       <div className="stack">
         <section className="hero">
           <span className="kicker">Settings</span>

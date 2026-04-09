@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export default async function ImportsPage() {
-  await requireAuth();
+  const { appUser } = await requireAuth();
 
   const importJobs = await prisma.importJob.findMany({
     include: { rows: true },
@@ -15,7 +15,7 @@ export default async function ImportsPage() {
   });
 
   return (
-    <AppShell>
+    <AppShell isAdmin={appUser.role === "admin"}>
       <div className="stack">
         <section className="hero">
           <span className="kicker">Imports</span>

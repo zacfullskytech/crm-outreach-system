@@ -18,9 +18,11 @@ async function getData() {
 export function ContactsPageClient({
   initialContacts,
   initialCompanies,
+  isAdmin,
 }: {
   initialContacts: ContactWithCompany[];
   initialCompanies: Pick<Company, "id" | "name">[];
+  isAdmin: boolean;
 }) {
   const [contacts, setContacts] = useState(initialContacts);
   const [search, setSearch] = useState("");
@@ -36,7 +38,7 @@ export function ContactsPageClient({
   });
 
   return (
-    <AppShell>
+    <AppShell isAdmin={isAdmin}>
       <div className="stack">
         <section className="hero">
           <span className="kicker">Contacts</span>

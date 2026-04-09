@@ -7,7 +7,7 @@ import type { Company } from "@prisma/client";
 
 type CompanyWithContacts = Company & { contacts: { id: string }[] };
 
-export function CompaniesPageClient({ initialCompanies }: { initialCompanies: CompanyWithContacts[] }) {
+export function CompaniesPageClient({ initialCompanies, isAdmin }: { initialCompanies: CompanyWithContacts[]; isAdmin: boolean }) {
   const [companies] = useState(initialCompanies);
   const [search, setSearch] = useState("");
 
@@ -23,7 +23,7 @@ export function CompaniesPageClient({ initialCompanies }: { initialCompanies: Co
   });
 
   return (
-    <AppShell>
+    <AppShell isAdmin={isAdmin}>
       <div className="stack">
         <section className="hero">
           <span className="kicker">Companies</span>
