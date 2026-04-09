@@ -58,7 +58,7 @@ export function SuppressionForm() {
         </div>
       </div>
       <div className="actions">
-        <button className="button" type="submit" disabled={pending}>
+        <button className="button primary" type="submit" disabled={pending}>
           {pending ? "Saving..." : "Add Suppression"}
         </button>
         {message ? <span className="help">{message}</span> : null}

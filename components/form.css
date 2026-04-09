@@ -1,7 +1,11 @@
 .form-grid {
   display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px 24px;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.form-grid > .field:only-child {
+  grid-column: 1 / -1;
 }
 
 .field {
@@ -11,23 +15,36 @@
 }
 
 .field label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 500;
   color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .field input,
 .field select,
 .field textarea {
   width: 100%;
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
   background: var(--white);
   color: var(--blue-deep);
   font: inherit;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  height: 40px;
+}
+
+.field select {
+  height: 40px;
+  cursor: pointer;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--gray-300);
 }
 
 .field input:focus,
@@ -39,8 +56,13 @@
 }
 
 .field textarea {
-  min-height: 110px;
+  min-height: 80px;
+  height: auto;
   resize: vertical;
+}
+
+.field-full {
+  grid-column: 1 / -1;
 }
 
 .actions {
@@ -57,10 +79,10 @@
   justify-content: center;
   gap: 8px;
   padding: 10px 20px;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   font: inherit;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 500;
   border: none;
   transition: all 0.15s ease;
@@ -69,23 +91,21 @@
 .button.primary {
   background: var(--blue-bright);
   color: var(--white);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
 }
 
 .button.primary:hover {
   background: #2563eb;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
 }
 
 .button.secondary {
   background: var(--white);
-  color: var(--blue-deep);
-  border: 1px solid var(--line);
+  color: var(--gray-500);
+  border: 1px solid var(--gray-200);
 }
 
 .button.secondary:hover {
   background: var(--gray-100);
-  border-color: var(--gray-300);
+  color: var(--blue-deep);
 }
 
 .help {
@@ -173,4 +193,11 @@
   margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
 }

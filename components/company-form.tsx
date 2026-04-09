@@ -98,7 +98,7 @@ export function CompanyForm() {
         <textarea id="company-notes" name="notes" placeholder="Operational notes or relationship context." />
       </div>
       <div className="actions">
-        <button className="button" type="submit" disabled={pending}>
+        <button className="button primary" type="submit" disabled={pending}>
           {pending ? "Saving..." : "Create Company"}
         </button>
         {message ? <span className="help">{message}</span> : null}

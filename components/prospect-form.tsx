@@ -113,7 +113,7 @@ export function ProspectForm() {
         <textarea id="prospect-notes" name="notes" placeholder="Fit notes, qualification signals, or next-step context." />
       </div>
       <div className="actions">
-        <button className="button" type="submit" disabled={pending}>
+        <button className="button primary" type="submit" disabled={pending}>
           {pending ? "Saving..." : "Create Prospect"}
         </button>
         {message ? <span className="help">{message}</span> : null}

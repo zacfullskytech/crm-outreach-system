@@ -149,7 +149,7 @@ export function CampaignForm({ segments }: { segments: SegmentOption[] }) {
         <button className="button secondary" type="button" onClick={previewAudience} disabled={pending}>
           {pending ? "Previewing..." : "Preview Audience"}
         </button>
-        <button className="button" type="submit" disabled={pending}>
+        <button className="button primary" type="submit" disabled={pending}>
           {pending ? "Saving..." : "Create Campaign"}
         </button>
         {message ? <span className="help">{message}</span> : null}

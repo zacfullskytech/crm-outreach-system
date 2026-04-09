@@ -85,7 +85,7 @@ export function ContactForm({ companies }: { companies: CompanyOption[] }) {
         <textarea id="contact-notes" name="notes" placeholder="Context, relationship notes, or campaign history." />
       </div>
       <div className="actions">
-        <button className="button" type="submit" disabled={pending}>
+        <button className="button primary" type="submit" disabled={pending}>
           {pending ? "Saving..." : "Create Contact"}
         </button>
         {message ? <span className="help">{message}</span> : null}

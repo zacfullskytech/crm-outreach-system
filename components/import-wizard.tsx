@@ -141,7 +141,7 @@ export function ImportWizard() {
           <input id="import-file" type="file" accept=".csv,text/csv" onChange={onFileChange} />
         </div>
         <div className="actions">
-          <button className="button" type="button" onClick={uploadCsv} disabled={pending}>
+          <button className="button primary" type="button" onClick={uploadCsv} disabled={pending}>
             {pending && step === "upload" ? "Parsing..." : "Parse CSV"}
           </button>
           <span className="help">Current file: {filename}</span>
@@ -176,7 +176,7 @@ export function ImportWizard() {
             ))}
           </div>
           <div className="actions">
-            <button className="button" type="button" onClick={saveMapping} disabled={pending}>
+            <button className="button primary" type="button" onClick={saveMapping} disabled={pending}>
               {pending && step === "map" ? "Saving..." : "Save Mapping"}
             </button>
           </div>
@@ -187,7 +187,7 @@ export function ImportWizard() {
         <div className="card">
           <h3>3. Execute Import</h3>
           <div className="actions">
-            <button className="button" type="button" onClick={executeImport} disabled={pending}>
+            <button className="button primary" type="button" onClick={executeImport} disabled={pending}>
               {pending ? "Importing..." : "Run Import"}
             </button>
             <span className="help">Preview rows loaded: {preview.length}</span>
