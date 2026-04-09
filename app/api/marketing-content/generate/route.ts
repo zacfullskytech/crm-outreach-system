@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/supabase/auth";
-import { generateMarketingAsset } from "@/lib/openai";
+import { generateMarketingAsset, generateMarketingImage } from "@/lib/openai";
 import { normalizeCustomFields } from "@/lib/custom-fields";
 
 export async function POST(request: NextRequest) {
@@ -14,12 +14,22 @@ export async function POST(request: NextRequest) {
       audience: typeof payload.audience === "string" ? payload.audience : null,
       serviceLine: typeof payload.serviceLine === "string" ? payload.serviceLine : null,
       channel: typeof payload.channel === "string" ? payload.channel : null,
+      industry: typeof payload.industry === "string" ? payload.industry : null,
+      offerType: typeof payload.offerType === "string" ? payload.offerType : null,
+      assetFormat: typeof payload.assetFormat === "string" ? payload.assetFormat : null,
+      tone: typeof payload.tone === "string" ? payload.tone : null,
+      lifecycleStage: typeof payload.lifecycleStage === "string" ? payload.lifecycleStage : null,
       description: typeof payload.description === "string" ? payload.description : null,
       promptNotes: typeof payload.promptNotes === "string" ? payload.promptNotes : null,
+      promptTemplateKey: typeof payload.promptTemplateKey === "string" ? payload.promptTemplateKey : null,
       variables: normalizeCustomFields(payload.variables),
     });
 
-    return NextResponse.json({ data: result });
+    const imageUrl = payload.generateImage === true && result.imagePrompt
+      ? await generateMarketingImage(result.imagePrompt)
+      : null;
+
+    return NextResponse.json({ data: { ...result, imageUrl } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to generate content." }, { status: 500 });
   }

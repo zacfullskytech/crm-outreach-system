@@ -11,6 +11,11 @@ const contentTypes = ["Flier", "One-pager", "Email copy", "Landing page", "Socia
 const serviceLineOptions = ["Phones", "Internet", "Cybersecurity", "Managed IT", "VoIP", "Connectivity"];
 const audienceOptions = ["Veterinary clinics", "Private medical practices", "Dental offices", "Retail", "SMB"];
 const channelOptions = ["Print", "Email", "Web", "Sales handout", "Social", "Internal"];
+const industryOptions = ["Veterinary", "Medical", "Dental", "Retail", "SMB"];
+const offerTypeOptions = ["Bundle offer", "Promotional campaign", "Feature spotlight", "Switcher campaign", "Awareness"];
+const assetFormatOptions = ["Full-page flyer", "Half-page flyer", "Email sequence", "Landing page", "Ad creative"];
+const toneOptions = ["Practical", "Reassuring", "Professional", "Direct", "Friendly"];
+const lifecycleStageOptions = ["Awareness", "Consideration", "Conversion", "Retention"];
 
 export function MarketingContentForm({
   content,
@@ -38,13 +43,25 @@ export function MarketingContentForm({
   const [serviceLine, setServiceLine] = useState(content?.serviceLine || "");
   const [audience, setAudience] = useState(content?.audience || "");
   const [channel, setChannel] = useState(content?.channel || "");
+  const [industry, setIndustry] = useState(content?.industry || "");
+  const [offerType, setOfferType] = useState(content?.offerType || "");
+  const [assetFormat, setAssetFormat] = useState(content?.assetFormat || "");
+  const [tone, setTone] = useState(content?.tone || "");
+  const [lifecycleStage, setLifecycleStage] = useState(content?.lifecycleStage || "");
   const [fileName, setFileName] = useState(content?.fileName || "");
   const [fileUrl, setFileUrl] = useState(content?.fileUrl || "");
+  const [imagePrompt, setImagePrompt] = useState(content?.imagePrompt || "");
+  const [imageUrl, setImageUrl] = useState(content?.imageUrl || "");
+  const [callToAction, setCallToAction] = useState(content?.callToAction || "");
   const [bodyText, setBodyText] = useState(content?.bodyText || "");
   const [bodyHtml, setBodyHtml] = useState(content?.bodyHtml || "");
   const [promptNotes, setPromptNotes] = useState(content?.promptNotes || "");
+  const [promptTemplateKey, setPromptTemplateKey] = useState(content?.promptTemplateKey || "");
   const [tagsInput, setTagsInput] = useState(
     Array.isArray(content?.tagsJson) ? content.tagsJson.map((value) => String(value)).join(", ") : "",
+  );
+  const [taxonomyInput, setTaxonomyInput] = useState(
+    Array.isArray(content?.taxonomyJson) ? content.taxonomyJson.map((value) => String(value)).join(", ") : "",
   );
 
   const isEdit = Boolean(content);
@@ -56,8 +73,11 @@ export function MarketingContentForm({
     if (draftSeed.headline) setTitle(String(draftSeed.headline));
     if (draftSeed.subheadline) setDescription(String(draftSeed.subheadline));
     if (draftSeed.bodyText) setBodyText(String(draftSeed.bodyText));
-    if (draftSeed.imagePrompt) setPromptNotes(String(draftSeed.imagePrompt));
+    if (draftSeed.callToAction) setCallToAction(String(draftSeed.callToAction));
+    if (draftSeed.imagePrompt) setImagePrompt(String(draftSeed.imagePrompt));
+    if (draftSeed.imageUrl) setImageUrl(String(draftSeed.imageUrl));
     if (Array.isArray(draftSeed.tags)) setTagsInput(draftSeed.tags.map((value) => String(value)).join(", "));
+    if (Array.isArray(draftSeed.taxonomy)) setTaxonomyInput(draftSeed.taxonomy.map((value) => String(value)).join(", "));
 
     onDraftApplied?.();
   }, [draftSeed, isEdit, onDraftApplied]);
@@ -74,15 +94,22 @@ export function MarketingContentForm({
       serviceLine: serviceLine || null,
       audience: audience || null,
       channel: channel || null,
+      industry: industry || null,
+      offerType: offerType || null,
+      assetFormat: assetFormat || null,
+      tone: tone || null,
+      lifecycleStage: lifecycleStage || null,
       fileName: fileName || null,
       fileUrl: fileUrl || null,
+      imagePrompt: imagePrompt || null,
+      imageUrl: imageUrl || null,
+      callToAction: callToAction || null,
       bodyText: bodyText || null,
       bodyHtml: bodyHtml || null,
       promptNotes: promptNotes || null,
-      tags: tagsInput
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean),
+      promptTemplateKey: promptTemplateKey || null,
+      tags: tagsInput.split(",").map((value) => value.trim()).filter(Boolean),
+      taxonomy: taxonomyInput.split(",").map((value) => value.trim()).filter(Boolean),
       variables: variables.map(({ key, value }) => ({ key, value })),
     };
 
@@ -106,12 +133,22 @@ export function MarketingContentForm({
       setServiceLine("");
       setAudience("");
       setChannel("");
+      setIndustry("");
+      setOfferType("");
+      setAssetFormat("");
+      setTone("");
+      setLifecycleStage("");
       setFileName("");
       setFileUrl("");
+      setImagePrompt("");
+      setImageUrl("");
+      setCallToAction("");
       setBodyText("");
       setBodyHtml("");
       setPromptNotes("");
+      setPromptTemplateKey("");
       setTagsInput("");
+      setTaxonomyInput("");
       setVariables([]);
     }
 
@@ -145,63 +182,118 @@ export function MarketingContentForm({
       <div className="form-grid">
         <div className="field">
           <label htmlFor={`content-title-${content?.id || "new"}`}>Title</label>
-          <input id={`content-title-${content?.id || "new"}`} name="title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Veterinary Voice & Internet Flier" required />
+          <input id={`content-title-${content?.id || "new"}`} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Veterinary Voice & Internet Flier" required />
         </div>
         <div className="field">
           <label htmlFor={`content-type-${content?.id || "new"}`}>Content type</label>
-          <select id={`content-type-${content?.id || "new"}`} name="contentType" value={contentType} onChange={(event) => setContentType(event.target.value)}>
+          <select id={`content-type-${content?.id || "new"}`} value={contentType} onChange={(event) => setContentType(event.target.value)}>
             {contentTypes.map((option) => <option key={option} value={option}>{option}</option>)}
           </select>
         </div>
         <div className="field">
           <label htmlFor={`content-service-line-${content?.id || "new"}`}>Service line</label>
-          <select id={`content-service-line-${content?.id || "new"}`} name="serviceLine" value={serviceLine} onChange={(event) => setServiceLine(event.target.value)}>
+          <select id={`content-service-line-${content?.id || "new"}`} value={serviceLine} onChange={(event) => setServiceLine(event.target.value)}>
             <option value="">Unspecified</option>
             {serviceLineOptions.map((option) => <option key={option} value={option}>{option}</option>)}
           </select>
         </div>
         <div className="field">
           <label htmlFor={`content-audience-${content?.id || "new"}`}>Audience</label>
-          <select id={`content-audience-${content?.id || "new"}`} name="audience" value={audience} onChange={(event) => setAudience(event.target.value)}>
+          <select id={`content-audience-${content?.id || "new"}`} value={audience} onChange={(event) => setAudience(event.target.value)}>
             <option value="">Unspecified</option>
             {audienceOptions.map((option) => <option key={option} value={option}>{option}</option>)}
           </select>
         </div>
         <div className="field">
           <label htmlFor={`content-channel-${content?.id || "new"}`}>Channel</label>
-          <select id={`content-channel-${content?.id || "new"}`} name="channel" value={channel} onChange={(event) => setChannel(event.target.value)}>
+          <select id={`content-channel-${content?.id || "new"}`} value={channel} onChange={(event) => setChannel(event.target.value)}>
             <option value="">Unspecified</option>
             {channelOptions.map((option) => <option key={option} value={option}>{option}</option>)}
           </select>
         </div>
         <div className="field">
+          <label htmlFor={`content-industry-${content?.id || "new"}`}>Industry</label>
+          <select id={`content-industry-${content?.id || "new"}`} value={industry} onChange={(event) => setIndustry(event.target.value)}>
+            <option value="">Unspecified</option>
+            {industryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor={`content-offer-type-${content?.id || "new"}`}>Offer type</label>
+          <select id={`content-offer-type-${content?.id || "new"}`} value={offerType} onChange={(event) => setOfferType(event.target.value)}>
+            <option value="">Unspecified</option>
+            {offerTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor={`content-asset-format-${content?.id || "new"}`}>Asset format</label>
+          <select id={`content-asset-format-${content?.id || "new"}`} value={assetFormat} onChange={(event) => setAssetFormat(event.target.value)}>
+            <option value="">Unspecified</option>
+            {assetFormatOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor={`content-tone-${content?.id || "new"}`}>Tone</label>
+          <select id={`content-tone-${content?.id || "new"}`} value={tone} onChange={(event) => setTone(event.target.value)}>
+            <option value="">Unspecified</option>
+            {toneOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor={`content-lifecycle-stage-${content?.id || "new"}`}>Lifecycle stage</label>
+          <select id={`content-lifecycle-stage-${content?.id || "new"}`} value={lifecycleStage} onChange={(event) => setLifecycleStage(event.target.value)}>
+            <option value="">Unspecified</option>
+            {lifecycleStageOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </div>
+        <div className="field">
           <label htmlFor={`content-file-name-${content?.id || "new"}`}>File name</label>
-          <input id={`content-file-name-${content?.id || "new"}`} name="fileName" value={fileName} onChange={(event) => setFileName(event.target.value)} placeholder="vet-voice-flyer.pdf" />
+          <input id={`content-file-name-${content?.id || "new"}`} value={fileName} onChange={(event) => setFileName(event.target.value)} placeholder="vet-voice-flyer.pdf" />
         </div>
         <div className="field">
           <label htmlFor={`content-file-url-${content?.id || "new"}`}>File URL</label>
-          <input id={`content-file-url-${content?.id || "new"}`} name="fileUrl" value={fileUrl} onChange={(event) => setFileUrl(event.target.value)} placeholder="https://..." />
+          <input id={`content-file-url-${content?.id || "new"}`} value={fileUrl} onChange={(event) => setFileUrl(event.target.value)} placeholder="https://..." />
         </div>
         <div className="field">
           <label htmlFor={`content-tags-${content?.id || "new"}`}>Tags</label>
-          <input id={`content-tags-${content?.id || "new"}`} name="tags" value={tagsInput} onChange={(event) => setTagsInput(event.target.value)} placeholder="veterinary, phones, internet, flier" />
+          <input id={`content-tags-${content?.id || "new"}`} value={tagsInput} onChange={(event) => setTagsInput(event.target.value)} placeholder="veterinary, phones, internet, flier" />
+        </div>
+        <div className="field">
+          <label htmlFor={`content-taxonomy-${content?.id || "new"}`}>Taxonomy</label>
+          <input id={`content-taxonomy-${content?.id || "new"}`} value={taxonomyInput} onChange={(event) => setTaxonomyInput(event.target.value)} placeholder="healthcare, awareness, bundle-offer" />
         </div>
       </div>
       <div className="field">
         <label htmlFor={`content-description-${content?.id || "new"}`}>Description</label>
-        <textarea id={`content-description-${content?.id || "new"}`} name="description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="What this piece is for, who it targets, and where it should be used." />
+        <textarea id={`content-description-${content?.id || "new"}`} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="What this piece is for, who it targets, and where it should be used." />
+      </div>
+      <div className="field">
+        <label htmlFor={`content-image-prompt-${content?.id || "new"}`}>Image prompt</label>
+        <textarea id={`content-image-prompt-${content?.id || "new"}`} value={imagePrompt} onChange={(event) => setImagePrompt(event.target.value)} placeholder="Visual brief for generated artwork." />
+      </div>
+      <div className="field">
+        <label htmlFor={`content-image-url-${content?.id || "new"}`}>Image URL / data URL</label>
+        <textarea id={`content-image-url-${content?.id || "new"}`} value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="Generated image reference or stored asset URL." />
+      </div>
+      <div className="field">
+        <label htmlFor={`content-cta-${content?.id || "new"}`}>Call to action</label>
+        <input id={`content-cta-${content?.id || "new"}`} value={callToAction} onChange={(event) => setCallToAction(event.target.value)} placeholder="Book a connectivity review" />
       </div>
       <div className="field">
         <label htmlFor={`content-body-text-${content?.id || "new"}`}>Body text</label>
-        <textarea id={`content-body-text-${content?.id || "new"}`} name="bodyText" value={bodyText} onChange={(event) => setBodyText(event.target.value)} placeholder="Plain-text copy or internal summary." />
+        <textarea id={`content-body-text-${content?.id || "new"}`} value={bodyText} onChange={(event) => setBodyText(event.target.value)} placeholder="Plain-text copy or internal summary." />
       </div>
       <div className="field">
         <label htmlFor={`content-body-html-${content?.id || "new"}`}>Body HTML</label>
-        <textarea id={`content-body-html-${content?.id || "new"}`} name="bodyHtml" value={bodyHtml} onChange={(event) => setBodyHtml(event.target.value)} placeholder="Optional HTML version for email or landing page content." />
+        <textarea id={`content-body-html-${content?.id || "new"}`} value={bodyHtml} onChange={(event) => setBodyHtml(event.target.value)} placeholder="Optional HTML version for email or landing page content." />
       </div>
       <div className="field">
         <label htmlFor={`content-prompt-notes-${content?.id || "new"}`}>Prompt notes / generation brief</label>
-        <textarea id={`content-prompt-notes-${content?.id || "new"}`} name="promptNotes" value={promptNotes} onChange={(event) => setPromptNotes(event.target.value)} placeholder="Prompt notes used to create or extend this asset with ChatGPT or image generation tools." />
+        <textarea id={`content-prompt-notes-${content?.id || "new"}`} value={promptNotes} onChange={(event) => setPromptNotes(event.target.value)} placeholder="Prompt notes used to create or extend this asset with ChatGPT or image generation tools." />
+      </div>
+      <div className="field">
+        <label htmlFor={`content-template-key-${content?.id || "new"}`}>Prompt template key</label>
+        <input id={`content-template-key-${content?.id || "new"}`} value={promptTemplateKey} onChange={(event) => setPromptTemplateKey(event.target.value)} placeholder="veterinary-phones" />
       </div>
       <CustomFieldsEditor entity="content-variable" fields={variables} onChange={setVariables} />
       <div className="actions">

@@ -285,12 +285,22 @@ model MarketingContent {
   serviceLine       String?
   audience          String?
   channel           String?
+  industry          String?
+  offerType         String?
+  assetFormat       String?
+  tone              String?
+  lifecycleStage    String?
   fileName          String?
   fileUrl           String?
+  imagePrompt       String?
+  imageUrl          String?
+  callToAction      String?
   bodyText          String?
   bodyHtml          String?
   promptNotes       String?
+  promptTemplateKey String?
   tagsJson          Json?
+  taxonomyJson      Json?
   variablesJson     Json?
   createdById       String?
   createdAt         DateTime @default(now())
@@ -299,6 +309,9 @@ model MarketingContent {
   @@index([contentType])
   @@index([serviceLine])
   @@index([audience])
+  @@index([industry])
+  @@index([offerType])
+  @@index([lifecycleStage])
   @@index([title])
 }
 

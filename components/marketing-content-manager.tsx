@@ -14,11 +14,17 @@ export function MarketingContentManager({ initialItems, isAdmin }: { initialItem
   const [serviceLine, setServiceLine] = useState("ALL");
   const [audience, setAudience] = useState("ALL");
   const [contentType, setContentType] = useState("ALL");
+  const [industry, setIndustry] = useState("ALL");
+  const [offerType, setOfferType] = useState("ALL");
+  const [lifecycleStage, setLifecycleStage] = useState("ALL");
   const [draftSeed, setDraftSeed] = useState<Record<string, unknown> | null>(null);
 
   const serviceLines = Array.from(new Set(items.map((item) => item.serviceLine).filter(Boolean))) as string[];
   const audiences = Array.from(new Set(items.map((item) => item.audience).filter(Boolean))) as string[];
   const contentTypes = Array.from(new Set(items.map((item) => item.contentType).filter(Boolean))) as string[];
+  const industries = Array.from(new Set(items.map((item) => item.industry).filter(Boolean))) as string[];
+  const offerTypes = Array.from(new Set(items.map((item) => item.offerType).filter(Boolean))) as string[];
+  const lifecycleStages = Array.from(new Set(items.map((item) => item.lifecycleStage).filter(Boolean))) as string[];
 
   function upsertItem(item: MarketingContentRecord) {
     setItems((current) => [item, ...current.filter((entry) => entry.id !== item.id)]);
@@ -28,28 +34,47 @@ export function MarketingContentManager({ initialItems, isAdmin }: { initialItem
     setItems((current) => current.filter((entry) => entry.id !== id));
   }
 
+  function saveDraftAsContent(draft: Record<string, unknown>) {
+    setDraftSeed(draft);
+  }
+
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
     return items.filter((item) => {
       const tags = Array.isArray(item.tagsJson) ? item.tagsJson.map((value) => String(value)).join(" ") : "";
-      const haystack = [item.title, item.description || "", item.serviceLine || "", item.audience || "", item.contentType, tags].join(" ").toLowerCase();
+      const taxonomy = Array.isArray(item.taxonomyJson) ? item.taxonomyJson.map((value) => String(value)).join(" ") : "";
+      const haystack = [
+        item.title,
+        item.description || "",
+        item.serviceLine || "",
+        item.audience || "",
+        item.contentType,
+        item.industry || "",
+        item.offerType || "",
+        item.lifecycleStage || "",
+        tags,
+        taxonomy,
+      ].join(" ").toLowerCase();
       return (
         (!q || haystack.includes(q)) &&
         (serviceLine === "ALL" || item.serviceLine === serviceLine) &&
         (audience === "ALL" || item.audience === audience) &&
-        (contentType === "ALL" || item.contentType === contentType)
+        (contentType === "ALL" || item.contentType === contentType) &&
+        (industry === "ALL" || item.industry === industry) &&
+        (offerType === "ALL" || item.offerType === offerType) &&
+        (lifecycleStage === "ALL" || item.lifecycleStage === lifecycleStage)
       );
     });
-  }, [items, query, serviceLine, audience, contentType]);
+  }, [items, query, serviceLine, audience, contentType, industry, offerType, lifecycleStage]);
 
   return (
     <AppShell isAdmin={isAdmin}>
       <div className="stack">
         <section className="hero">
           <span className="kicker">Marketing Content</span>
-          <h2>Store, classify, and generate reusable marketing assets in one place.</h2>
+          <h2>Store, classify, generate, and reuse campaign assets in one place.</h2>
           <p>
-            Keep existing collateral organized by audience, service line, content type, and reusable variables, then brief new pieces without leaving the CRM.
+            Keep existing collateral organized by audience, service line, offer type, lifecycle stage, and reusable variables. Then generate new copy and image drafts with guardrailed prompts.
           </p>
         </section>
 
@@ -64,7 +89,7 @@ export function MarketingContentManager({ initialItems, isAdmin }: { initialItem
           <div className="card-header">
             <h3>AI Studio</h3>
           </div>
-          <MarketingAiStudio onUseDraft={(draft) => setDraftSeed(draft)} />
+          <MarketingAiStudio onUseDraft={saveDraftAsContent} />
         </section>
 
         <section className="card">
@@ -90,12 +115,24 @@ export function MarketingContentManager({ initialItems, isAdmin }: { initialItem
                 <option value="ALL">All Types</option>
                 {contentTypes.map((option) => <option key={option} value={option}>{option}</option>)}
               </select>
+              <select className="filter-select" value={industry} onChange={(event) => setIndustry(event.target.value)}>
+                <option value="ALL">All Industries</option>
+                {industries.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+              <select className="filter-select" value={offerType} onChange={(event) => setOfferType(event.target.value)}>
+                <option value="ALL">All Offer Types</option>
+                {offerTypes.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+              <select className="filter-select" value={lifecycleStage} onChange={(event) => setLifecycleStage(event.target.value)}>
+                <option value="ALL">All Lifecycle Stages</option>
+                {lifecycleStages.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
             </div>
           </div>
 
           {filtered.length === 0 ? (
             <div className="empty-state">
-              <p>{query || serviceLine !== "ALL" || audience !== "ALL" || contentType !== "ALL" ? "No content matches the current filters." : "No marketing content yet."}</p>
+              <p>{query || serviceLine !== "ALL" || audience !== "ALL" || contentType !== "ALL" || industry !== "ALL" || offerType !== "ALL" || lifecycleStage !== "ALL" ? "No content matches the current filters." : "No marketing content yet."}</p>
             </div>
           ) : (
             <div className="inline-grid">
@@ -104,7 +141,9 @@ export function MarketingContentManager({ initialItems, isAdmin }: { initialItem
                   <div className="card-header">
                     <div>
                       <h3>{item.title}</h3>
-                      <p className="help">{item.contentType} · {item.audience || "Unspecified audience"} · {item.serviceLine || "Unspecified service"}</p>
+                      <p className="help">
+                        {item.contentType} · {item.audience || "Unspecified audience"} · {item.serviceLine || "Unspecified service"} · {item.offerType || "Unspecified offer"}
+                      </p>
                     </div>
                     <span className="badge">{item.channel || "Library"}</span>
                   </div>

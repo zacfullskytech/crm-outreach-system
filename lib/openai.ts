@@ -1,11 +1,19 @@
+import { resolvePromptTemplate } from "@/lib/marketing-prompts";
+
 type GenerateMarketingAssetInput = {
   title: string;
   contentType: string;
   audience?: string | null;
   serviceLine?: string | null;
   channel?: string | null;
+  industry?: string | null;
+  offerType?: string | null;
+  assetFormat?: string | null;
+  tone?: string | null;
+  lifecycleStage?: string | null;
   description?: string | null;
   promptNotes?: string | null;
+  promptTemplateKey?: string | null;
   variables?: Record<string, string>;
 };
 
@@ -18,6 +26,11 @@ function requireOpenAiKey() {
 }
 
 function buildPrompt(input: GenerateMarketingAssetInput) {
+  const template = resolvePromptTemplate({
+    promptTemplateKey: input.promptTemplateKey,
+    audience: input.audience,
+    serviceLine: input.serviceLine,
+  });
   const variableLines = Object.entries(input.variables || {})
     .map(([key, value]) => `- ${key}: ${value}`)
     .join("\n");
@@ -30,10 +43,16 @@ function buildPrompt(input: GenerateMarketingAssetInput) {
     `Audience: ${input.audience || "Unspecified"}`,
     `Service line: ${input.serviceLine || "Unspecified"}`,
     `Channel: ${input.channel || "Unspecified"}`,
+    `Industry: ${input.industry || "Unspecified"}`,
+    `Offer type: ${input.offerType || "Unspecified"}`,
+    `Asset format: ${input.assetFormat || "Unspecified"}`,
+    `Lifecycle stage: ${input.lifecycleStage || "Unspecified"}`,
+    `Tone: ${input.tone || template?.tone || "Unspecified"}`,
+    template ? `Guardrails:\n${template.guardrails.map((line) => `- ${line}`).join("\n")}` : "Guardrails: none",
     `Description/context: ${input.description || "None provided"}`,
     `Prompt notes: ${input.promptNotes || "None provided"}`,
     variableLines ? `Variables:\n${variableLines}` : "Variables: none",
-    "Return JSON with keys: headline, subheadline, bodyText, callToAction, imagePrompt, tags.",
+    "Return JSON with keys: headline, subheadline, bodyText, callToAction, imagePrompt, tags, taxonomy.",
     "tags must be an array of short strings.",
     "bodyText should be concise but useful for a first draft.",
   ].join("\n\n");
@@ -84,5 +103,36 @@ export async function generateMarketingAsset(input: GenerateMarketingAssetInput)
     callToAction?: string;
     imagePrompt?: string;
     tags?: string[];
+    taxonomy?: string[];
   };
+}
+
+export async function generateMarketingImage(prompt: string) {
+  const apiKey = requireOpenAiKey();
+
+  const response = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-image-1",
+      prompt,
+      size: "1024x1024",
+    }),
+  });
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(body.error?.message || `OpenAI image error ${response.status}`);
+  }
+
+  const image = body.data?.[0]?.b64_json;
+  if (!image) {
+    throw new Error("OpenAI returned no image data.");
+  }
+
+  return `data:image/png;base64,${image}`;
 }

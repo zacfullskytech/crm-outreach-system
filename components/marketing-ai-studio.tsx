@@ -9,14 +9,25 @@ type GeneratedAsset = {
   bodyText?: string;
   callToAction?: string;
   imagePrompt?: string;
+  imageUrl?: string | null;
   tags?: string[];
+  taxonomy?: string[];
 };
+
+const promptTemplates = [
+  { key: "", label: "Auto-select template" },
+  { key: "veterinary-phones", label: "Veterinary clinics · Phones" },
+  { key: "veterinary-internet", label: "Veterinary clinics · Internet" },
+  { key: "medical-phones", label: "Private medical practices · Phones" },
+  { key: "medical-internet", label: "Private medical practices · Internet" },
+];
 
 export function MarketingAiStudio({ onUseDraft }: { onUseDraft?: (draft: GeneratedAsset & Record<string, unknown>) => void }) {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [result, setResult] = useState<GeneratedAsset | null>(null);
   const [variables, setVariables] = useState<Array<{ id: string; key: string; value: string }>>([]);
+  const [generateImage, setGenerateImage] = useState(true);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,8 +42,15 @@ export function MarketingAiStudio({ onUseDraft }: { onUseDraft?: (draft: Generat
       audience: String(form.get("audience") || "") || null,
       serviceLine: String(form.get("serviceLine") || "") || null,
       channel: String(form.get("channel") || "") || null,
+      industry: String(form.get("industry") || "") || null,
+      offerType: String(form.get("offerType") || "") || null,
+      assetFormat: String(form.get("assetFormat") || "") || null,
+      tone: String(form.get("tone") || "") || null,
+      lifecycleStage: String(form.get("lifecycleStage") || "") || null,
       description: String(form.get("description") || "") || null,
       promptNotes: String(form.get("promptNotes") || "") || null,
+      promptTemplateKey: String(form.get("promptTemplateKey") || "") || null,
+      generateImage,
       variables: variables.map(({ key, value }) => ({ key, value })),
     };
 
@@ -62,6 +80,12 @@ export function MarketingAiStudio({ onUseDraft }: { onUseDraft?: (draft: Generat
             <input id="ai-title" name="title" placeholder="Veterinary phones & internet flyer" required />
           </div>
           <div className="field">
+            <label htmlFor="ai-template">Prompt template</label>
+            <select id="ai-template" name="promptTemplateKey" defaultValue="">
+              {promptTemplates.map((template) => <option key={template.key} value={template.key}>{template.label}</option>)}
+            </select>
+          </div>
+          <div className="field">
             <label htmlFor="ai-content-type">Content type</label>
             <select id="ai-content-type" name="contentType" defaultValue="Flier">
               <option value="Flier">Flier</option>
@@ -83,6 +107,26 @@ export function MarketingAiStudio({ onUseDraft }: { onUseDraft?: (draft: Generat
             <label htmlFor="ai-channel">Channel</label>
             <input id="ai-channel" name="channel" placeholder="Print" />
           </div>
+          <div className="field">
+            <label htmlFor="ai-industry">Industry</label>
+            <input id="ai-industry" name="industry" placeholder="Healthcare" />
+          </div>
+          <div className="field">
+            <label htmlFor="ai-offer-type">Offer type</label>
+            <input id="ai-offer-type" name="offerType" placeholder="Bundle offer" />
+          </div>
+          <div className="field">
+            <label htmlFor="ai-asset-format">Asset format</label>
+            <input id="ai-asset-format" name="assetFormat" placeholder="Half-page flyer" />
+          </div>
+          <div className="field">
+            <label htmlFor="ai-tone">Tone</label>
+            <input id="ai-tone" name="tone" placeholder="Practical and reassuring" />
+          </div>
+          <div className="field">
+            <label htmlFor="ai-lifecycle-stage">Lifecycle stage</label>
+            <input id="ai-lifecycle-stage" name="lifecycleStage" placeholder="Awareness" />
+          </div>
         </div>
         <div className="field">
           <label htmlFor="ai-description">Description</label>
@@ -93,6 +137,12 @@ export function MarketingAiStudio({ onUseDraft }: { onUseDraft?: (draft: Generat
           <textarea id="ai-prompt-notes" name="promptNotes" placeholder="Tone, positioning, offers, proof points, image direction, etc." />
         </div>
         <CustomFieldsEditor entity="ai-variable" fields={variables} onChange={setVariables} />
+        <div className="actions">
+          <label className="help" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input type="checkbox" checked={generateImage} onChange={(event) => setGenerateImage(event.target.checked)} />
+            Generate image draft too
+          </label>
+        </div>
         <div className="actions">
           <button className="button primary" type="submit" disabled={pending}>{pending ? "Generating..." : "Generate with ChatGPT"}</button>
           {message ? <span className="help">{message}</span> : null}
@@ -114,9 +164,21 @@ export function MarketingAiStudio({ onUseDraft }: { onUseDraft?: (draft: Generat
               <strong>Image prompt</strong>
               <p>{result.imagePrompt || "—"}</p>
             </div>
+            {result.imageUrl ? (
+              <div>
+                <strong>Generated image</strong>
+                <div style={{ marginTop: 12 }}>
+                  <img src={result.imageUrl} alt="Generated marketing draft" style={{ maxWidth: "100%", borderRadius: 12, border: "1px solid var(--line)" }} />
+                </div>
+              </div>
+            ) : null}
             <div>
               <strong>Suggested tags</strong>
               <p>{result.tags?.join(", ") || "—"}</p>
+            </div>
+            <div>
+              <strong>Suggested taxonomy</strong>
+              <p>{result.taxonomy?.join(", ") || "—"}</p>
             </div>
           </div>
           {onUseDraft ? (
