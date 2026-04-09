@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { MarketingContentForm } from "@/components/marketing-content-form";
+import { MarketingAiStudio } from "@/components/marketing-ai-studio";
 import type { MarketingContent } from "@prisma/client";
 
 type MarketingContentRecord = MarketingContent;
@@ -13,6 +14,7 @@ export function MarketingContentManager({ initialItems, isAdmin }: { initialItem
   const [serviceLine, setServiceLine] = useState("ALL");
   const [audience, setAudience] = useState("ALL");
   const [contentType, setContentType] = useState("ALL");
+  const [draftSeed, setDraftSeed] = useState<Record<string, unknown> | null>(null);
 
   const serviceLines = Array.from(new Set(items.map((item) => item.serviceLine).filter(Boolean))) as string[];
   const audiences = Array.from(new Set(items.map((item) => item.audience).filter(Boolean))) as string[];
@@ -55,16 +57,14 @@ export function MarketingContentManager({ initialItems, isAdmin }: { initialItem
           <div className="card-header">
             <h3>Add Marketing Content</h3>
           </div>
-          <MarketingContentForm onSaved={upsertItem} submitLabel="Create Content" />
+          <MarketingContentForm onSaved={upsertItem} submitLabel="Create Content" draftSeed={draftSeed} onDraftApplied={() => setDraftSeed(null)} />
         </section>
 
         <section className="card">
           <div className="card-header">
-            <h3>AI Studio Brief</h3>
+            <h3>AI Studio</h3>
           </div>
-          <p>
-            Use the content form above to capture prompt notes, variables, target audience, and service-line tags. This gives us a stable content library now and a clean integration seam for ChatGPT-powered content and image generation next.
-          </p>
+          <MarketingAiStudio onUseDraft={(draft) => setDraftSeed(draft)} />
         </section>
 
         <section className="card">
