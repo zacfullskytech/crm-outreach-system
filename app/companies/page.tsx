@@ -1,5 +1,5 @@
 import { requireAuth } from "@/lib/supabase/auth";
-import { CompaniesPageClient } from "./page-client";
+import { CompanyManager } from "@/components/company-manager";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -13,5 +13,5 @@ export default async function CompaniesPage() {
     take: 200,
   });
 
-  return <CompaniesPageClient initialCompanies={companies} isAdmin={appUser.role === "admin"} />;
+  return <CompanyManager initialCompanies={companies} isAdmin={appUser.role === "admin"} />;
 }

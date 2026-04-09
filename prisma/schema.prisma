@@ -88,6 +88,7 @@ model Company {
   status           CompanyStatus @default(LEAD)
   source           String?
   notes            String?
+  customFieldsJson Json?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -112,6 +113,7 @@ model Contact {
   status            ContactStatus @default(ACTIVE)
   source            String?
   notes             String?
+  customFieldsJson  Json?
   lastContactedAt   DateTime?
   lastRepliedAt     DateTime?
   createdAt         DateTime      @default(now())

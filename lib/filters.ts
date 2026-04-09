@@ -28,6 +28,11 @@ function isGroup(rule: SegmentRule | SegmentGroup): rule is SegmentGroup {
 }
 
 function buildFieldCondition(field: string, comparator: SegmentRule["comparator"], value: unknown) {
+  if (field.startsWith("customFields.")) {
+    const customKey = field.slice("customFields.".length);
+    return buildFieldCondition(`customFieldsJson.${customKey}`, comparator, value);
+  }
+
   const path = field.split(".");
   const leaf = path.pop();
 

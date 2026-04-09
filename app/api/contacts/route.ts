@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/supabase/auth";
+import { normalizeCustomFields } from "@/lib/custom-fields";
 import { contactSchema } from "@/lib/validators";
 import { normalizeEmail, splitName } from "@/lib/utils";
 
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
         lastName: parsed.lastName || name.lastName,
         fullName: parsed.fullName || name.fullName,
         email: normalizeEmail(parsed.email),
+        customFieldsJson: normalizeCustomFields(parsed.customFields),
       },
     });
 

@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+const customFieldEntrySchema = z.object({
+  key: z.string().trim().min(1),
+  value: z.string().trim().min(1),
+});
+
 export const contactSchema = z.object({
   companyId: z.string().cuid().optional().nullable(),
   firstName: z.string().trim().min(1).optional().nullable(),
@@ -12,6 +17,7 @@ export const contactSchema = z.object({
   status: z.enum(["ACTIVE", "UNSUBSCRIBED", "BOUNCED", "INVALID", "DO_NOT_CONTACT"]).optional(),
   source: z.string().trim().min(1).optional().nullable(),
   notes: z.string().trim().min(1).optional().nullable(),
+  customFields: z.array(customFieldEntrySchema).optional(),
 });
 
 export const companySchema = z.object({
@@ -26,6 +32,7 @@ export const companySchema = z.object({
   source: z.string().trim().min(1).optional().nullable(),
   notes: z.string().trim().min(1).optional().nullable(),
   status: z.enum(["CLIENT", "LEAD", "PROSPECT", "INACTIVE"]).optional(),
+  customFields: z.array(customFieldEntrySchema).optional(),
 });
 
 export const segmentRuleSchema = z.object({

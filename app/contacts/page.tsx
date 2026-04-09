@@ -1,4 +1,4 @@
-import { ContactsPageClient } from "./page-client";
+import { ContactManager } from "@/components/contact-manager";
 import { prisma } from "@/lib/db";
 
 import { requireAuth } from "@/lib/supabase/auth";
@@ -21,5 +21,5 @@ export default async function ContactsPage() {
     }),
   ]);
 
-  return <ContactsPageClient initialContacts={contacts} initialCompanies={companies} isAdmin={appUser.role === "admin"} />;
+  return <ContactManager initialContacts={contacts} initialCompanies={companies} isAdmin={appUser.role === "admin"} />;
 }

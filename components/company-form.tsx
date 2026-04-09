@@ -1,10 +1,33 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
+import { CustomFieldsEditor } from "@/components/custom-fields-editor";
+import { customFieldsToPairs } from "@/lib/custom-fields";
+import type { Company } from "@prisma/client";
 
-export function CompanyForm() {
+type CompanyRecord = Company & {
+  contacts?: { id: string }[];
+};
+
+export function CompanyForm({
+  company,
+  onSaved,
+  onDeleted,
+  submitLabel = "Create Company",
+}: {
+  company?: CompanyRecord;
+  onSaved?: (company: CompanyRecord) => void;
+  onDeleted?: (id: string) => void;
+  submitLabel?: string;
+}) {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [customFields, setCustomFields] = useState(() =>
+    customFieldsToPairs(company?.customFieldsJson).map((field, index) => ({ ...field, id: `${index}-${field.key}` })),
+  );
+
+  const isEdit = Boolean(company);
+  const actionLabel = useMemo(() => (pending ? "Saving..." : submitLabel), [pending, submitLabel]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,23 +47,50 @@ export function CompanyForm() {
       source: String(form.get("source") || "") || null,
       notes: String(form.get("notes") || "") || null,
       status: String(form.get("status") || "LEAD"),
+      customFields: customFields.map(({ key, value }) => ({ key, value })),
     };
 
-    const response = await fetch("/api/companies", {
-      method: "POST",
+    const response = await fetch(isEdit ? `/api/companies/${company!.id}` : "/api/companies", {
+      method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
+    const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      setMessage(body.error || "Failed to create company.");
+      setMessage(body.error || `Failed to ${isEdit ? "save" : "create"} company.`);
       setPending(false);
       return;
     }
 
-    event.currentTarget.reset();
-    setMessage("Company created. Refresh to see the new record.");
+    if (!isEdit) {
+      event.currentTarget.reset();
+      setCustomFields([]);
+    }
+
+    onSaved?.(body.data);
+    setMessage(isEdit ? "Company saved." : "Company created.");
+    setPending(false);
+  }
+
+  async function handleDelete() {
+    if (!company) return;
+    if (!window.confirm(`Delete ${company.name}?`)) return;
+
+    setPending(true);
+    setMessage(null);
+
+    const response = await fetch(`/api/companies/${company.id}`, { method: "DELETE" });
+    const body = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      setMessage(body.error || "Failed to delete company.");
+      setPending(false);
+      return;
+    }
+
+    onDeleted?.(company.id);
+    setMessage("Company deleted.");
     setPending(false);
   }
 
@@ -48,20 +98,20 @@ export function CompanyForm() {
     <form onSubmit={onSubmit} className="inline-grid">
       <div className="form-grid">
         <div className="field">
-          <label htmlFor="company-name">Company name</label>
-          <input id="company-name" name="name" placeholder="North Ridge Veterinary Clinic" required />
+          <label htmlFor={`company-name-${company?.id || "new"}`}>Company name</label>
+          <input id={`company-name-${company?.id || "new"}`} name="name" placeholder="North Ridge Veterinary Clinic" defaultValue={company?.name || ""} required />
         </div>
         <div className="field">
-          <label htmlFor="company-industry">Industry</label>
-          <input id="company-industry" name="industry" placeholder="Veterinary" />
+          <label htmlFor={`company-industry-${company?.id || "new"}`}>Industry</label>
+          <input id={`company-industry-${company?.id || "new"}`} name="industry" placeholder="Veterinary" defaultValue={company?.industry || ""} />
         </div>
         <div className="field">
-          <label htmlFor="company-business-type">Business type</label>
-          <input id="company-business-type" name="businessType" placeholder="Independent Clinic" />
+          <label htmlFor={`company-business-type-${company?.id || "new"}`}>Business type</label>
+          <input id={`company-business-type-${company?.id || "new"}`} name="businessType" placeholder="Independent Clinic" defaultValue={company?.businessType || ""} />
         </div>
         <div className="field">
-          <label htmlFor="company-status">Status</label>
-          <select id="company-status" name="status" defaultValue="LEAD">
+          <label htmlFor={`company-status-${company?.id || "new"}`}>Status</label>
+          <select id={`company-status-${company?.id || "new"}`} name="status" defaultValue={company?.status || "LEAD"}>
             <option value="CLIENT">CLIENT</option>
             <option value="LEAD">LEAD</option>
             <option value="PROSPECT">PROSPECT</option>
@@ -69,38 +119,44 @@ export function CompanyForm() {
           </select>
         </div>
         <div className="field">
-          <label htmlFor="company-website">Website</label>
-          <input id="company-website" name="website" placeholder="clinic.example.com" />
+          <label htmlFor={`company-website-${company?.id || "new"}`}>Website</label>
+          <input id={`company-website-${company?.id || "new"}`} name="website" placeholder="clinic.example.com" defaultValue={company?.website || ""} />
         </div>
         <div className="field">
-          <label htmlFor="company-phone">Phone</label>
-          <input id="company-phone" name="phone" placeholder="+1 555 0100" />
+          <label htmlFor={`company-phone-${company?.id || "new"}`}>Phone</label>
+          <input id={`company-phone-${company?.id || "new"}`} name="phone" placeholder="+1 555 0100" defaultValue={company?.phone || ""} />
         </div>
         <div className="field">
-          <label htmlFor="company-city">City</label>
-          <input id="company-city" name="city" placeholder="Dallas" />
+          <label htmlFor={`company-city-${company?.id || "new"}`}>City</label>
+          <input id={`company-city-${company?.id || "new"}`} name="city" placeholder="Dallas" defaultValue={company?.city || ""} />
         </div>
         <div className="field">
-          <label htmlFor="company-state">State</label>
-          <input id="company-state" name="state" maxLength={2} placeholder="TX" />
+          <label htmlFor={`company-state-${company?.id || "new"}`}>State</label>
+          <input id={`company-state-${company?.id || "new"}`} name="state" maxLength={2} placeholder="TX" defaultValue={company?.state || ""} />
         </div>
         <div className="field">
-          <label htmlFor="company-postal-code">Postal code</label>
-          <input id="company-postal-code" name="postalCode" placeholder="75201" />
+          <label htmlFor={`company-postal-code-${company?.id || "new"}`}>Postal code</label>
+          <input id={`company-postal-code-${company?.id || "new"}`} name="postalCode" placeholder="75201" defaultValue={company?.postalCode || ""} />
         </div>
         <div className="field">
-          <label htmlFor="company-source">Source</label>
-          <input id="company-source" name="source" placeholder="manual entry" />
+          <label htmlFor={`company-source-${company?.id || "new"}`}>Source</label>
+          <input id={`company-source-${company?.id || "new"}`} name="source" placeholder="manual entry" defaultValue={company?.source || ""} />
         </div>
       </div>
       <div className="field">
-        <label htmlFor="company-notes">Notes</label>
-        <textarea id="company-notes" name="notes" placeholder="Operational notes or relationship context." />
+        <label htmlFor={`company-notes-${company?.id || "new"}`}>Notes</label>
+        <textarea id={`company-notes-${company?.id || "new"}`} name="notes" placeholder="Operational notes or relationship context." defaultValue={company?.notes || ""} />
       </div>
+      <CustomFieldsEditor entity="company" fields={customFields} onChange={setCustomFields} />
       <div className="actions">
         <button className="button primary" type="submit" disabled={pending}>
-          {pending ? "Saving..." : "Create Company"}
+          {actionLabel}
         </button>
+        {company ? (
+          <button className="button secondary" type="button" disabled={pending} onClick={() => void handleDelete()}>
+            Delete Company
+          </button>
+        ) : null}
         {message ? <span className="help">{message}</span> : null}
       </div>
     </form>
