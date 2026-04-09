@@ -606,6 +606,100 @@ main {
   }
 }
 
+/* Shared form layouts */
+.form-grid {
+  display: grid;
+  gap: 20px 28px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field label {
+  font-size: 0.88rem;
+  color: var(--gray-500);
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--blue-deep);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.field input {
+  height: 48px;
+}
+
+.field select {
+  height: 48px;
+  cursor: pointer;
+}
+
+.field textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.button {
+  border: 1px solid var(--blue-bright);
+  background: var(--blue-bright);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.button:hover {
+  background: #2563eb;
+}
+
+.button.primary {
+  border: 1px solid var(--blue-bright);
+  background: var(--blue-bright);
+  color: #fff;
+}
+
+.button.primary:hover {
+  background: #2563eb;
+}
+
+.button.secondary {
+  background: transparent;
+  color: var(--blue-bright);
+}
+
+.button.secondary:hover {
+  background: var(--gray-100);
+}
+
+.help {
+  color: var(--gray-500);
+  font-size: 0.9rem;
+}
+
+.inline-grid {
+  display: grid;
+  gap: 18px;
+}
+
 /* Sidebar footer */
 .sidebar-footer {
   margin-top: auto;

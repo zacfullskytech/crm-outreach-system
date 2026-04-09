@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import "./form.css";
 
 type PlatformUser = {
   id: string;

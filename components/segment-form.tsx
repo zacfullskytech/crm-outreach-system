@@ -1,22 +1,13 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import type { SegmentFieldOption } from "@/lib/segment-fields";
 
 type SegmentRule = {
   field: string;
   comparator: string;
   value: string;
 };
-
-const fieldOptions = [
-  { value: "company.industry", label: "Company industry" },
-  { value: "company.state", label: "Company state" },
-  { value: "company.city", label: "Company city" },
-  { value: "company.businessType", label: "Company business type" },
-  { value: "status", label: "Contact status" },
-  { value: "email", label: "Contact email" },
-  { value: "fullName", label: "Contact full name" },
-] as const;
 
 const comparators = [
   "equals",
@@ -28,7 +19,7 @@ const comparators = [
   "is_not_empty",
 ] as const;
 
-export function SegmentForm() {
+export function SegmentForm({ fieldOptions }: { fieldOptions: SegmentFieldOption[] }) {
   const [rules, setRules] = useState<SegmentRule[]>([
     { field: "company.industry", comparator: "equals", value: "Veterinary" },
   ]);
@@ -37,6 +28,26 @@ export function SegmentForm() {
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  const visibleFieldOptions = useMemo(
+    () => fieldOptions.filter((option) => option.entityType === entityType),
+    [entityType, fieldOptions],
+  );
+
+  useEffect(() => {
+    setRules((current) =>
+      current.map((rule, index) => {
+        if (visibleFieldOptions.some((option) => option.value === rule.field)) {
+          return rule;
+        }
+
+        return {
+          ...rule,
+          field: visibleFieldOptions[index]?.value || visibleFieldOptions[0]?.value || "",
+        };
+      }),
+    );
+  }, [entityType, visibleFieldOptions]);
 
   const filterJson = useMemo(
     () => ({
@@ -55,7 +66,8 @@ export function SegmentForm() {
   }
 
   function addRule() {
-    setRules((current) => [...current, { field: "company.state", comparator: "equals", value: "TX" }]);
+    const fallbackField = visibleFieldOptions[0]?.value || "";
+    setRules((current) => [...current, { field: fallbackField, comparator: "equals", value: "" }]);
   }
 
   function removeRule(index: number) {
@@ -70,7 +82,7 @@ export function SegmentForm() {
     const response = await fetch("/api/segments/preview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filterJson }),
+      body: JSON.stringify({ entityType, filterJson }),
     });
 
     const body = await response.json().catch(() => ({}));
@@ -111,7 +123,7 @@ export function SegmentForm() {
     }
 
     event.currentTarget.reset();
-    setRules([{ field: "company.industry", comparator: "equals", value: "Veterinary" }]);
+    setRules([{ field: visibleFieldOptions[0]?.value || "", comparator: "equals", value: "" }]);
     setPreviewCount(null);
     setMessage("Segment created. Refresh to see it in the table.");
     setPending(false);
@@ -152,7 +164,7 @@ export function SegmentForm() {
               <div className="field">
                 <label htmlFor={`field-${index}`}>Field</label>
                 <select id={`field-${index}`} value={rule.field} onChange={(event) => updateRule(index, { field: event.target.value })}>
-                  {fieldOptions.map((option) => (
+                  {visibleFieldOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
