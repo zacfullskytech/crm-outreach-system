@@ -277,6 +277,31 @@ model ImportRow {
   importJob ImportJob @relation(fields: [importJobId], references: [id], onDelete: Cascade)
 }
 
+model MarketingContent {
+  id                String   @id @default(cuid())
+  title             String
+  description       String?
+  contentType       String
+  serviceLine       String?
+  audience          String?
+  channel           String?
+  fileName          String?
+  fileUrl           String?
+  bodyText          String?
+  bodyHtml          String?
+  promptNotes       String?
+  tagsJson          Json?
+  variablesJson     Json?
+  createdById       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([contentType])
+  @@index([serviceLine])
+  @@index([audience])
+  @@index([title])
+}
+
 model AppSetting {
   key       String   @id
   value     Json

@@ -5,6 +5,8 @@ const customFieldEntrySchema = z.object({
   value: z.string().trim().min(1),
 });
 
+const tagEntrySchema = z.string().trim().min(1);
+
 export const contactSchema = z.object({
   companyId: z.string().cuid().optional().nullable(),
   firstName: z.string().trim().min(1).optional().nullable(),
@@ -99,4 +101,20 @@ export const prospectSchema = z.object({
   qualificationStatus: z.enum(["NEW", "REVIEWING", "QUALIFIED", "REJECTED", "CONVERTED"]).optional(),
   score: z.number().int().optional().nullable(),
   notes: z.string().trim().min(1).optional().nullable(),
+});
+
+export const marketingContentSchema = z.object({
+  title: z.string().trim().min(1),
+  description: z.string().trim().min(1).optional().nullable(),
+  contentType: z.string().trim().min(1),
+  serviceLine: z.string().trim().min(1).optional().nullable(),
+  audience: z.string().trim().min(1).optional().nullable(),
+  channel: z.string().trim().min(1).optional().nullable(),
+  fileName: z.string().trim().min(1).optional().nullable(),
+  fileUrl: z.string().trim().min(1).optional().nullable(),
+  bodyText: z.string().trim().min(1).optional().nullable(),
+  bodyHtml: z.string().trim().min(1).optional().nullable(),
+  promptNotes: z.string().trim().min(1).optional().nullable(),
+  tags: z.array(tagEntrySchema).optional(),
+  variables: z.array(customFieldEntrySchema).optional(),
 });
