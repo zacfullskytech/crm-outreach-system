@@ -1,3 +1,4 @@
+import { requireAuth } from "@/lib/supabase/auth";
 import { AppShell } from "@/components/app-shell";
 import { SettingsForm } from "@/components/settings-form";
 import { SuppressionForm } from "@/components/suppression-form";
@@ -16,6 +17,8 @@ const envRows = [
 ] as const;
 
 export default async function SettingsPage() {
+  await requireAuth();
+
   const [settings, suppressions, tags] = await Promise.all([
     getGeneralSettings(),
     prisma.suppression.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),

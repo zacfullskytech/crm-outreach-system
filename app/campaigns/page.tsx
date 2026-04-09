@@ -1,9 +1,12 @@
+import { requireAuth } from "@/lib/supabase/auth";
 import { CampaignsPageClient } from "./page-client";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 export default async function CampaignsPage() {
+  await requireAuth();
+
   const [campaigns, segments] = await Promise.all([
     prisma.campaign.findMany({
       include: { recipients: true },

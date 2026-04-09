@@ -1,3 +1,4 @@
+import { requireAuth } from "@/lib/supabase/auth";
 import { AppShell } from "@/components/app-shell";
 import { getDashboardSummary } from "@/lib/dashboard";
 
@@ -80,6 +81,7 @@ const statCards = [
 ] as const;
 
 export default async function HomePage() {
+  await requireAuth();
   const summary = await getDashboardSummary();
 
   return (
