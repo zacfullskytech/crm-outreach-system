@@ -134,5 +134,5 @@ export async function generateMarketingImage(prompt: string) {
     throw new Error("OpenAI returned no image data.");
   }
 
-  return `data:image/png;base64,${image}`;
+  return image as string;
 }
