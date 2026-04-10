@@ -5,6 +5,21 @@ import { MarketingContentManager } from "@/components/marketing-content-manager"
 
 export const dynamic = "force-dynamic";
 
+function normalizeJsonStringArray(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry)).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
 export default async function MarketingContentPage() {
   const { appUser } = await requireAuth();
 
@@ -26,8 +41,14 @@ export default async function MarketingContentPage() {
     return {
       ...item,
       imageUrl: getMarketingImageSignedUrl(blobName),
+      tagsJson: normalizeJsonStringArray(item.tagsJson),
+      taxonomyJson: normalizeJsonStringArray(item.taxonomyJson),
     };
-  });
+  }).map((item) => ({
+    ...item,
+    tagsJson: normalizeJsonStringArray(item.tagsJson),
+    taxonomyJson: normalizeJsonStringArray(item.taxonomyJson),
+  }));
 
   return <MarketingContentManager initialItems={resolvedItems} isAdmin={appUser.role === "admin"} />;
 }
