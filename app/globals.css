@@ -180,6 +180,44 @@ main {
   transform: translateY(-1px);
 }
 
+.collapsible-card {
+  gap: 16px;
+}
+
+.collapsible-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.content-item {
+  padding: 0;
+  overflow: hidden;
+}
+
+.content-item-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 20px;
+  margin: 0;
+}
+
+.content-item-summary::-webkit-details-marker {
+  display: none;
+}
+
+.content-item-summary-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.content-item-body {
+  padding: 0 20px 20px;
+  border-top: 1px solid var(--line);
+}
+
 .card h3,
 .card h4 {
   margin: 0 0 8px;

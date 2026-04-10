@@ -18,6 +18,9 @@ export function MarketingContentManager({ initialItems, isAdmin }: { initialItem
   const [offerType, setOfferType] = useState("ALL");
   const [lifecycleStage, setLifecycleStage] = useState("ALL");
   const [draftSeed, setDraftSeed] = useState<Record<string, unknown> | null>(null);
+  const [isAddOpen, setIsAddOpen] = useState(true);
+  const [isAiOpen, setIsAiOpen] = useState(true);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(true);
 
   const serviceLines = Array.from(new Set(items.map((item) => item.serviceLine).filter(Boolean))) as string[];
   const audiences = Array.from(new Set(items.map((item) => item.audience).filter(Boolean))) as string[];
@@ -78,86 +81,109 @@ export function MarketingContentManager({ initialItems, isAdmin }: { initialItem
           </p>
         </section>
 
-        <section className="card form-section">
-          <div className="card-header">
+        <section className="card form-section collapsible-card">
+          <div className="card-header collapsible-header">
             <div>
               <h3>Add Marketing Content</h3>
               <p className="help">Upload existing collateral, save generated drafts, or manually catalog assets already in use.</p>
             </div>
+            <button className="button secondary" type="button" onClick={() => setIsAddOpen((value) => !value)}>
+              {isAddOpen ? "Collapse" : "Expand"}
+            </button>
           </div>
-          <MarketingContentForm onSaved={upsertItem} submitLabel={draftSeed ? "Save Draft to Library" : "Create Content"} draftSeed={draftSeed} onDraftApplied={() => setDraftSeed(null)} />
+          {isAddOpen ? (
+            <MarketingContentForm onSaved={upsertItem} submitLabel={draftSeed ? "Save Draft to Library" : "Create Content"} draftSeed={draftSeed} onDraftApplied={() => setDraftSeed(null)} />
+          ) : null}
         </section>
 
-        <section className="card">
-          <div className="card-header">
+        <section className="card collapsible-card">
+          <div className="card-header collapsible-header">
             <div>
               <h3>AI Studio</h3>
               <p className="help">Generate new copy and image drafts, then push the best version straight into the library form.</p>
             </div>
+            <button className="button secondary" type="button" onClick={() => setIsAiOpen((value) => !value)}>
+              {isAiOpen ? "Collapse" : "Expand"}
+            </button>
           </div>
-          <MarketingAiStudio onUseDraft={saveDraftAsContent} onSaved={upsertItem} />
+          {isAiOpen ? <MarketingAiStudio onUseDraft={saveDraftAsContent} onSaved={upsertItem} /> : null}
         </section>
 
-        <section className="card">
-          <div className="card-header">
-            <h3>Content Library</h3>
-            <div className="filter-row">
-              <div className="search-wrap">
-                <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.35-4.35" />
-                </svg>
-                <input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search content..." />
-              </div>
-              <select className="filter-select" value={serviceLine} onChange={(event) => setServiceLine(event.target.value)}>
-                <option value="ALL">All Services</option>
-                {serviceLines.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
-              <select className="filter-select" value={audience} onChange={(event) => setAudience(event.target.value)}>
-                <option value="ALL">All Audiences</option>
-                {audiences.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
-              <select className="filter-select" value={contentType} onChange={(event) => setContentType(event.target.value)}>
-                <option value="ALL">All Types</option>
-                {contentTypes.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
-              <select className="filter-select" value={industry} onChange={(event) => setIndustry(event.target.value)}>
-                <option value="ALL">All Industries</option>
-                {industries.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
-              <select className="filter-select" value={offerType} onChange={(event) => setOfferType(event.target.value)}>
-                <option value="ALL">All Offer Types</option>
-                {offerTypes.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
-              <select className="filter-select" value={lifecycleStage} onChange={(event) => setLifecycleStage(event.target.value)}>
-                <option value="ALL">All Lifecycle Stages</option>
-                {lifecycleStages.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
+        <section className="card collapsible-card">
+          <div className="card-header collapsible-header">
+            <div>
+              <h3>Content Library</h3>
+              <p className="help">{filtered.length} asset{filtered.length === 1 ? "" : "s"} in view.</p>
             </div>
+            <button className="button secondary" type="button" onClick={() => setIsLibraryOpen((value) => !value)}>
+              {isLibraryOpen ? "Collapse" : "Expand"}
+            </button>
           </div>
+          {isLibraryOpen ? (
+            <>
+              <div className="filter-row">
+                <div className="search-wrap">
+                  <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.35-4.35" />
+                  </svg>
+                  <input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search content..." />
+                </div>
+                <select className="filter-select" value={serviceLine} onChange={(event) => setServiceLine(event.target.value)}>
+                  <option value="ALL">All Services</option>
+                  {serviceLines.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+                <select className="filter-select" value={audience} onChange={(event) => setAudience(event.target.value)}>
+                  <option value="ALL">All Audiences</option>
+                  {audiences.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+                <select className="filter-select" value={contentType} onChange={(event) => setContentType(event.target.value)}>
+                  <option value="ALL">All Types</option>
+                  {contentTypes.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+                <select className="filter-select" value={industry} onChange={(event) => setIndustry(event.target.value)}>
+                  <option value="ALL">All Industries</option>
+                  {industries.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+                <select className="filter-select" value={offerType} onChange={(event) => setOfferType(event.target.value)}>
+                  <option value="ALL">All Offer Types</option>
+                  {offerTypes.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+                <select className="filter-select" value={lifecycleStage} onChange={(event) => setLifecycleStage(event.target.value)}>
+                  <option value="ALL">All Lifecycle Stages</option>
+                  {lifecycleStages.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+              </div>
 
-          {filtered.length === 0 ? (
-            <div className="empty-state">
-              <p>{query || serviceLine !== "ALL" || audience !== "ALL" || contentType !== "ALL" || industry !== "ALL" || offerType !== "ALL" || lifecycleStage !== "ALL" ? "No content matches the current filters." : "No marketing content yet."}</p>
-            </div>
-          ) : (
-            <div className="inline-grid">
-              {filtered.map((item) => (
-                <section key={item.id} className="card">
-                  <div className="card-header">
-                    <div>
-                      <h3>{item.title}</h3>
-                      <p className="help">
-                        {item.contentType} · {item.audience || "Unspecified audience"} · {item.serviceLine || "Unspecified service"} · {item.offerType || "Unspecified offer"}
-                      </p>
-                    </div>
-                    <span className="badge">{item.channel || "Library"}</span>
-                  </div>
-                  <MarketingContentForm content={item} onSaved={upsertItem} onDeleted={removeItem} />
-                </section>
-              ))}
-            </div>
-          )}
+              {filtered.length === 0 ? (
+                <div className="empty-state">
+                  <p>{query || serviceLine !== "ALL" || audience !== "ALL" || contentType !== "ALL" || industry !== "ALL" || offerType !== "ALL" || lifecycleStage !== "ALL" ? "No content matches the current filters." : "No marketing content yet."}</p>
+                </div>
+              ) : (
+                <div className="inline-grid">
+                  {filtered.map((item) => (
+                    <details key={item.id} className="card content-item" open={false}>
+                      <summary className="card-header content-item-summary">
+                        <div>
+                          <h3>{item.title}</h3>
+                          <p className="help">
+                            {item.contentType} · {item.audience || "Unspecified audience"} · {item.serviceLine || "Unspecified service"} · {item.offerType || "Unspecified offer"}
+                          </p>
+                        </div>
+                        <div className="content-item-summary-right">
+                          <span className="badge">{item.channel || "Library"}</span>
+                          <span className="help">Edit</span>
+                        </div>
+                      </summary>
+                      <div className="content-item-body">
+                        <MarketingContentForm content={item} onSaved={upsertItem} onDeleted={removeItem} />
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : null}
         </section>
       </div>
     </AppShell>
