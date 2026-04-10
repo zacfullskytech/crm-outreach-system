@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/supabase/auth";
 import { generateMarketingAsset, generateMarketingImage } from "@/lib/openai";
-import { saveGeneratedMarketingImage } from "@/lib/file-storage";
+import { getMarketingImageSignedUrl, saveGeneratedMarketingImage } from "@/lib/file-storage";
 import { normalizeCustomFields } from "@/lib/custom-fields";
 
 export async function POST(request: NextRequest) {
@@ -27,10 +27,14 @@ export async function POST(request: NextRequest) {
     });
 
     const imageUrl = payload.generateImage === true && result.imagePrompt
-      ? (await saveGeneratedMarketingImage({
-          title: typeof payload.title === "string" ? payload.title : "marketing-asset",
-          base64: await generateMarketingImage(result.imagePrompt),
-        })).publicUrl
+      ? await (async () => {
+          const imagePrompt = result.imagePrompt as string;
+          const saved = await saveGeneratedMarketingImage({
+            title: typeof payload.title === "string" ? payload.title : "marketing-asset",
+            base64: await generateMarketingImage(imagePrompt),
+          });
+          return getMarketingImageSignedUrl(saved.blobName);
+        })()
       : null;
 
     return NextResponse.json({ data: { ...result, imageUrl } });

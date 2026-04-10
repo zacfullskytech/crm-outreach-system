@@ -1,4 +1,4 @@
-import { BlobServiceClient, StorageSharedKeyCredential } from "@azure/storage-blob";
+import { BlobSASPermissions, BlobServiceClient, SASProtocol, StorageSharedKeyCredential, generateBlobSASQueryParameters } from "@azure/storage-blob";
 
 function slugify(value: string) {
   return value
@@ -47,6 +47,41 @@ export async function saveGeneratedMarketingImage({
 
   return {
     fileName,
-    publicUrl: blobClient.url,
+    blobName,
+    blobUrl: blobClient.url,
   };
+}
+
+export function getMarketingImageSignedUrl(blobName: string, expiresInMinutes = 60) {
+  const { accountName, accountKey, containerName } = getStorageConfig();
+  const credential = new StorageSharedKeyCredential(accountName, accountKey);
+  const startsOn = new Date(Date.now() - 60 * 1000);
+  const expiresOn = new Date(Date.now() + expiresInMinutes * 60 * 1000);
+
+  const sas = generateBlobSASQueryParameters(
+    {
+      containerName,
+      blobName,
+      permissions: BlobSASPermissions.parse("r"),
+      startsOn,
+      expiresOn,
+      protocol: SASProtocol.Https,
+    },
+    credential,
+  ).toString();
+
+  return `https://${accountName}.blob.core.windows.net/${containerName}/${blobName}?${sas}`;
+}
+
+export function getBlobNameFromUrl(url: string) {
+  const { accountName, containerName } = getStorageConfig();
+  const prefix = `https://${accountName}.blob.core.windows.net/${containerName}/`;
+
+  if (!url.startsWith(prefix)) {
+    return null;
+  }
+
+  const withoutPrefix = url.slice(prefix.length);
+  const [blobName] = withoutPrefix.split("?");
+  return blobName || null;
 }
