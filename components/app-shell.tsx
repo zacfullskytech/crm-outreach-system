@@ -128,16 +128,31 @@ const navItems: NavItem[] = [
 export function AppShell({ children, isAdmin = false }: { children: React.ReactNode; isAdmin?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createClient();
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserEmail(data.user?.email ?? null);
-    });
+    let active = true;
+
+    createClient()
+      .then((supabase) => supabase.auth.getUser())
+      .then(({ data }) => {
+        if (active) {
+          setUserEmail(data.user?.email ?? null);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setUserEmail(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function handleLogout() {
+    const supabase = await createClient();
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();

@@ -11,12 +11,13 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const router = useRouter();
-  const supabase = createClient();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
+    const supabase = await createClient();
 
     if (mode === "signup") {
       const { error } = await supabase.auth.signUp({
