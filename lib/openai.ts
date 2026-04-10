@@ -25,6 +25,21 @@ function requireOpenAiKey() {
   return apiKey;
 }
 
+function normalizeStringArray(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
 function buildPrompt(input: GenerateMarketingAssetInput) {
   const template = resolvePromptTemplate({
     promptTemplateKey: input.promptTemplateKey,
@@ -96,14 +111,20 @@ export async function generateMarketingAsset(input: GenerateMarketingAssetInput)
     throw new Error("OpenAI returned no content.");
   }
 
-  return JSON.parse(content) as {
+  const parsed = JSON.parse(content) as {
     headline?: string;
     subheadline?: string;
     bodyText?: string;
     callToAction?: string;
     imagePrompt?: string;
-    tags?: string[];
-    taxonomy?: string[];
+    tags?: unknown;
+    taxonomy?: unknown;
+  };
+
+  return {
+    ...parsed,
+    tags: normalizeStringArray(parsed.tags),
+    taxonomy: normalizeStringArray(parsed.taxonomy),
   };
 }
 
