@@ -32,7 +32,8 @@ export async function saveGeneratedMarketingImage({
   const serviceClient = new BlobServiceClient(`https://${accountName}.blob.core.windows.net`, credential);
   const containerClient = serviceClient.getContainerClient(containerName);
 
-  await containerClient.createIfNotExists({ access: "blob" });
+  // Keep the container private. Reads are served through SAS URLs.
+  await containerClient.createIfNotExists();
 
   const fileName = `${Date.now()}-${slugify(title || "marketing-image")}.png`;
   const blobName = `generated/marketing/${fileName}`;
