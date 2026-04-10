@@ -28,16 +28,17 @@ npm run start:azure
 
 ### Build-time required
 
-These must be present during `docker build`, not just at container runtime, because the browser bundle reads them from `process.env.NEXT_PUBLIC_*`.
+These must be present during `docker build`.
 
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_APP_BASE_URL`
 
 ### Runtime required
 
 - `DATABASE_URL`
 - `DIRECT_URL`
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `APP_BASE_URL`
@@ -78,19 +79,18 @@ az acr create \
 
 ### 2. Build and push image
 
-Pass the public Supabase values at build time so Next.js can embed them in the client bundle.
+Pass the public Supabase URL and app base URL at build time.
 
 ```bash
 az acr build \
   --registry <your-acr-name> \
   --image crm-outreach-system:latest \
   --build-arg NEXT_PUBLIC_SUPABASE_URL='https://<your-project>.supabase.co' \
-  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY='<your-anon-key>' \
   --build-arg NEXT_PUBLIC_APP_BASE_URL='https://<container-app-fqdn>' \
   https://github.com/<owner>/<repo>.git#main
 ```
 
-If you skip these `--build-arg` values, the container can start successfully while the login page still crashes in the browser with missing Supabase config.
+The browser anon key is now served from runtime config instead of being required as a build arg.
 
 ### 3. Create Container Apps environment
 
@@ -124,6 +124,8 @@ Recommended runtime set:
 ```env
 DATABASE_URL=postgresql://<pooler-user>:<encoded-password>@<pooler-host>:6543/postgres?pgbouncer=true
 DIRECT_URL=postgresql://<direct-user>:<encoded-password>@<direct-host>:5432/postgres
+SUPABASE_URL=https://<your-project>.supabase.co
+SUPABASE_ANON_KEY=<your-anon-key>
 NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
 APP_BASE_URL=https://<container-app-fqdn>
@@ -161,7 +163,7 @@ After deployment, test in this order:
 - `/imports`
 - `/settings`
 
-If `/login` briefly renders and then fails, check the browser console first. That usually means the image was built without `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+If `/login` briefly renders and then fails, check the browser console first. In current builds, server auth depends on `SUPABASE_URL` and `SUPABASE_ANON_KEY`, while browser auth depends on runtime config plus `NEXT_PUBLIC_SUPABASE_URL`.
 
 ## Optional Next Step
 

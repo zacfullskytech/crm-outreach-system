@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
+import { getSupabaseServerConfig } from "@/lib/supabase/config";
 
 export async function GET() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  try {
+    const { url, anonKey } = getSupabaseServerConfig();
 
-  if (!url || !anonKey) {
-    return NextResponse.json({ error: "Supabase config is not available." }, { status: 500 });
+    return NextResponse.json({
+      data: {
+        url,
+        anonKey,
+      },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Supabase config is not available." },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json({
-    data: {
-      url,
-      anonKey,
-    },
-  });
 }

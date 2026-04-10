@@ -41,7 +41,8 @@ Recommended path from current experience:
 - Supabase Postgres for the database
 - Supabase pooler URL for `DATABASE_URL`
 - Supabase direct URL for `DIRECT_URL`
-- build the image with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `NEXT_PUBLIC_APP_BASE_URL`
+- build the image with `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_APP_BASE_URL`
+- provide `SUPABASE_URL` and `SUPABASE_ANON_KEY` at runtime for server auth
 
 ---
 
@@ -51,8 +52,10 @@ Recommended path from current experience:
 |---|---|
 | `DATABASE_URL` | PostgreSQL runtime connection string (Supabase pooler recommended in production) |
 | `DIRECT_URL` | Direct PostgreSQL connection string for Prisma schema operations |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL used by server and browser auth clients |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon public key used by server and browser auth clients |
+| `SUPABASE_URL` | Supabase project URL used by server auth clients |
+| `SUPABASE_ANON_KEY` | Supabase anon public key used by server auth clients |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL used by browser auth clients |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional browser fallback for local/dev; production browser config is served at runtime |
 | `NEXT_PUBLIC_APP_BASE_URL` | Public URL used by client-side fetches; for container builds this must be injected at build time |
 | `EMAIL_PROVIDER` | `dry-run`, `resend`, or `mailgun` |
 | `RESEND_API_KEY` | Resend API key |
