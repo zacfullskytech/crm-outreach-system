@@ -84,6 +84,47 @@ export function MarketingContentForm({
     onDraftApplied?.();
   }, [draftSeed, isEdit, onDraftApplied]);
 
+  async function createUploadedAssetRecord(uploadedName: string, uploadedUrl: string, contentTypeValue: string) {
+    const payload = {
+      title: title || uploadedName.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "),
+      description: description || null,
+      contentType,
+      serviceLine: serviceLine || null,
+      audience: audience || null,
+      channel: channel || null,
+      industry: industry || null,
+      offerType: offerType || null,
+      assetFormat: assetFormat || null,
+      tone: tone || null,
+      lifecycleStage: lifecycleStage || null,
+      fileName: uploadedName,
+      fileUrl: uploadedUrl,
+      imagePrompt: imagePrompt || null,
+      imageUrl: contentTypeValue.startsWith("image/") ? uploadedUrl : imageUrl || null,
+      callToAction: callToAction || null,
+      bodyText: bodyText || null,
+      bodyHtml: bodyHtml || null,
+      promptNotes: promptNotes || null,
+      promptTemplateKey: promptTemplateKey || null,
+      tags: tagsInput.split(",").map((value) => value.trim()).filter(Boolean),
+      taxonomy: taxonomyInput.split(",").map((value) => value.trim()).filter(Boolean),
+      variables: variables.map(({ key, value }) => ({ key, value })),
+    };
+
+    const response = await fetch("/api/marketing-content", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(body.error || "Failed to save uploaded asset to the library.");
+    }
+
+    onSaved?.(body.data);
+  }
+
   async function handleAssetUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -120,7 +161,17 @@ export function MarketingContentForm({
       setImageUrl(uploadedUrl);
     }
 
-    setMessage(`Uploaded ${uploadedName}. Save the record to add it to the library.`);
+    try {
+      if (!isEdit) {
+        await createUploadedAssetRecord(uploadedName, uploadedUrl, file.type || "application/octet-stream");
+        setMessage(`Uploaded ${uploadedName} and added it to the library.`);
+      } else {
+        setMessage(`Uploaded ${uploadedName}. Save the record to update the library entry.`);
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Uploaded file, but failed to save the library record.");
+    }
+
     setUploading(false);
     if (uploadInputRef.current) uploadInputRef.current.value = "";
   }

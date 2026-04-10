@@ -95,7 +95,7 @@ export function MarketingContentManager({ initialItems, isAdmin }: { initialItem
               <p className="help">Generate new copy and image drafts, then push the best version straight into the library form.</p>
             </div>
           </div>
-          <MarketingAiStudio onUseDraft={saveDraftAsContent} />
+          <MarketingAiStudio onUseDraft={saveDraftAsContent} onSaved={upsertItem} />
         </section>
 
         <section className="card">

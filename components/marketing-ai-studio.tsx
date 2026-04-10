@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { CustomFieldsEditor } from "@/components/custom-fields-editor";
+import type { MarketingContent } from "@prisma/client";
 
 type GeneratedAsset = {
   headline?: string;
@@ -14,6 +15,8 @@ type GeneratedAsset = {
   taxonomy?: string[];
 };
 
+type SavedMarketingContent = MarketingContent;
+
 const promptTemplates = [
   { key: "", label: "Auto-select template" },
   { key: "veterinary-phones", label: "Veterinary clinics · Phones" },
@@ -22,12 +25,50 @@ const promptTemplates = [
   { key: "medical-internet", label: "Private medical practices · Internet" },
 ];
 
-export function MarketingAiStudio({ onUseDraft }: { onUseDraft?: (draft: GeneratedAsset & Record<string, unknown>) => void }) {
+export function MarketingAiStudio({ onUseDraft, onSaved }: { onUseDraft?: (draft: GeneratedAsset & Record<string, unknown>) => void; onSaved?: (item: SavedMarketingContent) => void }) {
   const [pending, setPending] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [result, setResult] = useState<GeneratedAsset | null>(null);
   const [variables, setVariables] = useState<Array<{ id: string; key: string; value: string }>>([]);
   const [generateImage, setGenerateImage] = useState(true);
+
+  async function saveResultToLibrary() {
+    if (!result) return;
+
+    setSaving(true);
+    setMessage(null);
+
+    const payload = {
+      title: result.headline || "AI marketing draft",
+      description: result.subheadline || null,
+      contentType: "Flier",
+      imagePrompt: result.imagePrompt || null,
+      imageUrl: result.imageUrl || null,
+      callToAction: result.callToAction || null,
+      bodyText: result.bodyText || null,
+      tags: Array.isArray(result.tags) ? result.tags : [],
+      taxonomy: Array.isArray(result.taxonomy) ? result.taxonomy : [],
+      variables: variables.map(({ key, value }) => ({ key, value })),
+    };
+
+    const response = await fetch("/api/marketing-content", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(body.error || "Failed to save generated draft.");
+      setSaving(false);
+      return;
+    }
+
+    onSaved?.(body.data);
+    setMessage("Generated draft saved to the library.");
+    setSaving(false);
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -181,13 +222,16 @@ export function MarketingAiStudio({ onUseDraft }: { onUseDraft?: (draft: Generat
               <p>{result.taxonomy?.join(", ") || "—"}</p>
             </div>
           </div>
-          {onUseDraft ? (
-            <div className="actions">
+          <div className="actions">
+            {onUseDraft ? (
               <button className="button secondary" type="button" onClick={() => onUseDraft(result)}>
                 Use Draft in Library Form
               </button>
-            </div>
-          ) : null}
+            ) : null}
+            <button className="button primary" type="button" disabled={saving} onClick={() => void saveResultToLibrary()}>
+              {saving ? "Saving..." : "Save Draft to Library"}
+            </button>
+          </div>
         </div>
       ) : null}
     </div>
