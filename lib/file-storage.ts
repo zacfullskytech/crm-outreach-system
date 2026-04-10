@@ -20,6 +20,20 @@ function getStorageConfig() {
   return { accountName, accountKey, containerName };
 }
 
+function createContainerClient() {
+  const { accountName, accountKey, containerName } = getStorageConfig();
+  const credential = new StorageSharedKeyCredential(accountName, accountKey);
+  const serviceClient = new BlobServiceClient(`https://${accountName}.blob.core.windows.net`, credential);
+  return serviceClient.getContainerClient(containerName);
+}
+
+function buildBlobName(folder: string, fileName: string, fallbackBaseName: string) {
+  const extension = fileName.includes(".") ? fileName.split(".").pop()?.toLowerCase() : undefined;
+  const safeBaseName = slugify(fileName.replace(/\.[^.]+$/, "") || fallbackBaseName) || fallbackBaseName;
+  const suffix = extension ? `.${extension}` : "";
+  return `${folder}/${Date.now()}-${safeBaseName}${suffix}`;
+}
+
 export async function saveGeneratedMarketingImage({
   title,
   base64,
@@ -27,10 +41,7 @@ export async function saveGeneratedMarketingImage({
   title: string;
   base64: string;
 }) {
-  const { accountName, accountKey, containerName } = getStorageConfig();
-  const credential = new StorageSharedKeyCredential(accountName, accountKey);
-  const serviceClient = new BlobServiceClient(`https://${accountName}.blob.core.windows.net`, credential);
-  const containerClient = serviceClient.getContainerClient(containerName);
+  const containerClient = createContainerClient();
 
   // Keep the container private. Reads are served through SAS URLs.
   await containerClient.createIfNotExists();
@@ -50,6 +61,37 @@ export async function saveGeneratedMarketingImage({
     fileName,
     blobName,
     blobUrl: blobClient.url,
+  };
+}
+
+export async function uploadMarketingAsset({
+  fileName,
+  contentType,
+  buffer,
+  folder = "library/marketing",
+}: {
+  fileName: string;
+  contentType: string;
+  buffer: Buffer;
+  folder?: string;
+}) {
+  const containerClient = createContainerClient();
+  await containerClient.createIfNotExists();
+
+  const blobName = buildBlobName(folder, fileName, "marketing-asset");
+  const blobClient = containerClient.getBlockBlobClient(blobName);
+
+  await blobClient.uploadData(buffer, {
+    blobHTTPHeaders: {
+      blobContentType: contentType || "application/octet-stream",
+    },
+  });
+
+  return {
+    fileName,
+    blobName,
+    blobUrl: blobClient.url,
+    signedUrl: getMarketingImageSignedUrl(blobName),
   };
 }
 

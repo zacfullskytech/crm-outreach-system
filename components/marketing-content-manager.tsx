@@ -80,14 +80,20 @@ export function MarketingContentManager({ initialItems, isAdmin }: { initialItem
 
         <section className="card form-section">
           <div className="card-header">
-            <h3>Add Marketing Content</h3>
+            <div>
+              <h3>Add Marketing Content</h3>
+              <p className="help">Upload existing collateral, save generated drafts, or manually catalog assets already in use.</p>
+            </div>
           </div>
-          <MarketingContentForm onSaved={upsertItem} submitLabel="Create Content" draftSeed={draftSeed} onDraftApplied={() => setDraftSeed(null)} />
+          <MarketingContentForm onSaved={upsertItem} submitLabel={draftSeed ? "Save Draft to Library" : "Create Content"} draftSeed={draftSeed} onDraftApplied={() => setDraftSeed(null)} />
         </section>
 
         <section className="card">
           <div className="card-header">
-            <h3>AI Studio</h3>
+            <div>
+              <h3>AI Studio</h3>
+              <p className="help">Generate new copy and image drafts, then push the best version straight into the library form.</p>
+            </div>
           </div>
           <MarketingAiStudio onUseDraft={saveDraftAsContent} />
         </section>

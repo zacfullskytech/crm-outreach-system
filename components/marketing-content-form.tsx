@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { CustomFieldsEditor } from "@/components/custom-fields-editor";
 import { customFieldsToPairs } from "@/lib/custom-fields";
 import type { MarketingContent } from "@prisma/client";
@@ -16,6 +16,10 @@ const offerTypeOptions = ["Bundle offer", "Promotional campaign", "Feature spotl
 const assetFormatOptions = ["Full-page flyer", "Half-page flyer", "Email sequence", "Landing page", "Ad creative"];
 const toneOptions = ["Practical", "Reassuring", "Professional", "Direct", "Friendly"];
 const lifecycleStageOptions = ["Awareness", "Consideration", "Conversion", "Retention"];
+
+function toCommaList(value: unknown) {
+  return Array.isArray(value) ? value.map((entry) => String(entry)).join(", ") : "";
+}
 
 export function MarketingContentForm({
   content,
@@ -34,6 +38,7 @@ export function MarketingContentForm({
 }) {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [variables, setVariables] = useState(() =>
     customFieldsToPairs(content?.variablesJson).map((field, index) => ({ ...field, id: `${index}-${field.key}` })),
   );
@@ -57,12 +62,9 @@ export function MarketingContentForm({
   const [bodyHtml, setBodyHtml] = useState(content?.bodyHtml || "");
   const [promptNotes, setPromptNotes] = useState(content?.promptNotes || "");
   const [promptTemplateKey, setPromptTemplateKey] = useState(content?.promptTemplateKey || "");
-  const [tagsInput, setTagsInput] = useState(
-    Array.isArray(content?.tagsJson) ? content.tagsJson.map((value) => String(value)).join(", ") : "",
-  );
-  const [taxonomyInput, setTaxonomyInput] = useState(
-    Array.isArray(content?.taxonomyJson) ? content.taxonomyJson.map((value) => String(value)).join(", ") : "",
-  );
+  const [tagsInput, setTagsInput] = useState(toCommaList(content?.tagsJson));
+  const [taxonomyInput, setTaxonomyInput] = useState(toCommaList(content?.taxonomyJson));
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const isEdit = Boolean(content);
   const actionLabel = useMemo(() => (pending ? "Saving..." : submitLabel), [pending, submitLabel]);
@@ -81,6 +83,47 @@ export function MarketingContentForm({
 
     onDraftApplied?.();
   }, [draftSeed, isEdit, onDraftApplied]);
+
+  async function handleAssetUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setMessage(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", file.type.startsWith("image/") ? "library/marketing/images" : "library/marketing/files");
+
+    const response = await fetch("/api/marketing-content/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(body.error || "Failed to upload asset.");
+      setUploading(false);
+      if (uploadInputRef.current) uploadInputRef.current.value = "";
+      return;
+    }
+
+    const uploadedName = String(body.data?.fileName || file.name);
+    const uploadedUrl = String(body.data?.fileUrl || "");
+
+    setFileName(uploadedName);
+    setFileUrl(uploadedUrl);
+    if (!title) {
+      setTitle(uploadedName.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "));
+    }
+    if (file.type.startsWith("image/")) {
+      setImageUrl(uploadedUrl);
+    }
+
+    setMessage(`Uploaded ${uploadedName}. Save the record to add it to the library.`);
+    setUploading(false);
+    if (uploadInputRef.current) uploadInputRef.current.value = "";
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -179,6 +222,14 @@ export function MarketingContentForm({
 
   return (
     <form onSubmit={onSubmit} className="inline-grid">
+      <div className="actions" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <span className="help">Upload an existing flyer, PDF, image, or other collateral, then save its metadata into the library.</span>
+        <label className="button secondary" style={{ cursor: uploading ? "progress" : "pointer", opacity: uploading ? 0.7 : 1 }}>
+          {uploading ? "Uploading..." : "Upload Existing Asset"}
+          <input ref={uploadInputRef} type="file" hidden onChange={handleAssetUpload} disabled={uploading || pending} />
+        </label>
+      </div>
+
       <div className="form-grid">
         <div className="field">
           <label htmlFor={`content-title-${content?.id || "new"}`}>Title</label>
@@ -297,8 +348,8 @@ export function MarketingContentForm({
       </div>
       <CustomFieldsEditor entity="content-variable" fields={variables} onChange={setVariables} />
       <div className="actions">
-        <button className="button primary" type="submit" disabled={pending}>{actionLabel}</button>
-        {content ? <button className="button secondary" type="button" disabled={pending} onClick={() => void handleDelete()}>Delete Content</button> : null}
+        <button className="button primary" type="submit" disabled={pending || uploading}>{actionLabel}</button>
+        {content ? <button className="button secondary" type="button" disabled={pending || uploading} onClick={() => void handleDelete()}>Delete Content</button> : null}
         {message ? <span className="help">{message}</span> : null}
       </div>
     </form>
