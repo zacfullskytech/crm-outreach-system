@@ -26,6 +26,8 @@ function readServices(value: unknown) {
 export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies: CompanyWithContacts[]; isAdmin: boolean }) {
   const [companies, setCompanies] = useState(initialCompanies);
   const [search, setSearch] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(true);
+  const [isListOpen, setIsListOpen] = useState(true);
 
   function upsertCompany(company: SavedCompany) {
     setCompanies((current) => {
@@ -65,55 +67,76 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
           </p>
         </section>
 
-        <section className="card form-section">
-          <div className="card-header">
-            <h3>Add Company</h3>
+        <section className="card form-section collapsible-card">
+          <div className="card-header collapsible-header">
+            <div>
+              <h3>Add Company</h3>
+              <p className="help">Manually create and classify client and prospect accounts.</p>
+            </div>
+            <button className="button secondary" type="button" onClick={() => setIsCreateOpen((value) => !value)}>
+              {isCreateOpen ? "Collapse" : "Expand"}
+            </button>
           </div>
-          <CompanyForm onSaved={upsertCompany} />
+          {isCreateOpen ? <CompanyForm onSaved={upsertCompany} /> : null}
         </section>
 
-        <section className="card">
-          <div className="card-header">
-            <h3>All Companies</h3>
-            <div className="search-wrap">
-              <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" />
-              </svg>
-              <input
-                type="search"
-                placeholder="Search by name, industry, city, service, or custom field…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="search-input"
-              />
+        <section className="card collapsible-card">
+          <div className="card-header collapsible-header">
+            <div>
+              <h3>All Companies</h3>
+              <p className="help">{filtered.length} compan{filtered.length === 1 ? "y" : "ies"} in view.</p>
             </div>
+            <button className="button secondary" type="button" onClick={() => setIsListOpen((value) => !value)}>
+              {isListOpen ? "Collapse" : "Expand"}
+            </button>
           </div>
+          {isListOpen ? (
+            <>
+              <div className="search-wrap">
+                <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.35-4.35" />
+                </svg>
+                <input
+                  type="search"
+                  placeholder="Search by name, industry, city, service, or custom field…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="search-input"
+                />
+              </div>
 
-          {filtered.length === 0 ? (
-            <div className="empty-state">
-              <p>{search ? "No companies match your search." : "No companies yet."}</p>
-            </div>
-          ) : (
-            <div className="inline-grid">
-              {filtered.map((company) => {
-                const services = readServices(company.customFieldsJson);
-                return (
-                  <section key={company.id} className="card">
-                    <div className="card-header">
-                      <div>
-                        <h3>{company.name}</h3>
-                        <p className="help">{company.industry || "No industry"} · {company.city || "Unknown city"}{company.state ? `, ${company.state}` : ""}</p>
-                        {services.length > 0 ? <p className="help">Services: {services.join(", ")}</p> : null}
-                      </div>
-                      <span className="badge">{company.status}</span>
-                    </div>
-                    <CompanyForm company={company} onSaved={upsertCompany} onDeleted={removeCompany} submitLabel="Save Company" />
-                  </section>
-                );
-              })}
-            </div>
-          )}
+              {filtered.length === 0 ? (
+                <div className="empty-state">
+                  <p>{search ? "No companies match your search." : "No companies yet."}</p>
+                </div>
+              ) : (
+                <div className="inline-grid">
+                  {filtered.map((company) => {
+                    const services = readServices(company.customFieldsJson);
+                    return (
+                      <details key={company.id} className="card content-item" open={false}>
+                        <summary className="card-header content-item-summary">
+                          <div>
+                            <h3>{company.name}</h3>
+                            <p className="help">{company.industry || "No industry"} · {company.city || "Unknown city"}{company.state ? `, ${company.state}` : ""}</p>
+                            {services.length > 0 ? <p className="help">Services: {services.join(", ")}</p> : null}
+                          </div>
+                          <div className="content-item-summary-right">
+                            <span className="badge">{company.status}</span>
+                            <span className="help">Edit</span>
+                          </div>
+                        </summary>
+                        <div className="content-item-body">
+                          <CompanyForm company={company} onSaved={upsertCompany} onDeleted={removeCompany} submitLabel="Save Company" />
+                        </div>
+                      </details>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          ) : null}
         </section>
       </div>
     </AppShell>

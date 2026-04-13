@@ -22,6 +22,8 @@ export function ContactManager({
 }) {
   const [contacts, setContacts] = useState(initialContacts);
   const [search, setSearch] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(true);
+  const [isListOpen, setIsListOpen] = useState(true);
 
   function upsertContact(contact: SavedContact) {
     setContacts((current) => {
@@ -60,57 +62,78 @@ export function ContactManager({
           </p>
         </section>
 
-        <section className="card form-section">
-          <div className="card-header">
-            <h3>Add Contact</h3>
+        <section className="card form-section collapsible-card">
+          <div className="card-header collapsible-header">
+            <div>
+              <h3>Add Contact</h3>
+              <p className="help">Manually add new people and keep them linked to the right company.</p>
+            </div>
+            <button className="button secondary" type="button" onClick={() => setIsCreateOpen((value) => !value)}>
+              {isCreateOpen ? "Collapse" : "Expand"}
+            </button>
           </div>
-          <ContactForm companies={initialCompanies} onSaved={upsertContact} />
+          {isCreateOpen ? <ContactForm companies={initialCompanies} onSaved={upsertContact} /> : null}
         </section>
 
-        <section className="card">
-          <div className="card-header">
-            <h3>All Contacts</h3>
-            <div className="search-wrap">
-              <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" />
-              </svg>
-              <input
-                type="search"
-                placeholder="Search by name, email, company, or custom field…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="search-input"
-              />
+        <section className="card collapsible-card">
+          <div className="card-header collapsible-header">
+            <div>
+              <h3>All Contacts</h3>
+              <p className="help">{filtered.length} contact{filtered.length === 1 ? "" : "s"} in view.</p>
             </div>
+            <button className="button secondary" type="button" onClick={() => setIsListOpen((value) => !value)}>
+              {isListOpen ? "Collapse" : "Expand"}
+            </button>
           </div>
+          {isListOpen ? (
+            <>
+              <div className="search-wrap">
+                <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.35-4.35" />
+                </svg>
+                <input
+                  type="search"
+                  placeholder="Search by name, email, company, or custom field…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="search-input"
+                />
+              </div>
 
-          {filtered.length === 0 ? (
-            <div className="empty-state">
-              <p>{search ? "No contacts match your search." : "No contacts yet."}</p>
-            </div>
-          ) : (
-            <div className="inline-grid">
-              {filtered.map((contact) => (
-                <section key={contact.id} className="card">
-                  <div className="card-header">
-                    <div>
-                      <h3>{contact.fullName || "Unnamed contact"}</h3>
-                      <p className="help">{contact.email || "No email"} · {contact.company?.name || "Unlinked company"}</p>
-                    </div>
-                    <span className="badge">{contact.status}</span>
-                  </div>
-                  <ContactForm
-                    companies={initialCompanies}
-                    contact={contact}
-                    onSaved={upsertContact}
-                    onDeleted={removeContact}
-                    submitLabel="Save Contact"
-                  />
-                </section>
-              ))}
-            </div>
-          )}
+              {filtered.length === 0 ? (
+                <div className="empty-state">
+                  <p>{search ? "No contacts match your search." : "No contacts yet."}</p>
+                </div>
+              ) : (
+                <div className="inline-grid">
+                  {filtered.map((contact) => (
+                    <details key={contact.id} className="card content-item" open={false}>
+                      <summary className="card-header content-item-summary">
+                        <div>
+                          <h3>{contact.fullName || "Unnamed contact"}</h3>
+                          <p className="help">{contact.email || "No email"} · {contact.company?.name || "Unlinked company"}</p>
+                        </div>
+                        <div className="content-item-summary-right">
+                          <span className="badge">{contact.status}</span>
+                          <span className="help">Edit</span>
+                        </div>
+                      </summary>
+                      <div className="content-item-body">
+                        <ContactForm
+                          companies={initialCompanies}
+                          contact={contact}
+                          onSaved={upsertContact}
+                          onDeleted={removeContact}
+                          submitLabel="Save Contact"
+                        />
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : null}
         </section>
       </div>
     </AppShell>
