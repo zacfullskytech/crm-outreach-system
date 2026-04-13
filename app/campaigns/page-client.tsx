@@ -26,10 +26,12 @@ function statusBadgeClass(status: string) {
 export function CampaignsPageClient({
   initialCampaigns,
   initialSegments,
+  initialDefaults,
   isAdmin,
 }: {
   initialCampaigns: CampaignWithRecipients[];
   initialSegments: SegmentOption[];
+  initialDefaults: { fromName: string; fromEmail: string; replyTo: string };
   isAdmin: boolean;
 }) {
   const [campaigns] = useState(initialCampaigns);
@@ -70,7 +72,7 @@ export function CampaignsPageClient({
               {isCreateOpen ? "Collapse" : "Expand"}
             </button>
           </div>
-          {isCreateOpen ? <CampaignForm segments={initialSegments} /> : null}
+          {isCreateOpen ? <CampaignForm segments={initialSegments} defaults={initialDefaults} /> : null}
         </section>
 
         <section className="card collapsible-card">

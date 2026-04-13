@@ -1,13 +1,14 @@
 import { requireAuth } from "@/lib/supabase/auth";
 import { CampaignsPageClient } from "./page-client";
 import { prisma } from "@/lib/db";
+import { getGeneralSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function CampaignsPage() {
   const { appUser } = await requireAuth();
 
-  const [campaigns, segments] = await Promise.all([
+  const [campaigns, segments, settings] = await Promise.all([
     prisma.campaign.findMany({
       include: { recipients: true },
       orderBy: { createdAt: "desc" },
@@ -19,7 +20,19 @@ export default async function CampaignsPage() {
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
+    getGeneralSettings(),
   ]);
 
-  return <CampaignsPageClient initialCampaigns={campaigns} initialSegments={segments} isAdmin={appUser.role === "admin"} />;
+  return (
+    <CampaignsPageClient
+      initialCampaigns={campaigns}
+      initialSegments={segments}
+      initialDefaults={{
+        fromName: settings.defaultFromName,
+        fromEmail: settings.defaultFromEmail,
+        replyTo: settings.defaultReplyTo,
+      }}
+      isAdmin={appUser.role === "admin"}
+    />
+  );
 }

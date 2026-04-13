@@ -18,7 +18,13 @@ type PreviewState = {
   }>;
 } | null;
 
-export function CampaignForm({ segments }: { segments: SegmentOption[] }) {
+export function CampaignForm({
+  segments,
+  defaults,
+}: {
+  segments: SegmentOption[];
+  defaults: { fromName: string; fromEmail: string; replyTo: string };
+}) {
   const formRef = useRef<HTMLFormElement>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState(segments[0]?.id || "");
   const [preview, setPreview] = useState<PreviewState>(null);
@@ -133,15 +139,15 @@ export function CampaignForm({ segments }: { segments: SegmentOption[] }) {
         </div>
         <div className="field">
           <label htmlFor="campaign-from-name">From name</label>
-          <input id="campaign-from-name" name="fromName" defaultValue="Field Notes CRM" />
+          <input id="campaign-from-name" name="fromName" defaultValue={defaults.fromName} />
         </div>
         <div className="field">
           <label htmlFor="campaign-from-email">From email</label>
-          <input id="campaign-from-email" name="fromEmail" type="email" defaultValue="campaigns@example.com" required />
+          <input id="campaign-from-email" name="fromEmail" type="email" defaultValue={defaults.fromEmail} required />
         </div>
         <div className="field">
           <label htmlFor="campaign-reply-to">Reply-to</label>
-          <input id="campaign-reply-to" name="replyTo" type="email" placeholder="replies@example.com" />
+          <input id="campaign-reply-to" name="replyTo" type="email" defaultValue={defaults.replyTo} placeholder="replies@example.com" />
         </div>
         <div className="field">
           <label htmlFor="campaign-scheduled-at">Scheduled at</label>
