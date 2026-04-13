@@ -3,6 +3,17 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { SegmentFieldOption } from "@/lib/segment-fields";
 
+const serviceOptions = [
+  "Phones",
+  "Internet",
+  "Managed I.T. Services",
+  "Firewall",
+  "Website and Hosting Services",
+  "X-Ray Rental Services",
+  "Dark Web Monitoring",
+  "Pay Roll and HR Services",
+] as const;
+
 type SegmentRule = {
   field: string;
   comparator: string;
@@ -17,11 +28,15 @@ const comparators = [
   "ends_with",
   "is_empty",
   "is_not_empty",
+  "has",
+  "not_has",
 ] as const;
 
 export function SegmentForm({ fieldOptions }: { fieldOptions: SegmentFieldOption[] }) {
   const [rules, setRules] = useState<SegmentRule[]>([
     { field: "company.industry", comparator: "equals", value: "Veterinary" },
+    { field: "company.state", comparator: "equals", value: "OH" },
+    { field: "company.services", comparator: "not_has", value: "Internet" },
   ]);
   const [entityType, setEntityType] = useState("contact");
   const [operator, setOperator] = useState("AND");
@@ -134,7 +149,7 @@ export function SegmentForm({ fieldOptions }: { fieldOptions: SegmentFieldOption
       <div className="form-grid">
         <div className="field">
           <label htmlFor="segment-name">Segment name</label>
-          <input id="segment-name" name="name" placeholder="Texas Veterinary Contacts" required />
+          <input id="segment-name" name="name" placeholder="Ohio Veterinary Clients Without Internet" required />
         </div>
         <div className="field">
           <label htmlFor="segment-entity-type">Entity type</label>
@@ -154,50 +169,66 @@ export function SegmentForm({ fieldOptions }: { fieldOptions: SegmentFieldOption
       </div>
       <div className="field">
         <label htmlFor="segment-description">Description</label>
-        <textarea id="segment-description" name="description" placeholder="Target veterinary contacts in Texas with deliverable email addresses." />
+        <textarea id="segment-description" name="description" placeholder="Veterinary clients in Ohio who are not currently using us for internet services." />
       </div>
       <div className="card">
         <h3>Rules</h3>
         <div className="inline-grid">
-          {rules.map((rule, index) => (
-            <div key={`${rule.field}-${index}`} className="form-grid">
-              <div className="field">
-                <label htmlFor={`field-${index}`}>Field</label>
-                <select id={`field-${index}`} value={rule.field} onChange={(event) => updateRule(index, { field: event.target.value })}>
-                  {visibleFieldOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+          {rules.map((rule, index) => {
+            const isServiceField = rule.field === "services" || rule.field === "company.services";
+            return (
+              <div key={`${rule.field}-${index}`} className="form-grid">
+                <div className="field">
+                  <label htmlFor={`field-${index}`}>Field</label>
+                  <select id={`field-${index}`} value={rule.field} onChange={(event) => updateRule(index, { field: event.target.value })}>
+                    {visibleFieldOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor={`comparator-${index}`}>Comparator</label>
+                  <select id={`comparator-${index}`} value={rule.comparator} onChange={(event) => updateRule(index, { comparator: event.target.value })}>
+                    {comparators
+                      .filter((comparator) => !isServiceField || comparator === "has" || comparator === "not_has")
+                      .map((comparator) => (
+                        <option key={comparator} value={comparator}>
+                          {comparator}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor={`value-${index}`}>Value</label>
+                  {isServiceField ? (
+                    <select id={`value-${index}`} value={rule.value} onChange={(event) => updateRule(index, { value: event.target.value })}>
+                      <option value="">Select service</option>
+                      {serviceOptions.map((service) => (
+                        <option key={service} value={service}>
+                          {service}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      id={`value-${index}`}
+                      value={rule.value}
+                      onChange={(event) => updateRule(index, { value: event.target.value })}
+                      disabled={rule.comparator === "is_empty" || rule.comparator === "is_not_empty"}
+                      placeholder="TX"
+                    />
+                  )}
+                </div>
+                <div className="actions">
+                  <button className="button secondary" type="button" onClick={() => removeRule(index)} disabled={rules.length === 1}>
+                    Remove Rule
+                  </button>
+                </div>
               </div>
-              <div className="field">
-                <label htmlFor={`comparator-${index}`}>Comparator</label>
-                <select id={`comparator-${index}`} value={rule.comparator} onChange={(event) => updateRule(index, { comparator: event.target.value })}>
-                  {comparators.map((comparator) => (
-                    <option key={comparator} value={comparator}>
-                      {comparator}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label htmlFor={`value-${index}`}>Value</label>
-                <input
-                  id={`value-${index}`}
-                  value={rule.value}
-                  onChange={(event) => updateRule(index, { value: event.target.value })}
-                  disabled={rule.comparator === "is_empty" || rule.comparator === "is_not_empty"}
-                  placeholder="TX"
-                />
-              </div>
-              <div className="actions">
-                <button className="button secondary" type="button" onClick={() => removeRule(index)} disabled={rules.length === 1}>
-                  Remove Rule
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="actions">
           <button className="button secondary" type="button" onClick={addRule}>

@@ -6,6 +6,7 @@ const customFieldEntrySchema = z.object({
 });
 
 const tagEntrySchema = z.string().trim().min(1);
+const serviceEntrySchema = z.string().trim().min(1);
 
 export const contactSchema = z.object({
   companyId: z.string().cuid().optional().nullable(),
@@ -34,6 +35,7 @@ export const companySchema = z.object({
   source: z.string().trim().min(1).optional().nullable(),
   notes: z.string().trim().min(1).optional().nullable(),
   status: z.enum(["CLIENT", "LEAD", "PROSPECT", "INACTIVE"]).optional(),
+  services: z.array(serviceEntrySchema).optional(),
   customFields: z.array(customFieldEntrySchema).optional(),
 });
 
@@ -54,6 +56,8 @@ export const segmentRuleSchema = z.object({
     "lt",
     "lte",
     "between",
+    "has",
+    "not_has",
   ]),
   value: z.any().optional(),
 });

@@ -29,12 +29,14 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
   const filtered = companies.filter((c) => {
     const q = search.toLowerCase();
     const customText = customFieldsToPairs(c.customFieldsJson).map((pair) => `${pair.key} ${pair.value}`).join(" ").toLowerCase();
+    const servicesText = Array.isArray(c.servicesJson) ? c.servicesJson.map((value) => String(value)).join(" ").toLowerCase() : "";
     return (
       !q ||
       (c.name || "").toLowerCase().includes(q) ||
       (c.industry || "").toLowerCase().includes(q) ||
       (c.city || "").toLowerCase().includes(q) ||
       (c.state || "").toLowerCase().includes(q) ||
+      servicesText.includes(q) ||
       customText.includes(q)
     );
   });
@@ -87,6 +89,9 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
                     <div>
                       <h3>{company.name}</h3>
                       <p className="help">{company.industry || "No industry"} · {company.city || "Unknown city"}{company.state ? `, ${company.state}` : ""}</p>
+                      {Array.isArray(company.servicesJson) && company.servicesJson.length > 0 ? (
+                        <p className="help">Services: {company.servicesJson.map((value) => String(value)).join(", ")}</p>
+                      ) : null}
                     </div>
                     <span className="badge">{company.status}</span>
                   </div>

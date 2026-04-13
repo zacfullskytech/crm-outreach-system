@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
         ...parsed,
         state: parsed.state?.toUpperCase() || null,
         emailDomain: normalizeWebsite(parsed.website),
+        servicesJson: parsed.services ?? [],
         customFieldsJson: normalizeCustomFields(parsed.customFields),
       },
     });

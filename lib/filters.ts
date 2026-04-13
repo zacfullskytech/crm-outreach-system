@@ -14,7 +14,9 @@ type SegmentRule = {
     | "gte"
     | "lt"
     | "lte"
-    | "between";
+    | "between"
+    | "has"
+    | "not_has";
   value?: unknown;
 };
 
@@ -27,10 +29,35 @@ function isGroup(rule: SegmentRule | SegmentGroup): rule is SegmentGroup {
   return "operator" in rule && Array.isArray(rule.rules);
 }
 
+function buildJsonArrayServiceCondition(field: string, comparator: "has" | "not_has", value: unknown) {
+  const service = typeof value === "string" ? value.trim() : "";
+  if (!service) {
+    throw new Error(`Service comparator requires a value for ${field}`);
+  }
+
+  if (field === "services") {
+    return comparator === "has"
+      ? { servicesJson: { array_contains: [service] } }
+      : { NOT: { servicesJson: { array_contains: [service] } } };
+  }
+
+  if (field === "company.services") {
+    return comparator === "has"
+      ? { company: { servicesJson: { array_contains: [service] } } }
+      : { NOT: { company: { servicesJson: { array_contains: [service] } } } };
+  }
+
+  throw new Error(`Unsupported service field: ${field}`);
+}
+
 function buildFieldCondition(field: string, comparator: SegmentRule["comparator"], value: unknown) {
   if (field.startsWith("customFields.")) {
     const customKey = field.slice("customFields.".length);
     return buildFieldCondition(`customFieldsJson.${customKey}`, comparator, value);
+  }
+
+  if ((field === "services" || field === "company.services") && (comparator === "has" || comparator === "not_has")) {
+    return buildJsonArrayServiceCondition(field, comparator, value);
   }
 
   const path = field.split(".");

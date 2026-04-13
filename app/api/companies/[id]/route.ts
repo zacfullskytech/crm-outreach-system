@@ -20,6 +20,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         ...parsed,
         state: parsed.state?.toUpperCase() || null,
         emailDomain: parsed.website !== undefined ? normalizeWebsite(parsed.website) : undefined,
+        servicesJson: parsed.services ?? undefined,
         customFieldsJson: parsed.customFields ? normalizeCustomFields(parsed.customFields) : undefined,
       },
     });

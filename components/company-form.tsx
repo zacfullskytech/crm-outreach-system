@@ -9,6 +9,21 @@ type CompanyRecord = Company & {
   contacts?: { id: string }[];
 };
 
+const serviceOptions = [
+  "Phones",
+  "Internet",
+  "Managed I.T. Services",
+  "Firewall",
+  "Website and Hosting Services",
+  "X-Ray Rental Services",
+  "Dark Web Monitoring",
+  "Pay Roll and HR Services",
+] as const;
+
+function normalizeServices(value: unknown) {
+  return Array.isArray(value) ? value.map((entry) => String(entry)).filter(Boolean) : [];
+}
+
 export function CompanyForm({
   company,
   onSaved,
@@ -25,6 +40,7 @@ export function CompanyForm({
   const [customFields, setCustomFields] = useState(() =>
     customFieldsToPairs(company?.customFieldsJson).map((field, index) => ({ ...field, id: `${index}-${field.key}` })),
   );
+  const [selectedServices, setSelectedServices] = useState<string[]>(() => normalizeServices(company?.servicesJson));
 
   const isEdit = Boolean(company);
   const actionLabel = useMemo(() => (pending ? "Saving..." : submitLabel), [pending, submitLabel]);
@@ -47,6 +63,7 @@ export function CompanyForm({
       source: String(form.get("source") || "") || null,
       notes: String(form.get("notes") || "") || null,
       status: String(form.get("status") || "LEAD"),
+      services: selectedServices,
       customFields: customFields.map(({ key, value }) => ({ key, value })),
     };
 
@@ -66,6 +83,7 @@ export function CompanyForm({
     if (!isEdit) {
       event.currentTarget.reset();
       setCustomFields([]);
+      setSelectedServices([]);
     }
 
     onSaved?.(body.data);
@@ -92,6 +110,12 @@ export function CompanyForm({
     onDeleted?.(company.id);
     setMessage("Company deleted.");
     setPending(false);
+  }
+
+  function toggleService(service: string) {
+    setSelectedServices((current) =>
+      current.includes(service) ? current.filter((entry) => entry !== service) : [...current, service],
+    );
   }
 
   return (
@@ -141,6 +165,17 @@ export function CompanyForm({
         <div className="field">
           <label htmlFor={`company-source-${company?.id || "new"}`}>Source</label>
           <input id={`company-source-${company?.id || "new"}`} name="source" placeholder="manual entry" defaultValue={company?.source || ""} />
+        </div>
+      </div>
+      <div className="field">
+        <label>Services in use</label>
+        <div className="checkbox-grid">
+          {serviceOptions.map((service) => (
+            <label key={service} className="checkbox-chip">
+              <input type="checkbox" checked={selectedServices.includes(service)} onChange={() => toggleService(service)} />
+              <span>{service}</span>
+            </label>
+          ))}
         </div>
       </div>
       <div className="field">
