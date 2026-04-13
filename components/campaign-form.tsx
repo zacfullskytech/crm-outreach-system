@@ -63,7 +63,19 @@ export function CampaignForm({ segments }: { segments: SegmentOption[] }) {
       templateText: String(form.get("templateText") || "") || null,
       segmentId: selectedSegmentId || null,
       status: String(form.get("status") || "DRAFT"),
-      scheduledAt: String(form.get("scheduledAt") || "") || null,
+      scheduledAt: (() => {
+        const raw = String(form.get("scheduledAt") || "").trim();
+        if (!raw) {
+          return null;
+        }
+
+        const localDate = new Date(raw);
+        if (Number.isNaN(localDate.getTime())) {
+          return raw;
+        }
+
+        return localDate.toISOString();
+      })(),
     };
 
     const response = await fetch("/api/campaigns", {
@@ -134,6 +146,7 @@ export function CampaignForm({ segments }: { segments: SegmentOption[] }) {
         <div className="field">
           <label htmlFor="campaign-scheduled-at">Scheduled at</label>
           <input id="campaign-scheduled-at" name="scheduledAt" type="datetime-local" />
+          <p className="help">Time is captured from your browser timezone and stored in UTC.</p>
         </div>
       </div>
       <div className="field">

@@ -142,6 +142,7 @@ export function CampaignsPageClient({
                             <p>Created: {new Date(campaign.createdAt).toLocaleString()}</p>
                             <p>Scheduled: {campaign.scheduledAt ? new Date(campaign.scheduledAt).toLocaleString() : "Not scheduled"}</p>
                             <p>Sent: {campaign.sentAt ? new Date(campaign.sentAt).toLocaleString() : "Not sent"}</p>
+                            {campaign.status === "SCHEDULED" ? <p className="help">Scheduled campaigns are stored for manual dispatch right now. Automatic scheduled sending is not implemented yet.</p> : null}
                           </div>
                         </div>
                         <div className="card">
