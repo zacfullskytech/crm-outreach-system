@@ -20,7 +20,15 @@ export async function POST(request: NextRequest) {
 
     const campaign = await prisma.campaign.create({
       data: {
-        ...parsed,
+        name: parsed.name,
+        subject: parsed.subject,
+        fromName: parsed.fromName ?? null,
+        fromEmail: parsed.fromEmail,
+        replyTo: parsed.replyTo ?? null,
+        templateHtml: parsed.templateHtml,
+        templateText: parsed.templateText ?? null,
+        segmentId: parsed.segmentId ?? null,
+        status: parsed.status ?? "DRAFT",
         scheduledAt: parsed.scheduledAt ? new Date(parsed.scheduledAt) : null,
       },
     });

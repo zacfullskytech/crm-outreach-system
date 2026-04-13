@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 
 type SegmentOption = {
   id: string;
@@ -18,6 +18,7 @@ type PreviewState = {
 } | null;
 
 export function CampaignForm({ segments }: { segments: SegmentOption[] }) {
+  const formRef = useRef<HTMLFormElement>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState(segments[0]?.id || "");
   const [preview, setPreview] = useState<PreviewState>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -77,14 +78,19 @@ export function CampaignForm({ segments }: { segments: SegmentOption[] }) {
       return;
     }
 
-    event.currentTarget.reset();
+    formRef.current?.reset();
+    setSelectedSegmentId("");
     setPreview(null);
     setMessage("Campaign created. Refresh to see it in the table.");
     setPending(false);
   }
 
+  const hasSegments = segments.length > 0;
+
   return (
-    <form onSubmit={onSubmit} className="inline-grid">
+    <form ref={formRef} onSubmit={onSubmit} className="inline-grid">
+      {!hasSegments ? <p className="help">Create a segment first so this campaign has an audience.</p> : null}
+
       <div className="form-grid">
         <div className="field">
           <label htmlFor="campaign-name">Campaign name</label>
@@ -146,10 +152,10 @@ export function CampaignForm({ segments }: { segments: SegmentOption[] }) {
         />
       </div>
       <div className="actions">
-        <button className="button secondary" type="button" onClick={previewAudience} disabled={pending}>
+        <button className="button secondary" type="button" onClick={previewAudience} disabled={pending || !hasSegments}>
           {pending ? "Previewing..." : "Preview Audience"}
         </button>
-        <button className="button primary" type="submit" disabled={pending}>
+        <button className="button primary" type="submit" disabled={pending || !hasSegments}>
           {pending ? "Saving..." : "Create Campaign"}
         </button>
         {message ? <span className="help">{message}</span> : null}

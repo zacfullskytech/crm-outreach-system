@@ -8,6 +8,21 @@ import type { Campaign, Segment, CampaignRecipient } from "@prisma/client";
 type CampaignWithRecipients = Campaign & { recipients: CampaignRecipient[] };
 type SegmentOption = Pick<Segment, "id" | "name">;
 
+function statusBadgeClass(status: string) {
+  switch (status) {
+    case "SENT":
+      return "badge badge-green";
+    case "SCHEDULED":
+      return "badge badge-blue";
+    case "SENDING":
+      return "badge badge-blue";
+    case "FAILED":
+      return "badge badge-red";
+    default:
+      return "badge";
+  }
+}
+
 export function CampaignsPageClient({
   initialCampaigns,
   initialSegments,
@@ -20,26 +35,19 @@ export function CampaignsPageClient({
   const [campaigns] = useState(initialCampaigns);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [isCreateOpen, setIsCreateOpen] = useState(true);
+  const [isListOpen, setIsListOpen] = useState(true);
 
-  const filtered = campaigns.filter((c) => {
+  const filtered = campaigns.filter((campaign) => {
     const q = search.toLowerCase();
     const matchesSearch =
       !q ||
-      (c.name || "").toLowerCase().includes(q) ||
-      (c.subject || "").toLowerCase().includes(q);
-    const matchesStatus = statusFilter === "ALL" || c.status === statusFilter;
+      (campaign.name || "").toLowerCase().includes(q) ||
+      (campaign.subject || "").toLowerCase().includes(q) ||
+      (campaign.fromEmail || "").toLowerCase().includes(q);
+    const matchesStatus = statusFilter === "ALL" || campaign.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
-
-  const statusBadgeClass = (status: string) => {
-    switch (status) {
-      case "SENT": return "badge badge-green";
-      case "SCHEDULED": return "badge badge-blue";
-      case "DRAFT": return "badge";
-      case "FAILED": return "badge badge-red";
-      default: return "badge";
-    }
-  };
 
   return (
     <AppShell isAdmin={isAdmin}>
@@ -52,82 +60,105 @@ export function CampaignsPageClient({
           </p>
         </section>
 
-        <section className="card form-section">
-          <div className="card-header">
-            <h3>Create Campaign Draft</h3>
+        <section className="card form-section collapsible-card">
+          <div className="card-header collapsible-header">
+            <div>
+              <h3>Create Campaign Draft</h3>
+              <p className="help">Build a draft, preview the audience, and keep the send configuration together.</p>
+            </div>
+            <button className="button secondary" type="button" onClick={() => setIsCreateOpen((value) => !value)}>
+              {isCreateOpen ? "Collapse" : "Expand"}
+            </button>
           </div>
-          <CampaignForm segments={initialSegments} />
+          {isCreateOpen ? <CampaignForm segments={initialSegments} /> : null}
         </section>
 
-        <section className="card">
-          <div className="card-header">
-            <h3>All Campaigns</h3>
-            <div className="filter-row">
-              <div className="search-wrap">
-                <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.35-4.35" />
-                </svg>
-                <input
-                  type="search"
-                  placeholder="Search campaigns…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="search-input"
-                />
-              </div>
-              <select
-                className="filter-select"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="DRAFT">Draft</option>
-                <option value="SCHEDULED">Scheduled</option>
-                <option value="SENT">Sent</option>
-                <option value="FAILED">Failed</option>
-              </select>
+        <section className="card collapsible-card">
+          <div className="card-header collapsible-header">
+            <div>
+              <h3>All Campaigns</h3>
+              <p className="help">{filtered.length} campaign{filtered.length === 1 ? "" : "s"} in view.</p>
             </div>
+            <button className="button secondary" type="button" onClick={() => setIsListOpen((value) => !value)}>
+              {isListOpen ? "Collapse" : "Expand"}
+            </button>
           </div>
 
-          {filtered.length === 0 ? (
-            <div className="empty-state">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="empty-icon">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.86 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.77 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
-              </svg>
-              <p>{search || statusFilter !== "ALL" ? "No campaigns match your filters." : "No campaigns yet."}</p>
-            </div>
-          ) : (
-            <div className="table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Subject</th>
-                    <th>Status</th>
-                    <th>From</th>
-                    <th>Recipients</th>
-                    <th>Created</th>
-                  </tr>
-                </thead>
-                <tbody>
+          {isListOpen ? (
+            <>
+              <div className="filter-row">
+                <div className="search-wrap">
+                  <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.35-4.35" />
+                  </svg>
+                  <input
+                    type="search"
+                    placeholder="Search campaigns by name, subject, or sender…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="search-input"
+                  />
+                </div>
+                <select className="filter-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                  <option value="ALL">All Statuses</option>
+                  <option value="DRAFT">Draft</option>
+                  <option value="SCHEDULED">Scheduled</option>
+                  <option value="SENDING">Sending</option>
+                  <option value="SENT">Sent</option>
+                  <option value="FAILED">Failed</option>
+                </select>
+              </div>
+
+              {filtered.length === 0 ? (
+                <div className="empty-state">
+                  <p>{search || statusFilter !== "ALL" ? "No campaigns match your filters." : "No campaigns yet."}</p>
+                </div>
+              ) : (
+                <div className="inline-grid">
                   {filtered.map((campaign) => (
-                    <tr key={campaign.id}>
-                      <td className="primary-cell">{campaign.name}</td>
-                      <td className="muted">{campaign.subject || "—"}</td>
-                      <td><span className={statusBadgeClass(campaign.status)}>{campaign.status}</span></td>
-                      <td>{campaign.fromEmail}</td>
-                      <td>{campaign.recipients.length}</td>
-                      <td className="muted">{new Date(campaign.createdAt).toLocaleDateString()}</td>
-                    </tr>
+                    <details key={campaign.id} className="card content-item" open={false}>
+                      <summary className="card-header content-item-summary">
+                        <div>
+                          <h3>{campaign.name}</h3>
+                          <p className="help">{campaign.subject || "No subject"}</p>
+                          <p className="help">{campaign.fromEmail} · {campaign.recipients.length} recipient{campaign.recipients.length === 1 ? "" : "s"}</p>
+                        </div>
+                        <div className="content-item-summary-right">
+                          <span className={statusBadgeClass(campaign.status)}>{campaign.status}</span>
+                          <span className="help">View</span>
+                        </div>
+                      </summary>
+                      <div className="content-item-body inline-grid">
+                        <div className="grid">
+                          <div className="card">
+                            <h4>Sender</h4>
+                            <p>{campaign.fromName || "No from name"}</p>
+                            <p>{campaign.fromEmail}</p>
+                            <p>{campaign.replyTo || "No reply-to"}</p>
+                          </div>
+                          <div className="card">
+                            <h4>Timing</h4>
+                            <p>Created: {new Date(campaign.createdAt).toLocaleString()}</p>
+                            <p>Scheduled: {campaign.scheduledAt ? new Date(campaign.scheduledAt).toLocaleString() : "Not scheduled"}</p>
+                            <p>Sent: {campaign.sentAt ? new Date(campaign.sentAt).toLocaleString() : "Not sent"}</p>
+                          </div>
+                        </div>
+                        <div className="card">
+                          <h4>HTML Body</h4>
+                          <p className="campaign-template-preview">{campaign.templateHtml}</p>
+                        </div>
+                        <div className="card">
+                          <h4>Plain-text Body</h4>
+                          <p className="campaign-template-preview">{campaign.templateText || "No plain-text body"}</p>
+                        </div>
+                      </div>
+                    </details>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {filtered.length > 0 && (
-            <p className="results-count">{filtered.length} campaign{filtered.length !== 1 ? "s" : ""}</p>
-          )}
+                </div>
+              )}
+            </>
+          ) : null}
         </section>
       </div>
     </AppShell>
