@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { MarketingContentForm } from "@/components/marketing-content-form";
 import { MarketingAiStudio } from "@/components/marketing-ai-studio";
-import type { MarketingContent } from "@prisma/client";
+import type { MarketingContent, Segment } from "@prisma/client";
 
 type MarketingContentRecord = MarketingContent;
+type SegmentOption = Pick<Segment, "id" | "name">;
 
-export function MarketingContentManager({ initialItems, isAdmin }: { initialItems: MarketingContentRecord[]; isAdmin: boolean }) {
+export function MarketingContentManager({ initialItems, initialSegments, isAdmin }: { initialItems: MarketingContentRecord[]; initialSegments: SegmentOption[]; isAdmin: boolean }) {
   const [items, setItems] = useState(initialItems);
   const [query, setQuery] = useState("");
   const [serviceLine, setServiceLine] = useState("ALL");
@@ -106,7 +107,7 @@ export function MarketingContentManager({ initialItems, isAdmin }: { initialItem
               {isAiOpen ? "Collapse" : "Expand"}
             </button>
           </div>
-          {isAiOpen ? <MarketingAiStudio onUseDraft={saveDraftAsContent} onSaved={upsertItem} /> : null}
+          {isAiOpen ? <MarketingAiStudio onUseDraft={saveDraftAsContent} onSaved={upsertItem} segments={initialSegments} /> : null}
         </section>
 
         <section className="card collapsible-card">

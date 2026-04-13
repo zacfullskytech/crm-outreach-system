@@ -23,10 +23,18 @@ function normalizeJsonStringArray(value: unknown) {
 export default async function MarketingContentPage() {
   const { appUser } = await requireAuth();
 
-  const items = await prisma.marketingContent.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
+  const [items, segments] = await Promise.all([
+    prisma.marketingContent.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    }),
+    prisma.segment.findMany({
+      where: { entityType: "contact" },
+      select: { id: true, name: true },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+  ]);
 
   const resolvedItems = items.map((item) => {
     if (!item.imageUrl) {
@@ -50,5 +58,5 @@ export default async function MarketingContentPage() {
     taxonomyJson: normalizeJsonStringArray(item.taxonomyJson),
   }));
 
-  return <MarketingContentManager initialItems={resolvedItems} isAdmin={appUser.role === "admin"} />;
+  return <MarketingContentManager initialItems={resolvedItems} initialSegments={segments} isAdmin={appUser.role === "admin"} />;
 }

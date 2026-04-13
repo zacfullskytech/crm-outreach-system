@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { CustomFieldsEditor } from "@/components/custom-fields-editor";
-import type { MarketingContent } from "@prisma/client";
+import type { MarketingContent, Segment } from "@prisma/client";
 
 type GeneratedAsset = {
   headline?: string;
@@ -16,6 +16,7 @@ type GeneratedAsset = {
 };
 
 type SavedMarketingContent = MarketingContent;
+type SegmentOption = Pick<Segment, "id" | "name">;
 
 const promptTemplates = [
   { key: "", label: "Auto-select template" },
@@ -25,13 +26,22 @@ const promptTemplates = [
   { key: "medical-internet", label: "Private medical practices · Internet" },
 ];
 
-export function MarketingAiStudio({ onUseDraft, onSaved }: { onUseDraft?: (draft: GeneratedAsset & Record<string, unknown>) => void; onSaved?: (item: SavedMarketingContent) => void }) {
+export function MarketingAiStudio({
+  onUseDraft,
+  onSaved,
+  segments = [],
+}: {
+  onUseDraft?: (draft: GeneratedAsset & Record<string, unknown>) => void;
+  onSaved?: (item: SavedMarketingContent) => void;
+  segments?: SegmentOption[];
+}) {
   const [pending, setPending] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [result, setResult] = useState<GeneratedAsset | null>(null);
   const [variables, setVariables] = useState<Array<{ id: string; key: string; value: string }>>([]);
   const [generateImage, setGenerateImage] = useState(true);
+  const [selectedSegmentId, setSelectedSegmentId] = useState(segments[0]?.id || "");
 
   async function saveResultToLibrary() {
     if (!result) return;
@@ -91,6 +101,7 @@ export function MarketingAiStudio({ onUseDraft, onSaved }: { onUseDraft?: (draft
       description: String(form.get("description") || "") || null,
       promptNotes: String(form.get("promptNotes") || "") || null,
       promptTemplateKey: String(form.get("promptTemplateKey") || "") || null,
+      segmentId: selectedSegmentId || null,
       generateImage,
       variables: variables.map(({ key, value }) => ({ key, value })),
     };
@@ -121,10 +132,18 @@ export function MarketingAiStudio({ onUseDraft, onSaved }: { onUseDraft?: (draft
             <input id="ai-title" name="title" placeholder="Veterinary phones & internet flyer" required />
           </div>
           <div className="field">
+            <label htmlFor="ai-segment">Segment</label>
+            <select id="ai-segment" value={selectedSegmentId} onChange={(event) => setSelectedSegmentId(event.target.value)}>
+              <option value="">No segment selected</option>
+              {segments.map((segment) => (
+                <option key={segment.id} value={segment.id}>{segment.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
             <label htmlFor="ai-template">Prompt template</label>
             <select id="ai-template" name="promptTemplateKey" defaultValue="">
-              {promptTemplates.map((template) => <option key={template.key} value={template.key}>{template.label}</option>)}
-            </select>
+              {promptTemplates.map((template) => <option key={template.key} value={template.key}>{template.label}</option>)}</select>
           </div>
           <div className="field">
             <label htmlFor="ai-content-type">Content type</label>
