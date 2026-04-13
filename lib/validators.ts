@@ -86,7 +86,13 @@ export const campaignSchema = z.object({
   templateText: z.string().min(1).optional().nullable(),
   segmentId: z.string().cuid().optional().nullable(),
   status: z.enum(["DRAFT", "SCHEDULED", "SENDING", "SENT", "PAUSED", "FAILED"]).optional(),
-  scheduledAt: z.string().datetime().optional().nullable(),
+  scheduledAt: z
+    .string()
+    .trim()
+    .min(1)
+    .optional()
+    .nullable()
+    .refine((value) => value == null || !Number.isNaN(new Date(value).getTime()), "Invalid datetime"),
 });
 
 export const prospectSchema = z.object({
