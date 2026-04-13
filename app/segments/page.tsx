@@ -57,16 +57,22 @@ export default async function SegmentsPage() {
           </p>
         </section>
 
-        <section className="card form-section">
-          <div className="card-header">
-            <h3>Create Segment</h3>
+        <section className="card form-section collapsible-card">
+          <div className="card-header collapsible-header">
+            <div>
+              <h3>Create Segment</h3>
+              <p className="help">Build reusable audience rules for contacts, companies, or prospects.</p>
+            </div>
           </div>
           <SegmentForm fieldOptions={fieldOptions} />
         </section>
 
-        <section className="card">
-          <div className="card-header">
-            <h3>All Segments</h3>
+        <section className="card collapsible-card">
+          <div className="card-header collapsible-header">
+            <div>
+              <h3>All Segments</h3>
+              <p className="help">{segments.length} segment{segments.length === 1 ? "" : "s"} saved.</p>
+            </div>
           </div>
 
           {segments.length === 0 ? (
@@ -78,32 +84,28 @@ export default async function SegmentsPage() {
               <p>No segments yet.</p>
             </div>
           ) : (
-            <div className="table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Entity</th>
-                    <th>Description</th>
-                    <th>Rules</th>
-                    <th>Created</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {segments.map((segment) => {
-                    const rules = (segment.filterJson as { rules?: unknown[] })?.rules ?? [];
-                    return (
-                      <tr key={segment.id}>
-                        <td className="primary-cell">{segment.name}</td>
-                        <td><span className="badge">{segment.entityType}</span></td>
-                        <td className="muted">{segment.description || "—"}</td>
-                        <td className="muted">{rules.length} rule{rules.length !== 1 ? "s" : ""}</td>
-                        <td className="muted">{new Date(segment.createdAt).toLocaleDateString()}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="inline-grid">
+              {segments.map((segment) => {
+                const rules = (segment.filterJson as { rules?: unknown[] })?.rules ?? [];
+                return (
+                  <details key={segment.id} className="card content-item" open={false}>
+                    <summary className="card-header content-item-summary">
+                      <div>
+                        <h3>{segment.name}</h3>
+                        <p className="help">{segment.description || "No description"}</p>
+                        <p className="help">{rules.length} rule{rules.length !== 1 ? "s" : ""}</p>
+                      </div>
+                      <div className="content-item-summary-right">
+                        <span className="badge">{segment.entityType}</span>
+                        <span className="help">Edit</span>
+                      </div>
+                    </summary>
+                    <div className="content-item-body">
+                      <SegmentForm fieldOptions={fieldOptions} segment={segment} submitLabel="Save Segment" />
+                    </div>
+                  </details>
+                );
+              })}
             </div>
           )}
         </section>

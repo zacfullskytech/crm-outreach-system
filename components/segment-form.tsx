@@ -20,6 +20,14 @@ type SegmentRule = {
   value: string;
 };
 
+type EditableSegment = {
+  id: string;
+  name: string;
+  description: string | null;
+  entityType: string;
+  filterJson: unknown;
+};
+
 const comparators = [
   "equals",
   "not_equals",
@@ -32,14 +40,51 @@ const comparators = [
   "not_has",
 ] as const;
 
-export function SegmentForm({ fieldOptions }: { fieldOptions: SegmentFieldOption[] }) {
-  const [rules, setRules] = useState<SegmentRule[]>([
+function readFilterJson(filterJson: unknown) {
+  if (!filterJson || typeof filterJson !== "object" || Array.isArray(filterJson)) {
+    return null;
+  }
+
+  return filterJson as {
+    operator?: string;
+    rules?: Array<{ field?: string; comparator?: string; value?: unknown }>;
+  };
+}
+
+function getInitialRules(segment?: EditableSegment) {
+  const savedRules = readFilterJson(segment?.filterJson)?.rules;
+  if (Array.isArray(savedRules) && savedRules.length > 0) {
+    return savedRules.map((rule) => ({
+      field: typeof rule.field === "string" ? rule.field : "",
+      comparator: typeof rule.comparator === "string" ? rule.comparator : "equals",
+      value: typeof rule.value === "string" ? rule.value : "",
+    }));
+  }
+
+  return [
     { field: "company.industry", comparator: "equals", value: "Veterinary" },
     { field: "company.state", comparator: "equals", value: "OH" },
     { field: "company.services", comparator: "not_has", value: "Internet" },
-  ]);
-  const [entityType, setEntityType] = useState("contact");
-  const [operator, setOperator] = useState("AND");
+  ];
+}
+
+export function SegmentForm({
+  fieldOptions,
+  segment,
+  onSaved,
+  onDeleted,
+  submitLabel = "Create Segment",
+}: {
+  fieldOptions: SegmentFieldOption[];
+  segment?: EditableSegment;
+  onSaved?: (segment: EditableSegment) => void;
+  onDeleted?: (id: string) => void;
+  submitLabel?: string;
+}) {
+  const [rules, setRules] = useState<SegmentRule[]>(() => getInitialRules(segment));
+  const savedFilter = readFilterJson(segment?.filterJson);
+  const [entityType, setEntityType] = useState(segment?.entityType || "contact");
+  const [operator, setOperator] = useState(savedFilter?.operator === "OR" ? "OR" : "AND");
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -125,23 +170,56 @@ export function SegmentForm({ fieldOptions }: { fieldOptions: SegmentFieldOption
       filterJson,
     };
 
-    const response = await fetch("/api/segments", {
-      method: "POST",
+    const response = await fetch(segment ? `/api/segments/${segment.id}` : "/api/segments", {
+      method: segment ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      setMessage(body.error || "Failed to create segment.");
+      setMessage(body.error || `Failed to ${segment ? "update" : "create"} segment.`);
+      setPending(false);
+      return;
+    }
+
+    if (segment) {
+      onSaved?.(body.data);
+      setMessage("Segment updated.");
       setPending(false);
       return;
     }
 
     formRef.current?.reset();
-    setRules([{ field: visibleFieldOptions[0]?.value || "", comparator: "equals", value: "" }]);
+    setEntityType("contact");
+    setOperator("AND");
+    setRules([{ field: fieldOptions.find((option) => option.entityType === "contact")?.value || "", comparator: "equals", value: "" }]);
     setPreviewCount(null);
     setMessage("Segment created. Refresh to see it in the table.");
+    setPending(false);
+  }
+
+  async function handleDelete() {
+    if (!segment || pending) {
+      return;
+    }
+
+    setPending(true);
+    setMessage(null);
+
+    const response = await fetch(`/api/segments/${segment.id}`, {
+      method: "DELETE",
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(body.error || "Failed to delete segment.");
+      setPending(false);
+      return;
+    }
+
+    onDeleted?.(segment.id);
+    setMessage("Segment deleted.");
     setPending(false);
   }
 
@@ -150,7 +228,7 @@ export function SegmentForm({ fieldOptions }: { fieldOptions: SegmentFieldOption
       <div className="form-grid">
         <div className="field">
           <label htmlFor="segment-name">Segment name</label>
-          <input id="segment-name" name="name" placeholder="Ohio Veterinary Clients Without Internet" required />
+          <input id="segment-name" name="name" placeholder="Ohio Veterinary Clients Without Internet" defaultValue={segment?.name || ""} required />
         </div>
         <div className="field">
           <label htmlFor="segment-entity-type">Entity type</label>
@@ -170,7 +248,7 @@ export function SegmentForm({ fieldOptions }: { fieldOptions: SegmentFieldOption
       </div>
       <div className="field">
         <label htmlFor="segment-description">Description</label>
-        <textarea id="segment-description" name="description" placeholder="Veterinary clients in Ohio who are not currently using us for internet services." />
+        <textarea id="segment-description" name="description" placeholder="Veterinary clients in Ohio who are not currently using us for internet services." defaultValue={segment?.description || ""} />
       </div>
       <div className="card">
         <h3>Rules</h3>
@@ -243,8 +321,13 @@ export function SegmentForm({ fieldOptions }: { fieldOptions: SegmentFieldOption
       </div>
       <div className="actions">
         <button className="button primary" type="submit" disabled={pending}>
-          {pending ? "Saving..." : "Create Segment"}
+          {pending ? "Saving..." : submitLabel}
         </button>
+        {segment ? (
+          <button className="button secondary" type="button" disabled={pending} onClick={() => void handleDelete()}>
+            Delete Segment
+          </button>
+        ) : null}
         {message ? <span className="help">{message}</span> : null}
       </div>
     </form>
