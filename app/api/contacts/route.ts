@@ -27,11 +27,17 @@ export async function POST(request: NextRequest) {
 
     const contact = await prisma.contact.create({
       data: {
-        ...parsed,
+        companyId: parsed.companyId ?? null,
         firstName: parsed.firstName || name.firstName,
         lastName: parsed.lastName || name.lastName,
         fullName: parsed.fullName || name.fullName,
+        jobTitle: parsed.jobTitle ?? null,
         email: normalizeEmail(parsed.email),
+        phone: parsed.phone ?? null,
+        linkedinUrl: parsed.linkedinUrl ?? null,
+        status: parsed.status ?? "ACTIVE",
+        source: parsed.source ?? null,
+        notes: parsed.notes ?? null,
         customFieldsJson: normalizeCustomFields(parsed.customFields),
       },
     });

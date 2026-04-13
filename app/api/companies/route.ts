@@ -26,8 +26,17 @@ export async function POST(request: NextRequest) {
 
     const company = await prisma.company.create({
       data: {
-        ...parsed,
+        name: parsed.name,
+        businessType: parsed.businessType ?? null,
+        industry: parsed.industry ?? null,
+        website: parsed.website ?? null,
+        phone: parsed.phone ?? null,
+        city: parsed.city ?? null,
         state: parsed.state?.toUpperCase() || null,
+        postalCode: parsed.postalCode ?? null,
+        source: parsed.source ?? null,
+        notes: parsed.notes ?? null,
+        status: parsed.status ?? "LEAD",
         emailDomain: normalizeWebsite(parsed.website),
         customFieldsJson: normalizeCustomFields(parsed.customFields),
       },

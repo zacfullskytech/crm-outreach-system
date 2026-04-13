@@ -18,11 +18,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const contact = await prisma.contact.update({
       where: { id },
       data: {
-        ...parsed,
+        companyId: parsed.companyId,
         firstName: parsed.fullName !== undefined ? (parsed.firstName || name.firstName) : parsed.firstName,
         lastName: parsed.fullName !== undefined ? (parsed.lastName || name.lastName) : parsed.lastName,
         fullName: parsed.fullName !== undefined ? (parsed.fullName || name.fullName) : parsed.fullName,
+        jobTitle: parsed.jobTitle,
         email: parsed.email !== undefined ? normalizeEmail(parsed.email) : undefined,
+        phone: parsed.phone,
+        linkedinUrl: parsed.linkedinUrl,
+        status: parsed.status,
+        source: parsed.source,
+        notes: parsed.notes,
         customFieldsJson: parsed.customFields ? normalizeCustomFields(parsed.customFields) : undefined,
       },
     });
