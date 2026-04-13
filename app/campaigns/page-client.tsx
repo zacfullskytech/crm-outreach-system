@@ -6,7 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import type { Campaign, Segment, CampaignRecipient } from "@prisma/client";
 
 type CampaignWithRecipients = Campaign & { recipients: CampaignRecipient[] };
-type SegmentOption = Pick<Segment, "id" | "name">;
+type SegmentOption = Pick<Segment, "id" | "name" | "entityType">;
 
 function statusBadgeClass(status: string) {
   switch (status) {

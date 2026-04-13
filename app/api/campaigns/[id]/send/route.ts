@@ -23,6 +23,13 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     return NextResponse.json({ error: "Linked segment not found" }, { status: 404 });
   }
 
+  if (segment.entityType !== "contact") {
+    return NextResponse.json(
+      { error: `Campaign sending only supports contact segments right now. Linked segment type: ${segment.entityType}.` },
+      { status: 400 },
+    );
+  }
+
   const where = buildWhereFromSegment(segment.filterJson as never);
 
   const contacts = await prisma.contact.findMany({

@@ -5,6 +5,7 @@ import { FormEvent, useRef, useState } from "react";
 type SegmentOption = {
   id: string;
   name: string;
+  entityType: string;
 };
 
 type PreviewState = {
@@ -106,7 +107,7 @@ export function CampaignForm({ segments }: { segments: SegmentOption[] }) {
             <option value="">No segment selected</option>
             {segments.map((segment) => (
               <option key={segment.id} value={segment.id}>
-                {segment.name}
+                {segment.name} ({segment.entityType})
               </option>
             ))}
           </select>

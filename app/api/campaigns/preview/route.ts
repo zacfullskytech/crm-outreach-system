@@ -13,6 +13,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Segment not found" }, { status: 404 });
   }
 
+  if (segment.entityType !== "contact") {
+    return NextResponse.json(
+      { error: `Campaign preview only supports contact segments right now. Selected segment type: ${segment.entityType}.` },
+      { status: 400 },
+    );
+  }
+
   const where = buildWhereFromSegment(segment.filterJson as never);
 
   const [count, sample] = await Promise.all([
