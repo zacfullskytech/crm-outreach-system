@@ -7,7 +7,7 @@ import { MarketingAiStudio } from "@/components/marketing-ai-studio";
 import type { MarketingContent, Segment } from "@prisma/client";
 
 type MarketingContentRecord = MarketingContent;
-type SegmentOption = Pick<Segment, "id" | "name">;
+type SegmentOption = Pick<Segment, "id" | "name" | "entityType">;
 
 export function MarketingContentManager({ initialItems, initialSegments, isAdmin }: { initialItems: MarketingContentRecord[]; initialSegments: SegmentOption[]; isAdmin: boolean }) {
   const [items, setItems] = useState(initialItems);

@@ -16,7 +16,7 @@ type GeneratedAsset = {
 };
 
 type SavedMarketingContent = MarketingContent;
-type SegmentOption = Pick<Segment, "id" | "name">;
+type SegmentOption = Pick<Segment, "id" | "name" | "entityType">;
 
 const promptTemplates = [
   { key: "", label: "Auto-select template" },
@@ -136,7 +136,7 @@ export function MarketingAiStudio({
             <select id="ai-segment" value={selectedSegmentId} onChange={(event) => setSelectedSegmentId(event.target.value)}>
               <option value="">No segment selected</option>
               {segments.map((segment) => (
-                <option key={segment.id} value={segment.id}>{segment.name}</option>
+                <option key={segment.id} value={segment.id}>{segment.name} ({segment.entityType})</option>
               ))}
             </select>
           </div>

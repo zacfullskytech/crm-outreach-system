@@ -29,8 +29,8 @@ export default async function MarketingContentPage() {
       take: 200,
     }),
     prisma.segment.findMany({
-      where: { entityType: { in: ["contact", "company"] } },
-      select: { id: true, name: true },
+      where: { entityType: { in: ["contact", "company", "prospect"] } },
+      select: { id: true, name: true, entityType: true },
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
