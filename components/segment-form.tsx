@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { SegmentFieldOption } from "@/lib/segment-fields";
 
 const serviceOptions = [
@@ -43,6 +43,7 @@ export function SegmentForm({ fieldOptions }: { fieldOptions: SegmentFieldOption
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   const visibleFieldOptions = useMemo(
     () => fieldOptions.filter((option) => option.entityType === entityType),
@@ -137,7 +138,7 @@ export function SegmentForm({ fieldOptions }: { fieldOptions: SegmentFieldOption
       return;
     }
 
-    event.currentTarget.reset();
+    formRef.current?.reset();
     setRules([{ field: visibleFieldOptions[0]?.value || "", comparator: "equals", value: "" }]);
     setPreviewCount(null);
     setMessage("Segment created. Refresh to see it in the table.");
@@ -145,7 +146,7 @@ export function SegmentForm({ fieldOptions }: { fieldOptions: SegmentFieldOption
   }
 
   return (
-    <form onSubmit={onSubmit} className="inline-grid">
+    <form ref={formRef} onSubmit={onSubmit} className="inline-grid">
       <div className="form-grid">
         <div className="field">
           <label htmlFor="segment-name">Segment name</label>

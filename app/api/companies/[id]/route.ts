@@ -30,7 +30,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: error.issues[0]?.message || "Invalid company payload" }, { status: 400 });
     }
 
-    return NextResponse.json({ error: "Failed to update company" }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to update company" },
+      { status: 500 },
+    );
   }
 }
 
