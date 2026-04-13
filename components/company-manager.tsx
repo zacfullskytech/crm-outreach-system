@@ -10,6 +10,19 @@ type CompanyWithContacts = Company & { contacts: { id: string }[] };
 
 type SavedCompany = Partial<CompanyWithContacts> & { id: string; name: string };
 
+function readServices(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return [] as string[];
+  }
+
+  const raw = (value as Record<string, unknown>).services;
+  if (typeof raw !== "string") {
+    return [] as string[];
+  }
+
+  return raw.split(",").map((entry) => entry.trim()).filter(Boolean);
+}
+
 export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies: CompanyWithContacts[]; isAdmin: boolean }) {
   const [companies, setCompanies] = useState(initialCompanies);
   const [search, setSearch] = useState("");
@@ -29,7 +42,7 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
   const filtered = companies.filter((c) => {
     const q = search.toLowerCase();
     const customText = customFieldsToPairs(c.customFieldsJson).map((pair) => `${pair.key} ${pair.value}`).join(" ").toLowerCase();
-    const servicesText = Array.isArray(c.servicesJson) ? c.servicesJson.map((value) => String(value)).join(" ").toLowerCase() : "";
+    const servicesText = readServices(c.customFieldsJson).join(" ").toLowerCase();
     return (
       !q ||
       (c.name || "").toLowerCase().includes(q) ||
@@ -69,7 +82,7 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
               </svg>
               <input
                 type="search"
-                placeholder="Search by name, industry, city, or custom field…"
+                placeholder="Search by name, industry, city, service, or custom field…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="search-input"
@@ -83,21 +96,22 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
             </div>
           ) : (
             <div className="inline-grid">
-              {filtered.map((company) => (
-                <section key={company.id} className="card">
-                  <div className="card-header">
-                    <div>
-                      <h3>{company.name}</h3>
-                      <p className="help">{company.industry || "No industry"} · {company.city || "Unknown city"}{company.state ? `, ${company.state}` : ""}</p>
-                      {Array.isArray(company.servicesJson) && company.servicesJson.length > 0 ? (
-                        <p className="help">Services: {company.servicesJson.map((value) => String(value)).join(", ")}</p>
-                      ) : null}
+              {filtered.map((company) => {
+                const services = readServices(company.customFieldsJson);
+                return (
+                  <section key={company.id} className="card">
+                    <div className="card-header">
+                      <div>
+                        <h3>{company.name}</h3>
+                        <p className="help">{company.industry || "No industry"} · {company.city || "Unknown city"}{company.state ? `, ${company.state}` : ""}</p>
+                        {services.length > 0 ? <p className="help">Services: {services.join(", ")}</p> : null}
+                      </div>
+                      <span className="badge">{company.status}</span>
                     </div>
-                    <span className="badge">{company.status}</span>
-                  </div>
-                  <CompanyForm company={company} onSaved={upsertCompany} onDeleted={removeCompany} submitLabel="Save Company" />
-                </section>
-              ))}
+                    <CompanyForm company={company} onSaved={upsertCompany} onDeleted={removeCompany} submitLabel="Save Company" />
+                  </section>
+                );
+              })}
             </div>
           )}
         </section>

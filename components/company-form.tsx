@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { CustomFieldsEditor } from "@/components/custom-fields-editor";
-import { customFieldsToPairs } from "@/lib/custom-fields";
+import { customFieldsToPairs, normalizeCustomFieldKey } from "@/lib/custom-fields";
 import type { Company } from "@prisma/client";
 
 type CompanyRecord = Company & {
@@ -20,8 +20,21 @@ const serviceOptions = [
   "Pay Roll and HR Services",
 ] as const;
 
-function normalizeServices(value: unknown) {
-  return Array.isArray(value) ? value.map((entry) => String(entry)).filter(Boolean) : [];
+function readServices(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return [] as string[];
+  }
+
+  const raw = (value as Record<string, unknown>).services;
+  if (Array.isArray(raw)) {
+    return raw.map((entry) => String(entry)).filter(Boolean);
+  }
+
+  if (typeof raw === "string") {
+    return raw.split(",").map((entry) => entry.trim()).filter(Boolean);
+  }
+
+  return [];
 }
 
 export function CompanyForm({
@@ -38,9 +51,11 @@ export function CompanyForm({
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [customFields, setCustomFields] = useState(() =>
-    customFieldsToPairs(company?.customFieldsJson).map((field, index) => ({ ...field, id: `${index}-${field.key}` })),
+    customFieldsToPairs(company?.customFieldsJson)
+      .filter((field) => field.key !== "services")
+      .map((field, index) => ({ ...field, id: `${index}-${field.key}` })),
   );
-  const [selectedServices, setSelectedServices] = useState<string[]>(() => normalizeServices(company?.servicesJson));
+  const [selectedServices, setSelectedServices] = useState<string[]>(() => readServices(company?.customFieldsJson));
 
   const isEdit = Boolean(company);
   const actionLabel = useMemo(() => (pending ? "Saving..." : submitLabel), [pending, submitLabel]);
@@ -64,7 +79,10 @@ export function CompanyForm({
       notes: String(form.get("notes") || "") || null,
       status: String(form.get("status") || "LEAD"),
       services: selectedServices,
-      customFields: customFields.map(({ key, value }) => ({ key, value })),
+      customFields: [
+        ...customFields.map(({ key, value }) => ({ key, value })),
+        { key: normalizeCustomFieldKey("services"), value: selectedServices.join(", ") },
+      ],
     };
 
     const response = await fetch(isEdit ? `/api/companies/${company!.id}` : "/api/companies", {

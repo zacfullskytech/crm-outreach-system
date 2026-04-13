@@ -41,6 +41,6 @@ export function customFieldsToPairs(input: unknown) {
 
   return Object.entries(input as Record<string, unknown>).map(([key, value]) => ({
     key,
-    value: String(value ?? ""),
+    value: Array.isArray(value) ? value.map((entry) => String(entry)).join(", ") : String(value ?? ""),
   }));
 }

@@ -37,14 +37,14 @@ function buildJsonArrayServiceCondition(field: string, comparator: "has" | "not_
 
   if (field === "services") {
     return comparator === "has"
-      ? { servicesJson: { array_contains: [service] } }
-      : { NOT: { servicesJson: { array_contains: [service] } } };
+      ? { customFieldsJson: { path: ["services"], string_contains: service } }
+      : { NOT: { customFieldsJson: { path: ["services"], string_contains: service } } };
   }
 
   if (field === "company.services") {
     return comparator === "has"
-      ? { company: { servicesJson: { array_contains: [service] } } }
-      : { NOT: { company: { servicesJson: { array_contains: [service] } } } };
+      ? { company: { customFieldsJson: { path: ["services"], string_contains: service } } }
+      : { NOT: { company: { customFieldsJson: { path: ["services"], string_contains: service } } } };
   }
 
   throw new Error(`Unsupported service field: ${field}`);
