@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useRef, useState } from "react";
 import { CustomFieldsEditor } from "@/components/custom-fields-editor";
 import { customFieldsToPairs } from "@/lib/custom-fields";
 import type { Contact } from "@prisma/client";
@@ -32,6 +32,7 @@ export function ContactForm({
   const [customFields, setCustomFields] = useState(() =>
     customFieldsToPairs(contact?.customFieldsJson).map((field, index) => ({ ...field, id: `${index}-${field.key}` })),
   );
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   const isEdit = Boolean(contact);
   const actionLabel = useMemo(() => (pending ? "Saving..." : submitLabel), [pending, submitLabel]);
@@ -68,7 +69,7 @@ export function ContactForm({
     }
 
     if (!isEdit) {
-      event.currentTarget.reset();
+      formRef.current?.reset();
       setCustomFields([]);
     }
 
@@ -99,7 +100,7 @@ export function ContactForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="inline-grid">
+    <form ref={formRef} onSubmit={onSubmit} className="inline-grid">
       <div className="form-grid">
         <div className="field">
           <label htmlFor={`contact-full-name-${contact?.id || "new"}`}>Full name</label>

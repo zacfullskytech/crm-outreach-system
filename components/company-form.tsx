@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useRef, useState } from "react";
 import { CustomFieldsEditor } from "@/components/custom-fields-editor";
 import { customFieldsToPairs, normalizeCustomFieldKey } from "@/lib/custom-fields";
 import type { Company } from "@prisma/client";
@@ -56,6 +56,7 @@ export function CompanyForm({
       .map((field, index) => ({ ...field, id: `${index}-${field.key}` })),
   );
   const [selectedServices, setSelectedServices] = useState<string[]>(() => readServices(company?.customFieldsJson));
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   const isEdit = Boolean(company);
   const actionLabel = useMemo(() => (pending ? "Saving..." : submitLabel), [pending, submitLabel]);
@@ -99,7 +100,7 @@ export function CompanyForm({
     }
 
     if (!isEdit) {
-      event.currentTarget.reset();
+      formRef.current?.reset();
       setCustomFields([]);
       setSelectedServices([]);
     }
@@ -137,7 +138,7 @@ export function CompanyForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="inline-grid">
+    <form ref={formRef} onSubmit={onSubmit} className="inline-grid">
       <div className="form-grid">
         <div className="field">
           <label htmlFor={`company-name-${company?.id || "new"}`}>Company name</label>

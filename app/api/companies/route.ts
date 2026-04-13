@@ -39,6 +39,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.issues[0]?.message || "Invalid company payload" }, { status: 400 });
     }
 
-    return NextResponse.json({ error: "Failed to create company" }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to create company" },
+      { status: 500 },
+    );
   }
 }
