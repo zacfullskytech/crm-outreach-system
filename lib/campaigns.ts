@@ -120,12 +120,13 @@ export async function deliverCampaignRecipients(campaignId: string) {
   });
 
   if (pending.length === 0) {
-    await prisma.campaign.update({
-      where: { id: campaignId },
-      data: { status: "SENT", sentAt: new Date() },
-    });
-
-    return { sent: 0, failed: 0, remaining: 0, message: "No pending recipients, campaign marked SENT" };
+    const finalState = await finalizeCampaignDelivery(campaignId);
+    return {
+      sent: finalState.sent,
+      failed: finalState.failed,
+      remaining: finalState.remaining,
+      message: finalState.message,
+    };
   }
 
   const appUrl = process.env.APP_BASE_URL || "http://localhost:3000";
@@ -193,13 +194,51 @@ export async function deliverCampaignRecipients(campaignId: string) {
   });
 
   if (remaining === 0) {
-    await prisma.campaign.update({
-      where: { id: campaignId },
-      data: { status: "SENT", sentAt: new Date() },
-    });
+    const finalState = await finalizeCampaignDelivery(campaignId);
+    return {
+      sent: finalState.sent,
+      failed: finalState.failed,
+      remaining: finalState.remaining,
+      message: finalState.message,
+    };
   }
 
   return { sent, failed, remaining };
+}
+
+async function finalizeCampaignDelivery(campaignId: string) {
+  const [sentCount, failedCount, pendingCount] = await Promise.all([
+    prisma.campaignRecipient.count({ where: { campaignId, status: "SENT" } }),
+    prisma.campaignRecipient.count({ where: { campaignId, status: "FAILED" } }),
+    prisma.campaignRecipient.count({ where: { campaignId, status: "PENDING" } }),
+  ]);
+
+  if (pendingCount > 0) {
+    return {
+      sent: sentCount,
+      failed: failedCount,
+      remaining: pendingCount,
+      message: "Campaign still has pending recipients",
+    };
+  }
+
+  const nextStatus = sentCount > 0 ? "SENT" : "FAILED";
+  await prisma.campaign.update({
+    where: { id: campaignId },
+    data: {
+      status: nextStatus,
+      sentAt: sentCount > 0 ? new Date() : null,
+    },
+  });
+
+  return {
+    sent: sentCount,
+    failed: failedCount,
+    remaining: 0,
+    message: nextStatus === "SENT"
+      ? "Campaign completed with at least one successful delivery"
+      : "Campaign delivery failed for all recipients",
+  };
 }
 
 export async function runCampaignNow(campaignId: string) {
