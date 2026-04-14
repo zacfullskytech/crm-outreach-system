@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function CampaignsPage() {
   const { appUser } = await requireAuth();
 
-  const [campaigns, segments, settings] = await Promise.all([
+  const [campaigns, segments, settings, marketingItems] = await Promise.all([
     prisma.campaign.findMany({
       include: { recipients: true },
       orderBy: { createdAt: "desc" },
@@ -21,7 +21,32 @@ export default async function CampaignsPage() {
       take: 100,
     }),
     getGeneralSettings(),
+    prisma.marketingContent.findMany({
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        contentType: true,
+        channel: true,
+        bodyHtml: true,
+        bodyText: true,
+        callToAction: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
   ]);
+
+  const campaignContentOptions = marketingItems.map((item) => ({
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    contentType: item.contentType,
+    channel: item.channel,
+    bodyHtml: item.bodyHtml,
+    bodyText: item.bodyText,
+    callToAction: item.callToAction,
+  }));
 
   return (
     <CampaignsPageClient
@@ -32,6 +57,7 @@ export default async function CampaignsPage() {
         fromEmail: settings.defaultFromEmail,
         replyTo: settings.defaultReplyTo,
       }}
+      initialMarketingContent={campaignContentOptions}
       isAdmin={appUser.role === "admin"}
     />
   );

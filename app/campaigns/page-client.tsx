@@ -7,6 +7,16 @@ import type { Campaign, Segment, CampaignRecipient } from "@prisma/client";
 
 type CampaignWithRecipients = Campaign & { recipients: CampaignRecipient[] };
 type SegmentOption = Pick<Segment, "id" | "name" | "entityType">;
+type MarketingContentOption = {
+  id: string;
+  title: string;
+  description: string | null;
+  contentType: string;
+  channel: string | null;
+  bodyHtml: string | null;
+  bodyText: string | null;
+  callToAction: string | null;
+};
 
 function statusBadgeClass(status: string) {
   switch (status) {
@@ -27,11 +37,13 @@ export function CampaignsPageClient({
   initialCampaigns,
   initialSegments,
   initialDefaults,
+  initialMarketingContent,
   isAdmin,
 }: {
   initialCampaigns: CampaignWithRecipients[];
   initialSegments: SegmentOption[];
   initialDefaults: { fromName: string; fromEmail: string; replyTo: string };
+  initialMarketingContent: MarketingContentOption[];
   isAdmin: boolean;
 }) {
   const [campaigns] = useState(initialCampaigns);
@@ -72,7 +84,7 @@ export function CampaignsPageClient({
               {isCreateOpen ? "Collapse" : "Expand"}
             </button>
           </div>
-          {isCreateOpen ? <CampaignForm segments={initialSegments} defaults={initialDefaults} /> : null}
+          {isCreateOpen ? <CampaignForm segments={initialSegments} defaults={initialDefaults} marketingContent={initialMarketingContent} /> : null}
         </section>
 
         <section className="card collapsible-card">

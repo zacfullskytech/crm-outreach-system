@@ -8,6 +8,17 @@ type SegmentOption = {
   entityType: string;
 };
 
+type MarketingContentOption = {
+  id: string;
+  title: string;
+  description: string | null;
+  contentType: string;
+  channel: string | null;
+  bodyHtml: string | null;
+  bodyText: string | null;
+  callToAction: string | null;
+};
+
 type PreviewState = {
   count: number;
   sample: Array<{
@@ -21,12 +32,15 @@ type PreviewState = {
 export function CampaignForm({
   segments,
   defaults,
+  marketingContent,
 }: {
   segments: SegmentOption[];
   defaults: { fromName: string; fromEmail: string; replyTo: string };
+  marketingContent: MarketingContentOption[];
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState(segments[0]?.id || "");
+  const [selectedMarketingContentId, setSelectedMarketingContentId] = useState("");
   const [preview, setPreview] = useState<PreviewState>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -51,6 +65,31 @@ export function CampaignForm({
 
     setPreview({ count: body.count, sample: body.sample });
     setPending(false);
+  }
+
+  function applyMarketingContent(contentId: string) {
+    setSelectedMarketingContentId(contentId);
+
+    const content = marketingContent.find((item) => item.id === contentId);
+    if (!content || !formRef.current) {
+      return;
+    }
+
+    const subjectInput = formRef.current.elements.namedItem("subject") as HTMLInputElement | null;
+    const htmlInput = formRef.current.elements.namedItem("templateHtml") as HTMLTextAreaElement | null;
+    const textInput = formRef.current.elements.namedItem("templateText") as HTMLTextAreaElement | null;
+
+    if (subjectInput && !subjectInput.value.trim()) {
+      subjectInput.value = content.callToAction?.trim() || content.title;
+    }
+
+    if (htmlInput && !htmlInput.value.trim() && content.bodyHtml) {
+      htmlInput.value = content.bodyHtml;
+    }
+
+    if (textInput && !textInput.value.trim() && content.bodyText) {
+      textInput.value = content.bodyText;
+    }
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -99,6 +138,7 @@ export function CampaignForm({
 
     formRef.current?.reset();
     setSelectedSegmentId("");
+    setSelectedMarketingContentId("");
     setPreview(null);
     setMessage("Campaign created. Refresh to see it in the table.");
     setPending(false);
@@ -111,6 +151,22 @@ export function CampaignForm({
       {!hasSegments ? <p className="help">Create a segment first so this campaign has an audience.</p> : null}
 
       <div className="form-grid">
+        <div className="field">
+          <label htmlFor="campaign-marketing-content">Marketing content</label>
+          <select
+            id="campaign-marketing-content"
+            value={selectedMarketingContentId}
+            onChange={(event) => applyMarketingContent(event.target.value)}
+          >
+            <option value="">No library content selected</option>
+            {marketingContent.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.title} ({item.contentType}{item.channel ? ` · ${item.channel}` : ""})
+              </option>
+            ))}
+          </select>
+          <p className="help">Selecting a library item preloads the campaign subject and body if those fields are still empty.</p>
+        </div>
         <div className="field">
           <label htmlFor="campaign-name">Campaign name</label>
           <input id="campaign-name" name="name" placeholder="Texas Vet Intro" required />
