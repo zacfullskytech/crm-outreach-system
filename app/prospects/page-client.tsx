@@ -5,6 +5,8 @@ import { ProspectForm } from "@/components/prospect-form";
 import { AppShell } from "@/components/app-shell";
 import type { Prospect, ProspectCandidate, ProspectSearchJob } from "@prisma/client";
 
+type CandidateEvidence = { kind?: string; value?: unknown; note?: string };
+
 type SearchJob = ProspectSearchJob & {
   _count?: {
     candidates: number;
@@ -17,6 +19,30 @@ function splitCsv(value: string) {
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
+}
+
+function readEvidence(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [] as CandidateEvidence[];
+  }
+
+  return value.filter((item): item is CandidateEvidence => Boolean(item) && typeof item === "object");
+}
+
+function renderEvidenceValue(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.filter(Boolean).join(", ");
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value == null) {
+    return "";
+  }
+
+  return JSON.stringify(value);
 }
 
 export function ProspectsPageClient({
@@ -282,37 +308,63 @@ export function ProspectsPageClient({
               <div className="empty-state"><p>No candidates in this view.</p></div>
             ) : (
               <div className="prospecting-list">
-                {filteredCandidates.map((candidate) => (
-                  <div key={candidate.id} className="prospecting-candidate">
-                    <div className="prospecting-candidate-head">
-                      <div>
-                        <strong>{candidate.companyName}</strong>
-                        <p className="help">{candidate.contactName || "No contact found"} · {candidate.industry || "Unknown industry"}</p>
+                {filteredCandidates.map((candidate) => {
+                  const evidence = readEvidence(candidate.evidenceJson);
+
+                  return (
+                    <div key={candidate.id} className="prospecting-candidate">
+                      <div className="prospecting-candidate-head">
+                        <div>
+                          <strong>{candidate.companyName}</strong>
+                          <p className="help">{candidate.contactName || "No contact found"} · {candidate.industry || "Unknown industry"}</p>
+                        </div>
+                        <span className={matchBadgeClass(candidate.matchStatus)}>{candidate.matchStatus}</span>
                       </div>
-                      <span className={matchBadgeClass(candidate.matchStatus)}>{candidate.matchStatus}</span>
+                      <p className="help">{candidate.city || "Unknown city"}{candidate.state ? `, ${candidate.state}` : ""} · score {candidate.score ?? 0}</p>
+                      {candidate.sourceUrl ? (
+                        <p className="help">
+                          Source: <a href={candidate.sourceUrl} target="_blank" rel="noreferrer">{candidate.sourceUrl}</a>
+                        </p>
+                      ) : null}
+                      {candidate.matchReason ? <p className="help">{candidate.matchReason}</p> : null}
+                      {evidence.length > 0 ? (
+                        <div className="prospecting-evidence">
+                          {evidence.slice(0, 5).map((entry, index) => {
+                            const value = renderEvidenceValue(entry.value ?? entry.note);
+                            if (!value) {
+                              return null;
+                            }
+
+                            return (
+                              <div key={`${candidate.id}-evidence-${index}`} className="prospecting-evidence-item">
+                                <span className="prospecting-evidence-label">{entry.kind || "evidence"}</span>
+                                <span className="prospecting-evidence-value">{value}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                      <div className="actions">
+                        <button
+                          className="button primary"
+                          type="button"
+                          disabled={pendingCandidateId === candidate.id || candidate.status !== "NEW"}
+                          onClick={() => void reviewCandidate(candidate.id, "APPROVED")}
+                        >
+                          {pendingCandidateId === candidate.id ? "Working..." : candidate.status === "IMPORTED" ? "Imported" : "Approve"}
+                        </button>
+                        <button
+                          className="button secondary"
+                          type="button"
+                          disabled={pendingCandidateId === candidate.id || candidate.status !== "NEW"}
+                          onClick={() => void reviewCandidate(candidate.id, "REJECTED")}
+                        >
+                          Reject
+                        </button>
+                      </div>
                     </div>
-                    <p className="help">{candidate.city || "Unknown city"}{candidate.state ? `, ${candidate.state}` : ""} · score {candidate.score ?? 0}</p>
-                    {candidate.matchReason ? <p className="help">{candidate.matchReason}</p> : null}
-                    <div className="actions">
-                      <button
-                        className="button primary"
-                        type="button"
-                        disabled={pendingCandidateId === candidate.id || candidate.status !== "NEW"}
-                        onClick={() => void reviewCandidate(candidate.id, "APPROVED")}
-                      >
-                        {pendingCandidateId === candidate.id ? "Working..." : candidate.status === "IMPORTED" ? "Imported" : "Approve"}
-                      </button>
-                      <button
-                        className="button secondary"
-                        type="button"
-                        disabled={pendingCandidateId === candidate.id || candidate.status !== "NEW"}
-                        onClick={() => void reviewCandidate(candidate.id, "REJECTED")}
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </article>

@@ -157,11 +157,71 @@ function detectBusinessType(text: string) {
   return null;
 }
 
+function extractContactName(text: string) {
+  const patterns = [
+    /(?:dr\.?|doctor)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)/,
+    /(?:owner|founder|medical director|practice manager|office manager)[:\s-]+([A-Z][a-z]+\s+[A-Z][a-z]+)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[1]) {
+      return match[1].trim();
+    }
+  }
+
+  return null;
+}
+
 function extractCompanyName(title: string, url: string) {
   const cleanTitle = title.split(/[|\-–]/)[0]?.trim();
   if (cleanTitle) return cleanTitle;
   const domain = normalizeWebsite(url);
   return domain ? domain.replace(/\.[a-z]+$/, "").replace(/[-_]/g, " ") : "Unknown prospect";
+}
+
+async function fetchPageText(url: string) {
+  try {
+    const pageResponse = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; FullSkyProspectingBot/1.0)",
+      },
+      cache: "no-store",
+    });
+
+    if (!pageResponse.ok) {
+      return "";
+    }
+
+    const pageHtml = await pageResponse.text();
+    return pageHtml
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 6000);
+  } catch {
+    return "";
+  }
+}
+
+async function fetchSupportingPageText(url: string) {
+  const normalizedDomain = normalizeWebsite(url);
+  if (!normalizedDomain) {
+    return { supportingUrl: null, text: "" };
+  }
+
+  const paths = ["/contact", "/about", "/team", "/our-team", "/staff"];
+  for (const path of paths) {
+    const supportingUrl = `https://${normalizedDomain}${path}`;
+    const text = await fetchPageText(supportingUrl);
+    if (text) {
+      return { supportingUrl, text };
+    }
+  }
+
+  return { supportingUrl: null, text: "" };
 }
 
 export async function discoverProspectCandidates(params: {
@@ -212,43 +272,27 @@ export async function discoverProspectCandidates(params: {
         continue;
       }
 
-      let bodyText = "";
-      try {
-        const pageResponse = await fetch(url, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (compatible; FullSkyProspectingBot/1.0)",
-          },
-          cache: "no-store",
-        });
-        if (pageResponse.ok) {
-          const pageHtml = await pageResponse.text();
-          bodyText = pageHtml
-            .replace(/<script[\s\S]*?<\/script>/gi, " ")
-            .replace(/<style[\s\S]*?<\/style>/gi, " ")
-            .replace(/<[^>]+>/g, " ")
-            .replace(/\s+/g, " ")
-            .trim()
-            .slice(0, 6000);
-        }
-      } catch {
-        // Ignore fetch failures for individual pages; search result evidence is still useful.
-      }
+      const bodyText = await fetchPageText(url);
+      const supporting = await fetchSupportingPageText(url);
+      const combinedText = `${bodyText} ${supporting.text}`.trim();
 
-      const emails = extractEmails(bodyText);
-      const phones = extractPhones(bodyText);
+      const emails = extractEmails(combinedText);
+      const phones = extractPhones(combinedText);
       const cityState = geography.find((entry) => lower.includes(entry.toLowerCase())) || geography[0] || null;
       const city = cityState?.split(",")[0]?.trim() || null;
       const state = cityState?.split(",")[1]?.trim()?.slice(0, 2).toUpperCase() || null;
       const website = normalizeWebsite(url) ? `https://${normalizeWebsite(url)}` : url;
       const companyName = extractCompanyName(rawTitle, url);
+      const contactName = extractContactName(combinedText);
 
       results.push({
         companyName,
+        contactName,
         email: emails[0] || null,
         phone: phones[0] || null,
         website,
         industry: params.industry || includeKeywords[0] || null,
-        businessType: detectBusinessType(`${rawTitle} ${bodyText}`),
+        businessType: detectBusinessType(`${rawTitle} ${combinedText}`),
         city,
         state,
         source: "Web discovery",
@@ -258,6 +302,8 @@ export async function discoverProspectCandidates(params: {
           { kind: "title", value: rawTitle },
           { kind: "emails", value: emails },
           { kind: "phones", value: phones },
+          { kind: "supporting_url", value: supporting.supportingUrl },
+          { kind: "contact_name", value: contactName },
         ],
       });
     }

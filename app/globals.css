@@ -805,6 +805,35 @@ main {
   grid-column: span 2;
 }
 
+.prospecting-evidence {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.prospecting-evidence-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--gray-100);
+  border: 1px solid var(--line);
+}
+
+.prospecting-evidence-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gray-500);
+  font-weight: 600;
+}
+
+.prospecting-evidence-value {
+  font-size: 0.88rem;
+  color: var(--blue-deep);
+  word-break: break-word;
+}
+
 /* Sidebar footer */
 .sidebar-footer {
   margin-top: auto;
