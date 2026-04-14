@@ -49,6 +49,7 @@ These must be present during `docker build`.
 
 ### Optional runtime vars
 
+- `BRAVE_API_KEY` for Prospecting Studio web discovery
 - `RESEND_API_KEY` when `EMAIL_PROVIDER=resend`
 - `MAILGUN_API_KEY` when `EMAIL_PROVIDER=mailgun`
 - `MAILGUN_DOMAIN` when `EMAIL_PROVIDER=mailgun`
@@ -131,6 +132,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
 APP_BASE_URL=https://<container-app-fqdn>
 NEXT_PUBLIC_APP_BASE_URL=https://<container-app-fqdn>
 EMAIL_PROVIDER=dry-run
+BRAVE_API_KEY=<your-brave-search-api-key>
 DEFAULT_FROM_EMAIL=campaigns@example.com
 DEFAULT_FROM_NAME=Field Notes CRM
 ```

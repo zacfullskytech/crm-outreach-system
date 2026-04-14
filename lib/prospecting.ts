@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { normalizeEmail, normalizeWebsite } from "@/lib/utils";
 import { scoreProspect } from "@/lib/prospects";
+import { searchWeb } from "@/lib/search-provider";
 
 const SEARCH_USER_AGENT = "Mozilla/5.0 (compatible; FullSkyProspectingBot/1.0)";
 const FALLBACK_BUSINESS_TERMS = ["company", "business", "services", "office", "clinic"];
@@ -25,7 +26,7 @@ type DiscoveryCandidate = {
 export type DiscoveryRunResult = {
   candidates: DiscoveryCandidate[];
   mode: "web" | "seed" | "empty" | "blocked";
-  provider: "duckduckgo";
+  provider: "brave";
   blockedReason?: string | null;
   queryCount: number;
 };
@@ -296,36 +297,22 @@ export async function discoverProspectCandidates(params: {
 
   for (const query of queries) {
     const queryExclude = excludeKeywords.map((keyword) => ` -${keyword}`).join("");
-    const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(`${query}${queryExclude}`)}`;
 
-    let response: Response;
+    let matches: Array<{ url: string; rawTitle: string }> = [];
     try {
-      response = await fetch(searchUrl, {
-        headers: {
-          "User-Agent": SEARCH_USER_AGENT,
-          Accept: "text/html,application/xhtml+xml",
-        },
-        cache: "no-store",
-      });
-    } catch {
-      continue;
-    }
-
-    if (!response.ok) {
-      continue;
-    }
-
-    const html = await response.text();
-    if (response.status === 202 && html.includes("anomaly-modal") && html.includes("bots use DuckDuckGo too")) {
-      blockedReason = "DuckDuckGo blocked automated search traffic with a bot challenge.";
+      const searchResults = await searchWeb(`${query}${queryExclude}`, 8);
+      matches = searchResults.map((result) => ({
+        url: result.url,
+        rawTitle: result.title,
+      }));
+    } catch (error) {
+      blockedReason = error instanceof Error ? error.message : "Brave Search blocked the discovery run.";
       break;
     }
 
-    const matches = Array.from(html.matchAll(/<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/g)).slice(0, 8);
-
     for (const match of matches) {
-      const url = match[1]?.replace(/&amp;/g, "&");
-      const rawTitle = match[2]?.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      const url = match.url?.replace(/&amp;/g, "&");
+      const rawTitle = match.rawTitle?.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
       if (!url || !rawTitle) {
         continue;
       }
@@ -403,7 +390,7 @@ export async function discoverProspectCandidates(params: {
   return {
     candidates,
     mode: blockedReason ? "blocked" : candidates.length > 0 ? "web" : "empty",
-    provider: "duckduckgo",
+    provider: "brave",
     blockedReason,
     queryCount: queries.length,
   };

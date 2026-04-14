@@ -357,6 +357,7 @@ export function ProspectsPageClient({
                         <strong>{job.name}</strong>
                         <p className="help">{job.industry || "General search"} · {job.status} · {job.realDataOnly ? "real-data-only" : discoveryMode === "seed" ? "seed fallback used" : discoveryMode === "blocked" ? "search provider blocked" : "web discovery"}</p>
                         {blockedReason ? <p className="help">{blockedReason}</p> : null}
+                        {discoveryMode === "web" ? <p className="help">Provider: Brave Search</p> : null}
                       </div>
                       <div className="prospecting-metrics">
                         <span>{job._count?.candidates ?? 0} candidates</span>

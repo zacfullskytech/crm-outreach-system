@@ -57,6 +57,7 @@ Recommended path from current experience:
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL used by browser auth clients |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional browser fallback for local/dev; production browser config is served at runtime |
 | `NEXT_PUBLIC_APP_BASE_URL` | Public URL used by client-side fetches; for container builds this must be injected at build time |
+| `BRAVE_API_KEY` | Brave Search API key used for Prospecting Studio web discovery |
 | `EMAIL_PROVIDER` | `dry-run`, `resend`, or `mailgun` |
 | `RESEND_API_KEY` | Resend API key |
 | `MAILGUN_API_KEY` | Mailgun API key |
