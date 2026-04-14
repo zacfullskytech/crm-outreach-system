@@ -1,16 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "recovery">("signin");
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const invited = searchParams.get("invited");
+    const recovery = searchParams.get("recovery");
+    const nextError = searchParams.get("error");
+    const nextEmail = searchParams.get("email");
+
+    if (nextEmail) {
+      setEmail(nextEmail);
+    }
+
+    if (invited === "1") {
+      setMode("signup");
+      setNotice("Your invite was accepted. Set your password to finish joining the platform.");
+      setError(null);
+      return;
+    }
+
+    if (recovery === "1") {
+      setMode("recovery");
+      setNotice("Your recovery link is active. Enter a new password to continue.");
+      setError(null);
+      return;
+    }
+
+    if (nextError) {
+      setError(nextError);
+    }
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,18 +51,38 @@ export function LoginPage() {
     const supabase = await createClient();
 
     if (mode === "signup") {
-      const { error } = await supabase.auth.signUp({
-        email,
+      const { error } = await supabase.auth.updateUser({
         password,
+        data: email ? { name: email } : undefined,
       });
+
       if (error) {
         setError(error.message);
         setLoading(false);
       } else {
-        setError(null);
-        setLoading(false);
-        setMode("signin");
+        setNotice("Password set. Signing you in now.");
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) {
+          setError(signInError.message);
+          setLoading(false);
+          return;
+        }
+        router.push("/");
+        router.refresh();
       }
+      return;
+    }
+
+    if (mode === "recovery") {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+      setNotice("Password updated. Redirecting…");
+      router.push("/");
+      router.refresh();
       return;
     }
 
@@ -65,17 +116,20 @@ export function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
-          <div className="field">
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-            />
-          </div>
+          {mode !== "recovery" ? (
+            <div className="field">
+              <label htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                readOnly={mode === "signup" && Boolean(searchParams.get("email"))}
+              />
+            </div>
+          ) : null}
 
           <div className="field">
             <label htmlFor="password">Password</label>
@@ -90,25 +144,23 @@ export function LoginPage() {
             />
           </div>
 
+          {notice && <div className="notice-msg">{notice}</div>}
           {error && <div className="error-msg">{error}</div>}
 
           <button type="submit" className="button primary" disabled={loading}>
-            {loading ? "Please wait…" : mode === "signin" ? "Sign In" : "Create Account"}
+            {loading ? "Please wait…" : mode === "signin" ? "Sign In" : mode === "signup" ? "Set Password" : "Update Password"}
           </button>
         </form>
 
         <div className="login-toggle">
           {mode === "signin" ? (
             <p>
-              No account yet?{" "}
-              <button onClick={() => setMode("signup")} className="link-btn">
-                Create one
-              </button>
+              Need to finish an invite? Open the email link, then set your password here.
             </p>
           ) : (
             <p>
-              Already have an account?{" "}
-              <button onClick={() => setMode("signin")} className="link-btn">
+              Already have a password?{" "}
+              <button onClick={() => { setMode("signin"); setNotice(null); setError(null); }} className="link-btn">
                 Sign in
               </button>
             </p>
@@ -201,6 +253,14 @@ export function LoginPage() {
           outline: none;
           border-color: var(--blue-bright);
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .notice-msg {
+          padding: 10px 14px;
+          background: #dbeafe;
+          color: #1d4ed8;
+          border-radius: 8px;
+          font-size: 0.85rem;
         }
 
         .error-msg {
