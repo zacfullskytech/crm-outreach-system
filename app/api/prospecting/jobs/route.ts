@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { requireAuth } from "@/lib/supabase/auth";
 import { prisma } from "@/lib/db";
-import { buildSeedCandidates, findProspectMatch, scoreProspectCandidate } from "@/lib/prospecting";
+import { buildSeedCandidates, discoverProspectCandidates, findProspectMatch, scoreProspectCandidate } from "@/lib/prospecting";
 import { prospectSearchJobSchema } from "@/lib/validators";
 
 export async function GET() {
@@ -26,12 +26,22 @@ export async function POST(request: NextRequest) {
     const payload = await request.json();
     const parsed = prospectSearchJobSchema.parse(payload);
 
-    const seededCandidates = buildSeedCandidates({
+    const discoveredCandidates = await discoverProspectCandidates({
       industry: parsed.industry,
       geography: parsed.geography,
       includeKeywords: parsed.includeKeywords,
+      excludeKeywords: parsed.excludeKeywords,
       companyTypes: parsed.companyTypes,
     });
+
+    const seededCandidates = discoveredCandidates.length > 0
+      ? discoveredCandidates
+      : buildSeedCandidates({
+          industry: parsed.industry,
+          geography: parsed.geography,
+          includeKeywords: parsed.includeKeywords,
+          companyTypes: parsed.companyTypes,
+        });
 
     const job = await prisma.prospectSearchJob.create({
       data: {

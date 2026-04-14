@@ -106,7 +106,7 @@ export function ProspectsPageClient({
     if (nextCandidates.length > 0) {
       setCandidates((current) => [...nextCandidates, ...current.filter((entry) => !nextCandidates.some((item) => item.id === entry.id))]);
     }
-    setJobMessage(`Prospecting job created with ${job._count?.candidates ?? nextCandidates.length} seeded candidates.`);
+    setJobMessage(`Prospecting job created with ${job._count?.candidates ?? nextCandidates.length} discovered candidates.`);
     event.currentTarget.reset();
     setPendingJob(false);
   }
@@ -193,7 +193,7 @@ export function ProspectsPageClient({
           <div className="card-header">
             <div>
               <h3>Create Prospecting Job</h3>
-              <p className="help">Phase 1 seeds review candidates from your search intent and immediately cross-checks current CRM records.</p>
+              <p className="help">Phase 1 runs public web discovery from your search intent, captures evidence, and immediately cross-checks current CRM records.</p>
             </div>
           </div>
           <form onSubmit={createSearchJob} className="inline-grid">
@@ -241,7 +241,7 @@ export function ProspectsPageClient({
             <div className="card-header">
               <div>
                 <h3>Search Jobs</h3>
-                <p className="help">Saved search definitions and seeded output counts.</p>
+                <p className="help">Saved search definitions and discovery output counts.</p>
               </div>
             </div>
             {jobs.length === 0 ? (
@@ -268,7 +268,7 @@ export function ProspectsPageClient({
             <div className="card-header">
               <div>
                 <h3>Discovery Queue</h3>
-                <p className="help">Review AI-seeded candidates before they enter accepted prospects.</p>
+                <p className="help">Review discovered candidates before they enter accepted prospects.</p>
               </div>
               <select className="filter-select" value={candidateFilter} onChange={(event) => setCandidateFilter(event.target.value)}>
                 <option value="ALL">All candidates</option>
