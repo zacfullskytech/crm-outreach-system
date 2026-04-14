@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
   }
 
   let invited = false;
+  let inviteSkippedReason: string | null = null;
 
   try {
     const adminClient = createAdminClient();
@@ -64,10 +65,15 @@ export async function POST(request: NextRequest) {
       });
 
       if (inviteResult.error) {
-        throw inviteResult.error;
+        const message = inviteResult.error.message || "Failed to invite user.";
+        if (message.toLowerCase().includes("rate limit")) {
+          inviteSkippedReason = "Invite email rate limit exceeded. The user was added to the platform list, but the invite email was not sent. Try again in a few minutes if they still need an email invite.";
+        } else {
+          throw inviteResult.error;
+        }
+      } else {
+        invited = true;
       }
-
-      invited = true;
     }
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to invite user." }, { status: 500 });
@@ -82,5 +88,5 @@ export async function POST(request: NextRequest) {
         data: { role, name: name ?? user.name },
       });
 
-  return NextResponse.json({ data: saved, invited });
+  return NextResponse.json({ data: saved, invited, inviteSkippedReason });
 }

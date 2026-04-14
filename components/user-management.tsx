@@ -46,7 +46,10 @@ export function UserManagement({ initialUsers, currentUserId }: { initialUsers: 
       const others = current.filter((user) => user.id !== saved.id);
       return [...others, saved].sort((a, b) => a.email.localeCompare(b.email));
     });
-    setMessage(body.invited ? `Invitation sent to ${saved.email}.` : `Saved ${saved.email}.`);
+    setMessage(
+      body.inviteSkippedReason ||
+      (body.invited ? `Invitation sent to ${saved.email}.` : `Saved ${saved.email}.`),
+    );
     event.currentTarget.reset();
     setPending(false);
   }
@@ -124,6 +127,7 @@ export function UserManagement({ initialUsers, currentUserId }: { initialUsers: 
           </button>
           {message ? <span className="help">{message}</span> : null}
         </div>
+        <p className="help">If Supabase email rate limits are hit, the platform user can still be saved and invited again later.</p>
       </form>
 
       <table className="table">

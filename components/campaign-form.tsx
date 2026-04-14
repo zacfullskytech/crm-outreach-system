@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 type SegmentOption = {
   id: string;
@@ -20,6 +20,14 @@ type MarketingContentOption = {
   imageUrl: string | null;
 };
 
+type CampaignDraftSeed = {
+  name?: string;
+  subject?: string;
+  templateHtml?: string;
+  templateText?: string;
+  marketingContentId?: string;
+};
+
 type PreviewState = {
   count: number;
   sample: Array<{
@@ -34,10 +42,14 @@ export function CampaignForm({
   segments,
   defaults,
   marketingContent,
+  draftSeed,
+  onDraftApplied,
 }: {
   segments: SegmentOption[];
   defaults: { fromName: string; fromEmail: string; replyTo: string };
   marketingContent: MarketingContentOption[];
+  draftSeed?: CampaignDraftSeed | null;
+  onDraftApplied?: () => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState(segments[0]?.id || "");
@@ -98,6 +110,27 @@ export function CampaignForm({
       textInput.value = textParts.join("\n\n");
     }
   }
+
+  useEffect(() => {
+    if (!draftSeed || !formRef.current) {
+      return;
+    }
+
+    const nameInput = formRef.current.elements.namedItem("name") as HTMLInputElement | null;
+    const subjectInput = formRef.current.elements.namedItem("subject") as HTMLInputElement | null;
+    const htmlInput = formRef.current.elements.namedItem("templateHtml") as HTMLTextAreaElement | null;
+    const textInput = formRef.current.elements.namedItem("templateText") as HTMLTextAreaElement | null;
+
+    if (nameInput && draftSeed.name) nameInput.value = draftSeed.name;
+    if (subjectInput && draftSeed.subject) subjectInput.value = draftSeed.subject;
+    if (htmlInput && draftSeed.templateHtml) htmlInput.value = draftSeed.templateHtml;
+    if (textInput && draftSeed.templateText) textInput.value = draftSeed.templateText;
+    if (draftSeed.marketingContentId) {
+      applyMarketingContent(draftSeed.marketingContentId);
+    }
+
+    onDraftApplied?.();
+  }, [draftSeed, onDraftApplied]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

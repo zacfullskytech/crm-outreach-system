@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CampaignForm } from "@/components/campaign-form";
+import { MarketingAiStudio } from "@/components/marketing-ai-studio";
 import { AppShell } from "@/components/app-shell";
 import type { Campaign, Segment, CampaignRecipient } from "@prisma/client";
 
@@ -34,6 +35,14 @@ function statusBadgeClass(status: string) {
   }
 }
 
+type CampaignDraftSeed = {
+  name?: string;
+  subject?: string;
+  templateHtml?: string;
+  templateText?: string;
+  marketingContentId?: string;
+} | null;
+
 export function CampaignsPageClient({
   initialCampaigns,
   initialSegments,
@@ -48,6 +57,7 @@ export function CampaignsPageClient({
   isAdmin: boolean;
 }) {
   const [campaigns] = useState(initialCampaigns);
+  const [draftSeed, setDraftSeed] = useState<CampaignDraftSeed>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isCreateOpen, setIsCreateOpen] = useState(true);
@@ -75,6 +85,25 @@ export function CampaignsPageClient({
           </p>
         </section>
 
+        <section className="card collapsible-card">
+          <div className="card-header collapsible-header">
+            <div>
+              <h3>AI Campaign Drafts</h3>
+              <p className="help">Generate campaign-ready copy and push it directly into the draft form.</p>
+            </div>
+            <button className="button secondary" type="button" onClick={() => setIsCreateOpen((value) => !value)}>
+              {isCreateOpen ? "Collapse Draft Form" : "Expand Draft Form"}
+            </button>
+          </div>
+          <MarketingAiStudio
+            segments={initialSegments}
+            onUseCampaignDraft={(draft) => {
+              setDraftSeed(draft);
+              setIsCreateOpen(true);
+            }}
+          />
+        </section>
+
         <section className="card form-section collapsible-card">
           <div className="card-header collapsible-header">
             <div>
@@ -85,7 +114,15 @@ export function CampaignsPageClient({
               {isCreateOpen ? "Collapse" : "Expand"}
             </button>
           </div>
-          {isCreateOpen ? <CampaignForm segments={initialSegments} defaults={initialDefaults} marketingContent={initialMarketingContent} /> : null}
+          {isCreateOpen ? (
+            <CampaignForm
+              segments={initialSegments}
+              defaults={initialDefaults}
+              marketingContent={initialMarketingContent}
+              draftSeed={draftSeed}
+              onDraftApplied={() => setDraftSeed(null)}
+            />
+          ) : null}
         </section>
 
         <section className="card collapsible-card">
@@ -157,12 +194,31 @@ export function CampaignsPageClient({
                             <p>Created: {new Date(campaign.createdAt).toLocaleString()}</p>
                             <p>Scheduled: {campaign.scheduledAt ? new Date(campaign.scheduledAt).toLocaleString() : "Not scheduled"}</p>
                             <p>Sent: {campaign.sentAt ? new Date(campaign.sentAt).toLocaleString() : "Not sent"}</p>
-                            {campaign.status === "SCHEDULED" ? <p className="help">Scheduled campaigns are stored for manual dispatch right now. Automatic scheduled sending is not implemented yet.</p> : null}
+                            <p>
+                              Delivery summary: {campaign.recipients.filter((recipient) => recipient.status === "SENT").length} sent · {campaign.recipients.filter((recipient) => recipient.status === "FAILED").length} failed · {campaign.recipients.filter((recipient) => recipient.status === "PENDING").length} pending
+                            </p>
                           </div>
                         </div>
                         <div className="card">
                           <h4>HTML Body</h4>
                           <p className="campaign-template-preview">{campaign.templateHtml}</p>
+                        </div>
+                        <div className="actions">
+                          <button
+                            className="button secondary"
+                            type="button"
+                            onClick={() => {
+                              setDraftSeed({
+                                name: `${campaign.name} Copy`,
+                                subject: campaign.subject,
+                                templateHtml: campaign.templateHtml,
+                                templateText: campaign.templateText || undefined,
+                              });
+                              setIsCreateOpen(true);
+                            }}
+                          >
+                            Duplicate Into Draft
+                          </button>
                         </div>
                         <div className="card">
                           <h4>Plain-text Body</h4>

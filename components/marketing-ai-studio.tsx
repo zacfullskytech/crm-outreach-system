@@ -28,10 +28,12 @@ const promptTemplates = [
 
 export function MarketingAiStudio({
   onUseDraft,
+  onUseCampaignDraft,
   onSaved,
   segments = [],
 }: {
   onUseDraft?: (draft: GeneratedAsset & Record<string, unknown>) => void;
+  onUseCampaignDraft?: (draft: { name?: string; subject?: string; templateHtml?: string; templateText?: string }) => void;
   onSaved?: (item: SavedMarketingContent) => void;
   segments?: SegmentOption[];
 }) {
@@ -245,6 +247,22 @@ export function MarketingAiStudio({
             {onUseDraft ? (
               <button className="button secondary" type="button" onClick={() => onUseDraft(result)}>
                 Use Draft in Library Form
+              </button>
+            ) : null}
+            {onUseCampaignDraft ? (
+              <button
+                className="button secondary"
+                type="button"
+                onClick={() => onUseCampaignDraft({
+                  name: result.headline || "AI Campaign Draft",
+                  subject: result.callToAction || result.headline || "AI Campaign Draft",
+                  templateHtml: [result.imageUrl ? `<p><img src="${result.imageUrl}" alt="${result.headline || "Generated campaign image"}" style="max-width:100%;height:auto;border-radius:12px;" /></p>` : "", result.bodyText ? `<p>${result.bodyText.replace(/\n/g, "</p><p>")}</p>` : ""]
+                    .filter(Boolean)
+                    .join("\n\n"),
+                  templateText: [result.bodyText || "", result.imageUrl ? `Image: ${result.imageUrl}` : ""].filter(Boolean).join("\n\n"),
+                })}
+              >
+                Use Draft in Campaigns
               </button>
             ) : null}
             <button className="button primary" type="button" disabled={saving} onClick={() => void saveResultToLibrary()}>
