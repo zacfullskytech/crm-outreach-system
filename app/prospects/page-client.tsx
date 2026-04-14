@@ -137,14 +137,18 @@ export function ProspectsPageClient({
     setPendingJob(false);
   }
 
-  async function reviewCandidate(id: string, status: "APPROVED" | "REJECTED") {
+  async function reviewCandidate(
+    id: string,
+    status: "APPROVED" | "REJECTED",
+    options?: { matchStatus?: "NEW" | "POSSIBLE_MATCH" | "EXISTING_COMPANY" | "EXISTING_CONTACT"; matchReason?: string | null },
+  ) {
     setPendingCandidateId(id);
     setCandidateMessage(null);
 
     const response = await fetch(`/api/prospecting/candidates/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, ...options }),
     });
 
     const body = await response.json().catch(() => ({}));
@@ -180,7 +184,7 @@ export function ProspectsPageClient({
           <span className="kicker">Prospecting Studio</span>
           <h2>Search for net-new companies without double-dipping existing clients.</h2>
           <p>
-            Define geography and industry focus, review AI-seeded candidates, and only promote clean records into your working prospect pool.
+            Define geography and industry focus, review discovered candidates with evidence, and only promote clean records into your working prospect pool.
           </p>
         </section>
 
@@ -219,7 +223,7 @@ export function ProspectsPageClient({
           <div className="card-header">
             <div>
               <h3>Create Prospecting Job</h3>
-              <p className="help">Phase 1 runs public web discovery from your search intent, captures evidence, and immediately cross-checks current CRM records.</p>
+              <p className="help">Phase 1 runs public web discovery first, falls back to seeded placeholders only when discovery is empty, and immediately cross-checks current CRM records.</p>
             </div>
           </div>
           <form onSubmit={createSearchJob} className="inline-grid">
@@ -321,6 +325,9 @@ export function ProspectsPageClient({
                         <span className={matchBadgeClass(candidate.matchStatus)}>{candidate.matchStatus}</span>
                       </div>
                       <p className="help">{candidate.city || "Unknown city"}{candidate.state ? `, ${candidate.state}` : ""} · score {candidate.score ?? 0}</p>
+                      <p className="help">
+                        Data source: {candidate.source === "AI prospecting seed" ? "Fallback seeded placeholder" : candidate.source || "Unknown"}
+                      </p>
                       {candidate.sourceUrl ? (
                         <p className="help">
                           Source: <a href={candidate.sourceUrl} target="_blank" rel="noreferrer">{candidate.sourceUrl}</a>
@@ -353,6 +360,19 @@ export function ProspectsPageClient({
                         >
                           {pendingCandidateId === candidate.id ? "Working..." : candidate.status === "IMPORTED" ? "Imported" : "Approve"}
                         </button>
+                        {candidate.matchStatus === "POSSIBLE_MATCH" ? (
+                          <button
+                            className="button secondary"
+                            type="button"
+                            disabled={pendingCandidateId === candidate.id || candidate.status !== "NEW"}
+                            onClick={() => void reviewCandidate(candidate.id, "APPROVED", {
+                              matchStatus: "NEW",
+                              matchReason: "Approved by operator after duplicate review.",
+                            })}
+                          >
+                            Approve Anyway
+                          </button>
+                        ) : null}
                         <button
                           className="button secondary"
                           type="button"

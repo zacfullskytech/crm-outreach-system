@@ -23,11 +23,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       data: {
         status: parsed.status,
         notes: parsed.notes ?? candidate.notes,
+        matchStatus: parsed.matchStatus ?? candidate.matchStatus,
+        matchReason: parsed.matchReason ?? candidate.matchReason,
       },
     });
 
     if (parsed.status === "APPROVED") {
-      const match = await findProspectMatch(updated);
+      const match = parsed.matchStatus
+        ? { status: parsed.matchStatus, reason: parsed.matchReason ?? updated.matchReason ?? null }
+        : await findProspectMatch(updated);
       const score = scoreProspectCandidate(updated);
       const prospect = await prisma.prospect.create({
         data: {

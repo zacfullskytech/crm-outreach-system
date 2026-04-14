@@ -130,6 +130,8 @@ export const prospectSearchJobSchema = z.object({
 export const prospectCandidateReviewSchema = z.object({
   status: z.enum(["NEW", "APPROVED", "REJECTED", "IMPORTED"]),
   notes: z.string().trim().min(1).optional().nullable(),
+  matchStatus: z.enum(["NEW", "POSSIBLE_MATCH", "EXISTING_COMPANY", "EXISTING_CONTACT"]).optional(),
+  matchReason: z.string().trim().min(1).optional().nullable(),
 });
 
 export const marketingContentSchema = z.object({
