@@ -3,11 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
+  const publicBaseUrl = process.env.APP_BASE_URL || requestUrl.origin;
   const tokenHash = requestUrl.searchParams.get("token_hash");
   const type = requestUrl.searchParams.get("type");
   const email = requestUrl.searchParams.get("email") || "";
   const next = requestUrl.searchParams.get("next") || "/";
-  const loginUrl = new URL("/login", requestUrl.origin);
+  const loginUrl = new URL("/login", publicBaseUrl);
 
   if (!tokenHash || !type) {
     loginUrl.searchParams.set("error", "Invite link is missing required auth parameters.");
