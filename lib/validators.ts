@@ -125,6 +125,8 @@ export const prospectSearchJobSchema = z.object({
   excludeKeywords: z.array(z.string().trim().min(1)).optional().default([]),
   companyTypes: z.array(z.string().trim().min(1)).optional().default([]),
   notes: z.string().trim().min(1).optional().nullable(),
+  realDataOnly: z.boolean().optional().default(false),
+  rerunJobId: z.string().cuid().optional().nullable(),
 });
 
 export const prospectCandidateReviewSchema = z.object({

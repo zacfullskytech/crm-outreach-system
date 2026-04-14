@@ -14,6 +14,10 @@ type SearchJob = ProspectSearchJob & {
   };
 };
 
+function readJobSummary(value: unknown) {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
 function splitCsv(value: string) {
   return value
     .split(",")
@@ -66,6 +70,7 @@ export function ProspectsPageClient({
   const [candidateMessage, setCandidateMessage] = useState<string | null>(null);
   const [pendingJob, setPendingJob] = useState(false);
   const [pendingCandidateId, setPendingCandidateId] = useState<string | null>(null);
+  const [pendingRerunJobId, setPendingRerunJobId] = useState<string | null>(null);
 
   const filteredProspects = prospects.filter((p) => {
     const q = search.toLowerCase();
@@ -111,6 +116,7 @@ export function ProspectsPageClient({
       excludeKeywords: splitCsv(String(form.get("excludeKeywords") || "")),
       companyTypes: splitCsv(String(form.get("companyTypes") || "")),
       notes: String(form.get("notes") || "").trim() || null,
+      realDataOnly: form.get("realDataOnly") === "on",
     };
 
     const response = await fetch("/api/prospecting/jobs", {
@@ -132,9 +138,57 @@ export function ProspectsPageClient({
     if (nextCandidates.length > 0) {
       setCandidates((current) => [...nextCandidates, ...current.filter((entry) => !nextCandidates.some((item) => item.id === entry.id))]);
     }
-    setJobMessage(`Prospecting job created with ${job._count?.candidates ?? nextCandidates.length} discovered candidates.`);
+    const summary = readJobSummary(job.resultSummaryJson);
+    const discoveryMode = typeof summary.discoveryMode === "string" ? summary.discoveryMode : null;
+    setJobMessage(
+      discoveryMode === "empty"
+        ? "Prospecting job ran in real-data-only mode and found no candidates."
+        : `Prospecting job created with ${job._count?.candidates ?? nextCandidates.length} ${discoveryMode === "seed" ? "fallback" : "discovered"} candidates.`,
+    );
     event.currentTarget.reset();
     setPendingJob(false);
+  }
+
+  async function rerunJob(job: SearchJob) {
+    setPendingRerunJobId(job.id);
+    setJobMessage(null);
+
+    const response = await fetch("/api/prospecting/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: `${job.name} rerun`,
+        geography: [],
+        includeKeywords: [],
+        excludeKeywords: [],
+        companyTypes: [],
+        rerunJobId: job.id,
+        realDataOnly: job.realDataOnly,
+      }),
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setJobMessage(body.error || "Failed to rerun prospecting job.");
+      setPendingRerunJobId(null);
+      return;
+    }
+
+    const rerun = body.data as SearchJob & { candidates?: ProspectCandidate[] };
+    const nextCandidates = Array.isArray(rerun.candidates) ? rerun.candidates : [];
+    const summary = readJobSummary(rerun.resultSummaryJson);
+    const discoveryMode = typeof summary.discoveryMode === "string" ? summary.discoveryMode : null;
+
+    setJobs((current) => [rerun, ...current.filter((entry) => entry.id !== rerun.id)]);
+    if (nextCandidates.length > 0) {
+      setCandidates((current) => [...nextCandidates, ...current.filter((entry) => !nextCandidates.some((item) => item.id === entry.id))]);
+    }
+    setJobMessage(
+      discoveryMode === "empty"
+        ? "Rerun completed in real-data-only mode with no candidates found."
+        : `Rerun completed with ${rerun._count?.candidates ?? nextCandidates.length} ${discoveryMode === "seed" ? "fallback" : "discovered"} candidates.`,
+    );
+    setPendingRerunJobId(null);
   }
 
   async function reviewCandidate(
@@ -223,7 +277,7 @@ export function ProspectsPageClient({
           <div className="card-header">
             <div>
               <h3>Create Prospecting Job</h3>
-              <p className="help">Phase 1 runs public web discovery first, falls back to seeded placeholders only when discovery is empty, and immediately cross-checks current CRM records.</p>
+              <p className="help">Phase 1 runs public web discovery first, falls back to seeded placeholders only when discovery is empty unless you enable real-data-only mode, and immediately cross-checks current CRM records.</p>
             </div>
           </div>
           <form onSubmit={createSearchJob} className="inline-grid">
@@ -257,6 +311,13 @@ export function ProspectsPageClient({
               <label htmlFor="prospecting-job-notes">Notes</label>
               <textarea id="prospecting-job-notes" name="notes" placeholder="Target owner-led hospitals and avoid existing client groups." />
             </div>
+            <div className="field">
+              <label className="checkbox-label">
+                <input type="checkbox" name="realDataOnly" />
+                <span>Real data only</span>
+              </label>
+              <p className="help">Disable seeded fallback and return zero candidates if web discovery finds nothing.</p>
+            </div>
             <div className="actions">
               <button className="button primary" type="submit" disabled={pendingJob}>
                 {pendingJob ? "Creating..." : "Create Search Job"}
@@ -278,18 +339,31 @@ export function ProspectsPageClient({
               <div className="empty-state"><p>No prospecting jobs yet.</p></div>
             ) : (
               <div className="prospecting-list">
-                {jobs.map((job) => (
-                  <div key={job.id} className="prospecting-list-item">
-                    <div>
-                      <strong>{job.name}</strong>
-                      <p className="help">{job.industry || "General search"} · {job.status}</p>
+                {jobs.map((job) => {
+                  const summary = readJobSummary(job.resultSummaryJson);
+                  const discoveryMode = typeof summary.discoveryMode === "string" ? summary.discoveryMode : null;
+
+                  return (
+                    <div key={job.id} className="prospecting-list-item">
+                      <div>
+                        <strong>{job.name}</strong>
+                        <p className="help">{job.industry || "General search"} · {job.status} · {job.realDataOnly ? "real-data-only" : discoveryMode === "seed" ? "seed fallback used" : "web discovery"}</p>
+                      </div>
+                      <div className="prospecting-metrics">
+                        <span>{job._count?.candidates ?? 0} candidates</span>
+                        <span>{job._count?.prospects ?? 0} imported</span>
+                        <button
+                          className="button secondary"
+                          type="button"
+                          disabled={pendingRerunJobId === job.id}
+                          onClick={() => void rerunJob(job)}
+                        >
+                          {pendingRerunJobId === job.id ? "Rerunning..." : "Rerun"}
+                        </button>
+                      </div>
                     </div>
-                    <div className="prospecting-metrics">
-                      <span>{job._count?.candidates ?? 0} candidates</span>
-                      <span>{job._count?.prospects ?? 0} imported</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </article>

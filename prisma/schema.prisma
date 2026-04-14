@@ -285,19 +285,22 @@ model Prospect {
 }
 
 model ProspectSearchJob {
-  id               String                  @id @default(cuid())
-  name             String
-  industry         String?
-  geographyJson    Json?
-  includeKeywords  Json?
-  excludeKeywords  Json?
-  companyTypesJson Json?
-  notes            String?
-  status           ProspectSearchJobStatus @default(DRAFT)
+  id                String                  @id @default(cuid())
+  name              String
+  industry          String?
+  geographyJson     Json?
+  includeKeywords   Json?
+  excludeKeywords   Json?
+  companyTypesJson  Json?
+  notes             String?
+  realDataOnly      Boolean                 @default(false)
+  lastRunAt         DateTime?
+  lastDiscoveryMode String?
+  status            ProspectSearchJobStatus @default(DRAFT)
   resultSummaryJson Json?
-  createdById      String?
-  createdAt        DateTime                @default(now())
-  updatedAt        DateTime                @updatedAt
+  createdById       String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
 
   candidates ProspectCandidate[]
   prospects  Prospect[]

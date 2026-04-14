@@ -26,39 +26,59 @@ export async function POST(request: NextRequest) {
     const payload = await request.json();
     const parsed = prospectSearchJobSchema.parse(payload);
 
+    const rerunSource = parsed.rerunJobId
+      ? await prisma.prospectSearchJob.findUnique({ where: { id: parsed.rerunJobId } })
+      : null;
+
+    const jobInput = {
+      name: parsed.name,
+      industry: parsed.industry ?? rerunSource?.industry ?? null,
+      geography: parsed.geography.length > 0 ? parsed.geography : Array.isArray(rerunSource?.geographyJson) ? rerunSource.geographyJson.filter((value): value is string => typeof value === "string") : [],
+      includeKeywords: parsed.includeKeywords.length > 0 ? parsed.includeKeywords : Array.isArray(rerunSource?.includeKeywords) ? rerunSource.includeKeywords.filter((value): value is string => typeof value === "string") : [],
+      excludeKeywords: parsed.excludeKeywords.length > 0 ? parsed.excludeKeywords : Array.isArray(rerunSource?.excludeKeywords) ? rerunSource.excludeKeywords.filter((value): value is string => typeof value === "string") : [],
+      companyTypes: parsed.companyTypes.length > 0 ? parsed.companyTypes : Array.isArray(rerunSource?.companyTypesJson) ? rerunSource.companyTypesJson.filter((value): value is string => typeof value === "string") : [],
+      notes: parsed.notes ?? rerunSource?.notes ?? null,
+      realDataOnly: parsed.realDataOnly ?? rerunSource?.realDataOnly ?? false,
+    };
+
     const discoveredCandidates = await discoverProspectCandidates({
-      industry: parsed.industry,
-      geography: parsed.geography,
-      includeKeywords: parsed.includeKeywords,
-      excludeKeywords: parsed.excludeKeywords,
-      companyTypes: parsed.companyTypes,
+      industry: jobInput.industry,
+      geography: jobInput.geography,
+      includeKeywords: jobInput.includeKeywords,
+      excludeKeywords: jobInput.excludeKeywords,
+      companyTypes: jobInput.companyTypes,
     });
 
-    const seededCandidates = discoveredCandidates.length > 0
+    const candidateSeeds = discoveredCandidates.length > 0 || jobInput.realDataOnly
       ? discoveredCandidates
       : buildSeedCandidates({
-          industry: parsed.industry,
-          geography: parsed.geography,
-          includeKeywords: parsed.includeKeywords,
-          companyTypes: parsed.companyTypes,
+          industry: jobInput.industry,
+          geography: jobInput.geography,
+          includeKeywords: jobInput.includeKeywords,
+          companyTypes: jobInput.companyTypes,
         });
+
+    const discoveryMode = discoveredCandidates.length > 0 ? "web" : jobInput.realDataOnly ? "empty" : "seed";
 
     const job = await prisma.prospectSearchJob.create({
       data: {
-        name: parsed.name,
-        industry: parsed.industry,
-        geographyJson: parsed.geography,
-        includeKeywords: parsed.includeKeywords,
-        excludeKeywords: parsed.excludeKeywords,
-        companyTypesJson: parsed.companyTypes,
-        notes: parsed.notes,
+        name: jobInput.name,
+        industry: jobInput.industry,
+        geographyJson: jobInput.geography,
+        includeKeywords: jobInput.includeKeywords,
+        excludeKeywords: jobInput.excludeKeywords,
+        companyTypesJson: jobInput.companyTypes,
+        notes: jobInput.notes,
+        realDataOnly: jobInput.realDataOnly,
+        lastRunAt: new Date(),
+        lastDiscoveryMode: discoveryMode,
         status: "RUNNING",
         createdById: user.id,
       },
     });
 
     const candidates = [];
-    for (const seed of seededCandidates) {
+    for (const seed of candidateSeeds) {
       const match = await findProspectMatch(seed);
       const score = scoreProspectCandidate(seed);
       const candidate = await prisma.prospectCandidate.create({
@@ -77,9 +97,12 @@ export async function POST(request: NextRequest) {
           sourceUrl: seed.sourceUrl,
           evidenceJson: seed.evidenceJson,
           extractionJson: {
-            geography: parsed.geography,
-            includeKeywords: parsed.includeKeywords,
-            excludeKeywords: parsed.excludeKeywords,
+            geography: jobInput.geography,
+            includeKeywords: jobInput.includeKeywords,
+            excludeKeywords: jobInput.excludeKeywords,
+            realDataOnly: jobInput.realDataOnly,
+            discoveryMode,
+            rerunJobId: parsed.rerunJobId ?? null,
           },
           matchStatus: match.status,
           matchReason: match.reason,
@@ -97,6 +120,8 @@ export async function POST(request: NextRequest) {
           candidateCount: candidates.length,
           newCount: candidates.filter((candidate) => candidate.matchStatus === "NEW").length,
           reviewCount: candidates.filter((candidate) => candidate.matchStatus !== "NEW").length,
+          discoveryMode,
+          realDataOnly: jobInput.realDataOnly,
         },
       },
       include: {
