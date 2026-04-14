@@ -17,6 +17,7 @@ type MarketingContentOption = {
   bodyHtml: string | null;
   bodyText: string | null;
   callToAction: string | null;
+  imageUrl: string | null;
 };
 
 type PreviewState = {
@@ -79,16 +80,22 @@ export function CampaignForm({
     const htmlInput = formRef.current.elements.namedItem("templateHtml") as HTMLTextAreaElement | null;
     const textInput = formRef.current.elements.namedItem("templateText") as HTMLTextAreaElement | null;
 
-    if (subjectInput && !subjectInput.value.trim()) {
+    if (subjectInput) {
       subjectInput.value = content.callToAction?.trim() || content.title;
     }
 
-    if (htmlInput && !htmlInput.value.trim() && content.bodyHtml) {
-      htmlInput.value = content.bodyHtml;
+    if (htmlInput) {
+      const imageBlock = content.imageUrl
+        ? `<p><img src="${content.imageUrl}" alt="${content.title}" style="max-width:100%;height:auto;border-radius:12px;" /></p>`
+        : "";
+      const htmlBody = content.bodyHtml?.trim() || (content.bodyText?.trim() ? `<p>${content.bodyText.replace(/\n/g, "</p><p>")}</p>` : "");
+      htmlInput.value = [imageBlock, htmlBody].filter(Boolean).join("\n\n");
     }
 
-    if (textInput && !textInput.value.trim() && content.bodyText) {
-      textInput.value = content.bodyText;
+    if (textInput) {
+      const textParts = [content.description?.trim() || "", content.bodyText?.trim() || "", content.imageUrl ? `Image: ${content.imageUrl}` : ""]
+        .filter(Boolean);
+      textInput.value = textParts.join("\n\n");
     }
   }
 

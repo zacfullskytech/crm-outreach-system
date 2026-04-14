@@ -31,6 +31,7 @@ export default async function CampaignsPage() {
         bodyHtml: true,
         bodyText: true,
         callToAction: true,
+        imageUrl: true,
       },
       orderBy: { createdAt: "desc" },
       take: 100,
@@ -46,6 +47,7 @@ export default async function CampaignsPage() {
     bodyHtml: item.bodyHtml,
     bodyText: item.bodyText,
     callToAction: item.callToAction,
+    imageUrl: item.imageUrl,
   }));
 
   return (

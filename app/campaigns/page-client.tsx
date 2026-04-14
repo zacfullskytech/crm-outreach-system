@@ -16,6 +16,7 @@ type MarketingContentOption = {
   bodyHtml: string | null;
   bodyText: string | null;
   callToAction: string | null;
+  imageUrl: string | null;
 };
 
 function statusBadgeClass(status: string) {
