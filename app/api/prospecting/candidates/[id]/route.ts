@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/supabase/auth";
 import { prisma } from "@/lib/db";
 import { findProspectMatch, scoreProspectCandidate } from "@/lib/prospecting";
 import { prospectCandidateReviewSchema } from "@/lib/validators";
+import { upsertCompanyFromProspect } from "@/lib/prospect-companies";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await requireAuth();
@@ -57,6 +58,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         },
       });
 
+      const companyResult = await upsertCompanyFromProspect(prospect);
+
+      await prisma.prospect.update({
+        where: { id: prospect.id },
+        data: {
+          qualificationStatus: companyResult.wasExistingCompany ? prospect.qualificationStatus : "CONVERTED",
+        },
+      });
+
       await prisma.prospectCandidate.update({
         where: { id },
         data: {
@@ -67,7 +77,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         },
       });
 
-      return NextResponse.json({ data: { candidate: updated, prospect } });
+      return NextResponse.json({ data: { candidate: updated, prospect, company: companyResult.company } });
     }
 
     return NextResponse.json({ data: { candidate: updated } });

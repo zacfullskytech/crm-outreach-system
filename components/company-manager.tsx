@@ -26,6 +26,7 @@ function readServices(value: unknown) {
 export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies: CompanyWithContacts[]; isAdmin: boolean }) {
   const [companies, setCompanies] = useState(initialCompanies);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [isCreateOpen, setIsCreateOpen] = useState(true);
   const [isListOpen, setIsListOpen] = useState(true);
 
@@ -45,7 +46,7 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
     const q = search.toLowerCase();
     const customText = customFieldsToPairs(c.customFieldsJson).map((pair) => `${pair.key} ${pair.value}`).join(" ").toLowerCase();
     const servicesText = readServices(c.customFieldsJson).join(" ").toLowerCase();
-    return (
+    const matchesSearch = (
       !q ||
       (c.name || "").toLowerCase().includes(q) ||
       (c.industry || "").toLowerCase().includes(q) ||
@@ -54,6 +55,8 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
       servicesText.includes(q) ||
       customText.includes(q)
     );
+    const matchesStatus = statusFilter === "ALL" || c.status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
   return (
@@ -92,18 +95,27 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
           </div>
           {isListOpen ? (
             <>
-              <div className="search-wrap">
-                <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.35-4.35" />
-                </svg>
-                <input
-                  type="search"
-                  placeholder="Search by name, industry, city, service, or custom field…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="search-input"
-                />
+              <div className="filter-row">
+                <div className="search-wrap">
+                  <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.35-4.35" />
+                  </svg>
+                  <input
+                    type="search"
+                    placeholder="Search by name, industry, city, service, or custom field…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="search-input"
+                  />
+                </div>
+                <select className="filter-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                  <option value="ALL">All statuses</option>
+                  <option value="CLIENT">Client</option>
+                  <option value="LEAD">Lead</option>
+                  <option value="PROSPECT">Prospect</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
               </div>
 
               {filtered.length === 0 ? (

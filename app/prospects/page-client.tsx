@@ -71,6 +71,13 @@ export function ProspectsPageClient({
   const [pendingJob, setPendingJob] = useState(false);
   const [pendingCandidateId, setPendingCandidateId] = useState<string | null>(null);
   const [pendingRerunJobId, setPendingRerunJobId] = useState<string | null>(null);
+  const [pendingProspectId, setPendingProspectId] = useState<string | null>(null);
+  const [pendingQueueClear, setPendingQueueClear] = useState(false);
+  const [isJobFormOpen, setIsJobFormOpen] = useState(true);
+  const [isJobsOpen, setIsJobsOpen] = useState(true);
+  const [isQueueOpen, setIsQueueOpen] = useState(true);
+  const [isManualOpen, setIsManualOpen] = useState(false);
+  const [isAcceptedOpen, setIsAcceptedOpen] = useState(true);
 
   const filteredProspects = prospects.filter((p) => {
     const q = search.toLowerCase();
@@ -197,6 +204,43 @@ export function ProspectsPageClient({
     setPendingRerunJobId(null);
   }
 
+  async function clearDiscoveryQueue(onlyReviewed = false) {
+    setPendingQueueClear(true);
+    setCandidateMessage(null);
+
+    const response = await fetch(`/api/prospecting/candidates${onlyReviewed ? "?onlyReviewed=true" : ""}`, {
+      method: "DELETE",
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setCandidateMessage(body.error || "Failed to clear discovery queue.");
+      setPendingQueueClear(false);
+      return;
+    }
+
+    setCandidates((current) => current.filter((candidate) => (onlyReviewed ? candidate.status === "NEW" : false)));
+    setCandidateMessage(onlyReviewed ? "Reviewed candidates cleared from the queue." : "Discovery queue cleared.");
+    setPendingQueueClear(false);
+  }
+
+  async function deleteProspect(id: string) {
+    setPendingProspectId(id);
+    setCandidateMessage(null);
+
+    const response = await fetch(`/api/prospects/${id}`, { method: "DELETE" });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setCandidateMessage(body.error || "Failed to delete prospect.");
+      setPendingProspectId(null);
+      return;
+    }
+
+    setProspects((current) => current.filter((prospect) => prospect.id !== id));
+    setCandidateMessage("Prospect removed.");
+    setPendingProspectId(null);
+  }
+
   async function reviewCandidate(
     id: string,
     status: "APPROVED" | "REJECTED",
@@ -279,14 +323,17 @@ export function ProspectsPageClient({
           </article>
         </section>
 
-        <section className="card form-section">
-          <div className="card-header">
+        <section className="card form-section collapsible-card">
+          <div className="card-header collapsible-header">
             <div>
               <h3>Create Prospecting Job</h3>
               <p className="help">Phase 1 runs public web discovery first, falls back to seeded placeholders only when discovery is empty unless you enable real-data-only mode, and immediately cross-checks current CRM records.</p>
             </div>
+            <button className="button secondary" type="button" onClick={() => setIsJobFormOpen((value) => !value)}>
+              {isJobFormOpen ? "Collapse" : "Expand"}
+            </button>
           </div>
-          <form onSubmit={createSearchJob} className="inline-grid">
+          {isJobFormOpen ? <form onSubmit={createSearchJob} className="inline-grid">
             <div className="form-grid">
               <div className="field">
                 <label htmlFor="prospecting-job-name">Job name</label>
@@ -330,18 +377,21 @@ export function ProspectsPageClient({
               </button>
               {jobMessage ? <span className="help">{jobMessage}</span> : null}
             </div>
-          </form>
+          </form> : null}
         </section>
 
         <section className="grid prospecting-grid">
-          <article className="card">
-            <div className="card-header">
+          <article className="card collapsible-card">
+            <div className="card-header collapsible-header">
               <div>
                 <h3>Search Jobs</h3>
                 <p className="help">Saved search definitions and discovery output counts.</p>
               </div>
+              <button className="button secondary" type="button" onClick={() => setIsJobsOpen((value) => !value)}>
+                {isJobsOpen ? "Collapse" : "Expand"}
+              </button>
             </div>
-            {jobs.length === 0 ? (
+            {isJobsOpen ? jobs.length === 0 ? (
               <div className="empty-state"><p>No prospecting jobs yet.</p></div>
             ) : (
               <div className="prospecting-list">
@@ -375,24 +425,35 @@ export function ProspectsPageClient({
                   );
                 })}
               </div>
-            )}
+            ) : null}
           </article>
 
-          <article className="card">
-            <div className="card-header">
+          <article className="card collapsible-card">
+            <div className="card-header collapsible-header">
               <div>
                 <h3>Discovery Queue</h3>
                 <p className="help">Review discovered candidates before they enter accepted prospects.</p>
               </div>
-              <select className="filter-select" value={candidateFilter} onChange={(event) => setCandidateFilter(event.target.value)}>
-                <option value="ALL">All candidates</option>
-                <option value="REVIEW">Needs review</option>
-                <option value="IMPORTED">Imported</option>
-                <option value="REJECTED">Rejected</option>
-              </select>
+              <div className="actions">
+                <select className="filter-select" value={candidateFilter} onChange={(event) => setCandidateFilter(event.target.value)}>
+                  <option value="ALL">All candidates</option>
+                  <option value="REVIEW">Needs review</option>
+                  <option value="IMPORTED">Imported</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+                <button className="button secondary" type="button" disabled={pendingQueueClear} onClick={() => void clearDiscoveryQueue(true)}>
+                  Clear Reviewed
+                </button>
+                <button className="button secondary" type="button" disabled={pendingQueueClear} onClick={() => void clearDiscoveryQueue(false)}>
+                  Clear All
+                </button>
+                <button className="button secondary" type="button" onClick={() => setIsQueueOpen((value) => !value)}>
+                  {isQueueOpen ? "Collapse" : "Expand"}
+                </button>
+              </div>
             </div>
             {candidateMessage ? <p className="help">{candidateMessage}</p> : null}
-            {filteredCandidates.length === 0 ? (
+            {isQueueOpen ? filteredCandidates.length === 0 ? (
               <div className="empty-state"><p>No candidates in this view.</p></div>
             ) : (
               <div className="prospecting-list">
@@ -470,22 +531,25 @@ export function ProspectsPageClient({
                   );
                 })}
               </div>
-            )}
+            ) : null}
           </article>
         </section>
 
-        <section className="card form-section">
-          <div className="card-header">
+        <section className="card form-section collapsible-card">
+          <div className="card-header collapsible-header">
             <div>
               <h3>Manual Prospect Entry</h3>
               <p className="help">Manual adds still run through the same match protection layer.</p>
             </div>
+            <button className="button secondary" type="button" onClick={() => setIsManualOpen((value) => !value)}>
+              {isManualOpen ? "Collapse" : "Expand"}
+            </button>
           </div>
-          <ProspectForm />
+          {isManualOpen ? <ProspectForm /> : null}
         </section>
 
-        <section className="card">
-          <div className="card-header">
+        <section className="card collapsible-card">
+          <div className="card-header collapsible-header">
             <h3>Accepted Prospects</h3>
             <div className="filter-row">
               <div className="search-wrap">
@@ -509,10 +573,13 @@ export function ProspectsPageClient({
                 <option value="REJECTED">Rejected</option>
                 <option value="CONVERTED">Converted</option>
               </select>
+              <button className="button secondary" type="button" onClick={() => setIsAcceptedOpen((value) => !value)}>
+                {isAcceptedOpen ? "Collapse" : "Expand"}
+              </button>
             </div>
           </div>
 
-          {filteredProspects.length === 0 ? (
+          {isAcceptedOpen ? filteredProspects.length === 0 ? (
             <div className="empty-state">
               <p>{search || statusFilter !== "ALL" ? "No prospects match your filters." : "No accepted prospects yet."}</p>
             </div>
@@ -528,6 +595,7 @@ export function ProspectsPageClient({
                     <th>CRM Match</th>
                     <th>Score</th>
                     <th>Source</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -543,12 +611,17 @@ export function ProspectsPageClient({
                       </td>
                       <td><span className="score-badge">{prospect.score ?? 0}</span></td>
                       <td>{prospect.source || <span className="muted">Manual</span>}</td>
+                      <td>
+                        <button className="button secondary" type="button" disabled={pendingProspectId === prospect.id} onClick={() => void deleteProspect(prospect.id)}>
+                          {pendingProspectId === prospect.id ? "Removing..." : "Delete"}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
+          ) : null}
           {filteredProspects.length > 0 && (
             <p className="results-count">{filteredProspects.length} prospect{filteredProspects.length !== 1 ? "s" : ""}</p>
           )}
