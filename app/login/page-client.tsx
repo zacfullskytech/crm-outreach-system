@@ -51,22 +51,13 @@ export function LoginPage() {
     const supabase = await createClient();
 
     if (mode === "signup") {
-      const { error } = await supabase.auth.updateUser({
-        password,
-        data: email ? { name: email } : undefined,
-      });
+      const { error } = await supabase.auth.updateUser({ password });
 
       if (error) {
         setError(error.message);
         setLoading(false);
       } else {
-        setNotice("Password set. Signing you in now.");
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) {
-          setError(signInError.message);
-          setLoading(false);
-          return;
-        }
+        setNotice("Password set. Redirecting…");
         router.push("/");
         router.refresh();
       }

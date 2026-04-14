@@ -10,26 +10,24 @@ export async function GET(request: NextRequest) {
   const next = requestUrl.searchParams.get("next") || "/";
   const loginUrl = new URL("/login", publicBaseUrl);
 
-  if (!tokenHash || !type) {
-    loginUrl.searchParams.set("error", "Invite link is missing required auth parameters.");
-    if (email) loginUrl.searchParams.set("email", email);
-    return NextResponse.redirect(loginUrl);
-  }
+  if (tokenHash && type) {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: type as "invite" | "recovery" | "email_change" | "email",
+    });
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.verifyOtp({
-    token_hash: tokenHash,
-    type: type as "invite" | "recovery" | "email_change" | "email",
-  });
+    if (error) {
+      loginUrl.searchParams.set("error", error.message || "Invite link could not be verified.");
+      if (email) loginUrl.searchParams.set("email", email);
+      return NextResponse.redirect(loginUrl);
+    }
 
-  if (error) {
-    loginUrl.searchParams.set("error", error.message || "Invite link could not be verified.");
-    if (email) loginUrl.searchParams.set("email", email);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  if (type === "recovery") {
-    loginUrl.searchParams.set("recovery", "1");
+    if (type === "recovery") {
+      loginUrl.searchParams.set("recovery", "1");
+    } else {
+      loginUrl.searchParams.set("invited", "1");
+    }
   } else {
     loginUrl.searchParams.set("invited", "1");
   }
