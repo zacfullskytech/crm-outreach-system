@@ -22,6 +22,14 @@ type DiscoveryCandidate = {
   evidenceJson?: Prisma.InputJsonValue;
 };
 
+export type DiscoveryRunResult = {
+  candidates: DiscoveryCandidate[];
+  mode: "web" | "seed" | "empty" | "blocked";
+  provider: "duckduckgo";
+  blockedReason?: string | null;
+  queryCount: number;
+};
+
 type ProspectMatchResult = {
   status: "NEW" | "POSSIBLE_MATCH" | "EXISTING_COMPANY" | "EXISTING_CONTACT";
   reason: string | null;
@@ -278,12 +286,13 @@ export async function discoverProspectCandidates(params: {
   includeKeywords?: string[];
   excludeKeywords?: string[];
   companyTypes?: string[];
-}) {
+}): Promise<DiscoveryRunResult> {
   const geography = params.geography.filter(Boolean).slice(0, 6);
   const excludeKeywords = (params.excludeKeywords || []).filter(Boolean);
   const parsedLocations = geography.map(parseLocation);
   const queries = buildSearchQueries(params);
   const results: DiscoveryCandidate[] = [];
+  let blockedReason: string | null = null;
 
   for (const query of queries) {
     const queryExclude = excludeKeywords.map((keyword) => ` -${keyword}`).join("");
@@ -307,6 +316,11 @@ export async function discoverProspectCandidates(params: {
     }
 
     const html = await response.text();
+    if (response.status === 202 && html.includes("anomaly-modal") && html.includes("bots use DuckDuckGo too")) {
+      blockedReason = "DuckDuckGo blocked automated search traffic with a bot challenge.";
+      break;
+    }
+
     const matches = Array.from(html.matchAll(/<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/g)).slice(0, 8);
 
     for (const match of matches) {
@@ -382,9 +396,17 @@ export async function discoverProspectCandidates(params: {
     }
   }
 
-  return Array.from(deduped.values())
+  const candidates = Array.from(deduped.values())
     .sort((a, b) => scoreProspectCandidate(b) - scoreProspectCandidate(a))
     .slice(0, 30);
+
+  return {
+    candidates,
+    mode: blockedReason ? "blocked" : candidates.length > 0 ? "web" : "empty",
+    provider: "duckduckgo",
+    blockedReason,
+    queryCount: queries.length,
+  };
 }
 
 export function buildSeedCandidates(params: {

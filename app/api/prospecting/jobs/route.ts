@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       realDataOnly: parsed.realDataOnly ?? rerunSource?.realDataOnly ?? false,
     };
 
-    const discoveredCandidates = await discoverProspectCandidates({
+    const discovery = await discoverProspectCandidates({
       industry: jobInput.industry,
       geography: jobInput.geography,
       includeKeywords: jobInput.includeKeywords,
@@ -49,16 +49,22 @@ export async function POST(request: NextRequest) {
       companyTypes: jobInput.companyTypes,
     });
 
-    const candidateSeeds = discoveredCandidates.length > 0 || jobInput.realDataOnly
-      ? discoveredCandidates
-      : buildSeedCandidates({
-          industry: jobInput.industry,
-          geography: jobInput.geography,
-          includeKeywords: jobInput.includeKeywords,
-          companyTypes: jobInput.companyTypes,
-        });
+    const candidateSeeds = discovery.mode === "web"
+      ? discovery.candidates
+      : jobInput.realDataOnly || discovery.mode === "blocked"
+        ? []
+        : buildSeedCandidates({
+            industry: jobInput.industry,
+            geography: jobInput.geography,
+            includeKeywords: jobInput.includeKeywords,
+            companyTypes: jobInput.companyTypes,
+          });
 
-    const discoveryMode = discoveredCandidates.length > 0 ? "web" : jobInput.realDataOnly ? "empty" : "seed";
+    const discoveryMode = discovery.mode === "web" || discovery.mode === "blocked"
+      ? discovery.mode
+      : candidateSeeds.length > 0
+        ? "seed"
+        : "empty";
 
     const job = await prisma.prospectSearchJob.create({
       data: {
@@ -72,7 +78,7 @@ export async function POST(request: NextRequest) {
         realDataOnly: jobInput.realDataOnly,
         lastRunAt: new Date(),
         lastDiscoveryMode: discoveryMode,
-        status: "RUNNING",
+        status: discoveryMode === "blocked" ? "FAILED" : "RUNNING",
         createdById: user.id,
       },
     });
@@ -102,6 +108,9 @@ export async function POST(request: NextRequest) {
             excludeKeywords: jobInput.excludeKeywords,
             realDataOnly: jobInput.realDataOnly,
             discoveryMode,
+            discoveryProvider: discovery.provider,
+            blockedReason: discovery.blockedReason ?? null,
+            queryCount: discovery.queryCount,
             rerunJobId: parsed.rerunJobId ?? null,
           },
           matchStatus: match.status,
@@ -115,12 +124,15 @@ export async function POST(request: NextRequest) {
     const completed = await prisma.prospectSearchJob.update({
       where: { id: job.id },
       data: {
-        status: "COMPLETED",
+        status: discoveryMode === "blocked" ? "FAILED" : "COMPLETED",
         resultSummaryJson: {
           candidateCount: candidates.length,
           newCount: candidates.filter((candidate) => candidate.matchStatus === "NEW").length,
           reviewCount: candidates.filter((candidate) => candidate.matchStatus !== "NEW").length,
           discoveryMode,
+          discoveryProvider: discovery.provider,
+          blockedReason: discovery.blockedReason ?? null,
+          queryCount: discovery.queryCount,
           realDataOnly: jobInput.realDataOnly,
         },
       },

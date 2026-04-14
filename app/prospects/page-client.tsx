@@ -140,10 +140,13 @@ export function ProspectsPageClient({
     }
     const summary = readJobSummary(job.resultSummaryJson);
     const discoveryMode = typeof summary.discoveryMode === "string" ? summary.discoveryMode : null;
+    const blockedReason = typeof summary.blockedReason === "string" ? summary.blockedReason : null;
     setJobMessage(
-      discoveryMode === "empty"
-        ? "Prospecting job ran in real-data-only mode and found no candidates."
-        : `Prospecting job created with ${job._count?.candidates ?? nextCandidates.length} ${discoveryMode === "seed" ? "fallback" : "discovered"} candidates.`,
+      discoveryMode === "blocked"
+        ? blockedReason || "Search provider blocked the discovery run."
+        : discoveryMode === "empty"
+          ? "Prospecting job ran in real-data-only mode and found no candidates."
+          : `Prospecting job created with ${job._count?.candidates ?? nextCandidates.length} ${discoveryMode === "seed" ? "fallback" : "discovered"} candidates.`,
     );
     event.currentTarget.reset();
     setPendingJob(false);
@@ -183,10 +186,13 @@ export function ProspectsPageClient({
     if (nextCandidates.length > 0) {
       setCandidates((current) => [...nextCandidates, ...current.filter((entry) => !nextCandidates.some((item) => item.id === entry.id))]);
     }
+    const blockedReason = typeof summary.blockedReason === "string" ? summary.blockedReason : null;
     setJobMessage(
-      discoveryMode === "empty"
-        ? "Rerun completed in real-data-only mode with no candidates found."
-        : `Rerun completed with ${rerun._count?.candidates ?? nextCandidates.length} ${discoveryMode === "seed" ? "fallback" : "discovered"} candidates.`,
+      discoveryMode === "blocked"
+        ? blockedReason || "Search provider blocked the rerun."
+        : discoveryMode === "empty"
+          ? "Rerun completed in real-data-only mode with no candidates found."
+          : `Rerun completed with ${rerun._count?.candidates ?? nextCandidates.length} ${discoveryMode === "seed" ? "fallback" : "discovered"} candidates.`,
     );
     setPendingRerunJobId(null);
   }
@@ -343,11 +349,14 @@ export function ProspectsPageClient({
                   const summary = readJobSummary(job.resultSummaryJson);
                   const discoveryMode = typeof summary.discoveryMode === "string" ? summary.discoveryMode : null;
 
+                  const blockedReason = typeof summary.blockedReason === "string" ? summary.blockedReason : null;
+
                   return (
                     <div key={job.id} className="prospecting-list-item">
                       <div>
                         <strong>{job.name}</strong>
-                        <p className="help">{job.industry || "General search"} · {job.status} · {job.realDataOnly ? "real-data-only" : discoveryMode === "seed" ? "seed fallback used" : "web discovery"}</p>
+                        <p className="help">{job.industry || "General search"} · {job.status} · {job.realDataOnly ? "real-data-only" : discoveryMode === "seed" ? "seed fallback used" : discoveryMode === "blocked" ? "search provider blocked" : "web discovery"}</p>
+                        {blockedReason ? <p className="help">{blockedReason}</p> : null}
                       </div>
                       <div className="prospecting-metrics">
                         <span>{job._count?.candidates ?? 0} candidates</span>
