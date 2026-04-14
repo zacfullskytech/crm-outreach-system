@@ -642,6 +642,14 @@ main {
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .prospecting-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .prospecting-span-2 {
+    grid-column: span 1;
+  }
 }
 
 /* Shared form layouts */
@@ -736,6 +744,65 @@ main {
 .inline-grid {
   display: grid;
   gap: 18px;
+}
+
+/* Prospecting */
+.kicker {
+  display: inline-flex;
+  margin-bottom: 10px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--blue-bright);
+  font-weight: 700;
+}
+
+.prospecting-stack {
+  gap: 24px;
+}
+
+.prospecting-grid {
+  grid-template-columns: minmax(280px, 0.9fr) minmax(420px, 1.1fr);
+}
+
+.prospecting-list {
+  display: grid;
+  gap: 14px;
+}
+
+.prospecting-list-item,
+.prospecting-candidate {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.95) 100%);
+}
+
+.prospecting-list-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.prospecting-metrics {
+  display: grid;
+  gap: 6px;
+  text-align: right;
+  font-size: 0.82rem;
+  color: var(--gray-500);
+}
+
+.prospecting-candidate-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.prospecting-span-2 {
+  grid-column: span 2;
 }
 
 /* Sidebar footer */

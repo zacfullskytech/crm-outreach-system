@@ -109,7 +109,26 @@ export const prospectSchema = z.object({
   source: z.string().trim().min(1).optional().nullable(),
   sourceUrl: z.string().trim().url().optional().nullable(),
   qualificationStatus: z.enum(["NEW", "REVIEWING", "QUALIFIED", "REJECTED", "CONVERTED"]).optional(),
+  matchStatus: z.enum(["NEW", "POSSIBLE_MATCH", "EXISTING_COMPANY", "EXISTING_CONTACT"]).optional(),
+  matchReason: z.string().trim().min(1).optional().nullable(),
   score: z.number().int().optional().nullable(),
+  notes: z.string().trim().min(1).optional().nullable(),
+  searchJobId: z.string().cuid().optional().nullable(),
+  candidateId: z.string().cuid().optional().nullable(),
+});
+
+export const prospectSearchJobSchema = z.object({
+  name: z.string().trim().min(1),
+  industry: z.string().trim().min(1).optional().nullable(),
+  geography: z.array(z.string().trim().min(1)).min(1),
+  includeKeywords: z.array(z.string().trim().min(1)).optional().default([]),
+  excludeKeywords: z.array(z.string().trim().min(1)).optional().default([]),
+  companyTypes: z.array(z.string().trim().min(1)).optional().default([]),
+  notes: z.string().trim().min(1).optional().nullable(),
+});
+
+export const prospectCandidateReviewSchema = z.object({
+  status: z.enum(["NEW", "APPROVED", "REJECTED", "IMPORTED"]),
   notes: z.string().trim().min(1).optional().nullable(),
 });
 

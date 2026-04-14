@@ -51,6 +51,27 @@ enum ProspectStatus {
   CONVERTED
 }
 
+enum ProspectSearchJobStatus {
+  DRAFT
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum ProspectCandidateStatus {
+  NEW
+  APPROVED
+  REJECTED
+  IMPORTED
+}
+
+enum ProspectMatchStatus {
+  NEW
+  POSSIBLE_MATCH
+  EXISTING_COMPANY
+  EXISTING_CONTACT
+}
+
 enum SuppressionReason {
   UNSUBSCRIBE
   BOUNCE
@@ -246,13 +267,76 @@ model Prospect {
   source              String?
   sourceUrl           String?
   qualificationStatus ProspectStatus @default(NEW)
+  matchStatus         ProspectMatchStatus @default(NEW)
+  matchReason         String?
   score               Int?           @default(0)
   notes               String?
+  searchJobId         String?
+  candidateId         String?
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
+  searchJob  ProspectSearchJob?  @relation(fields: [searchJobId], references: [id], onDelete: SetNull)
+  candidate  ProspectCandidate?  @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+
   @@index([qualificationStatus])
+  @@index([matchStatus])
   @@index([state])
+}
+
+model ProspectSearchJob {
+  id               String                  @id @default(cuid())
+  name             String
+  industry         String?
+  geographyJson    Json?
+  includeKeywords  Json?
+  excludeKeywords  Json?
+  companyTypesJson Json?
+  notes            String?
+  status           ProspectSearchJobStatus @default(DRAFT)
+  resultSummaryJson Json?
+  createdById      String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  candidates ProspectCandidate[]
+  prospects  Prospect[]
+
+  @@index([status])
+  @@index([industry])
+}
+
+model ProspectCandidate {
+  id                 String                 @id @default(cuid())
+  searchJobId        String
+  companyName        String
+  contactName        String?
+  email              String?
+  phone              String?
+  website            String?
+  industry           String?
+  businessType       String?
+  city               String?
+  state              String?
+  postalCode         String?
+  source             String?
+  sourceUrl          String?
+  evidenceJson       Json?
+  extractionJson     Json?
+  status             ProspectCandidateStatus @default(NEW)
+  matchStatus        ProspectMatchStatus   @default(NEW)
+  matchReason        String?
+  score              Int?                  @default(0)
+  notes              String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  searchJob ProspectSearchJob @relation(fields: [searchJobId], references: [id], onDelete: Cascade)
+  prospects Prospect[]
+
+  @@index([searchJobId])
+  @@index([status])
+  @@index([matchStatus])
 }
 
 model ImportJob {

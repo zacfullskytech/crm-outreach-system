@@ -3,6 +3,7 @@ import { ZodError } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/supabase/auth";
 import { scoreProspect } from "@/lib/prospects";
+import { findProspectMatch } from "@/lib/prospecting";
 import { prospectSchema } from "@/lib/validators";
 
 export async function GET() {
@@ -33,11 +34,15 @@ export async function POST(request: NextRequest) {
         businessType: parsed.businessType,
       });
 
+    const match = await findProspectMatch(parsed);
+
     const prospect = await prisma.prospect.create({
       data: {
         ...parsed,
         state: parsed.state?.toUpperCase() || null,
         score,
+        matchStatus: parsed.matchStatus || match.status,
+        matchReason: parsed.matchReason || match.reason,
       },
     });
 
