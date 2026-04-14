@@ -7,6 +7,19 @@ import { searchWeb } from "@/lib/search-provider";
 const SEARCH_USER_AGENT = "Mozilla/5.0 (compatible; FullSkyProspectingBot/1.0)";
 const FALLBACK_BUSINESS_TERMS = ["company", "business", "services", "office", "clinic"];
 const LOCATION_SPLIT_REGEX = /\s*,\s*/;
+const AGGREGATOR_DOMAINS = [
+  "yelp.com",
+  "threebestrated.com",
+  "mapquest.com",
+  "yellowpages.com",
+  "facebook.com",
+  "instagram.com",
+  "linkedin.com",
+  "tripadvisor.com",
+  "carecredit.com",
+];
+const GENERIC_TITLE_PARTS = new Set(["home", "welcome", "24", "site", "homepage"]);
+const INVALID_CONTACT_NAME_FRAGMENTS = ["started", "in the", "of", "resources", "hospital", "clinic", "welcome", "home"];
 
 type DiscoveryCandidate = {
   companyName: string;
@@ -170,25 +183,84 @@ function detectBusinessType(text: string) {
   return null;
 }
 
+function isLikelyPersonName(value: string) {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 2 || words.length > 3) {
+    return false;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (INVALID_CONTACT_NAME_FRAGMENTS.some((fragment) => normalized.includes(fragment))) {
+    return false;
+  }
+
+  return words.every((word) => /^[A-Z][a-z'-]+$/.test(word));
+}
+
 function extractContactName(text: string) {
   const patterns = [
-    /(?:dr\.?|doctor)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)/,
-    /(?:owner|founder|medical director|practice manager|office manager)[:\s-]+([A-Z][a-z]+\s+[A-Z][a-z]+)/i,
+    /(?:dr\.?|doctor)\s+([A-Z][a-z'-]+\s+[A-Z][a-z'-]+)/,
+    /(?:owner|founder|medical director|practice manager|office manager)[:\s-]+([A-Z][a-z'-]+\s+[A-Z][a-z'-]+)/i,
   ];
 
   for (const pattern of patterns) {
     const match = text.match(pattern);
-    if (match?.[1]) {
-      return match[1].trim();
+    const candidate = match?.[1]?.trim();
+    if (candidate && isLikelyPersonName(candidate)) {
+      return candidate;
     }
   }
 
   return null;
 }
 
+function normalizeCompanyTitlePart(value: string) {
+  return value
+    .replace(/\s+/g, " ")
+    .replace(/^\d+[-:\s]*/, "")
+    .trim();
+}
+
 function extractCompanyName(title: string, url: string) {
-  const cleanTitle = title.split(/[|\-–]/)[0]?.trim();
-  if (cleanTitle) return cleanTitle;
+  const parts = title
+    .split(/[|\-–]/)
+    .map((part) => normalizeCompanyTitlePart(part))
+    .filter(Boolean);
+
+  const scored = parts
+    .map((part) => {
+      const lower = part.toLowerCase();
+      let score = 0;
+
+      if (GENERIC_TITLE_PARTS.has(lower)) {
+        score -= 5;
+      }
+      if (part.length >= 4) {
+        score += 1;
+      }
+      if (/clinic|hospital|veterinary|vet|animal|care|center|centre|practice/i.test(part)) {
+        score += 5;
+      }
+      if (/ in [A-Z][a-z]+|cincinnati|oh\b|book online|trusted|top rated|welcome/i.test(part)) {
+        score -= 2;
+      }
+      if (/^[A-Z][a-z]+\s+[A-Z][a-z]+\s+(Clinic|Hospital|Veterinary|Vet|Animal)/.test(part)) {
+        score += 3;
+      }
+
+      return { part, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  if (scored[0]?.score > 0) {
+    return scored[0].part;
+  }
+
+  const usable = parts.find((part) => !GENERIC_TITLE_PARTS.has(part.toLowerCase()) && part.length >= 4);
+  if (usable) {
+    return usable;
+  }
+
   const domain = normalizeWebsite(url);
   return domain ? domain.replace(/\.[a-z]+$/, "").replace(/[-_]/g, " ") : "Unknown prospect";
 }
@@ -199,9 +271,28 @@ function escapeRegExp(value: string) {
 
 function parseLocation(input: string) {
   const parts = input.split(LOCATION_SPLIT_REGEX).map((entry) => entry.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    return {
+      city: parts[0] || null,
+      state: parts[1]?.slice(0, 2).toUpperCase() || null,
+      raw: input,
+    };
+  }
+
+  const whitespaceParts = input.trim().split(/\s+/).filter(Boolean);
+  if (whitespaceParts.length >= 2) {
+    const stateWord = whitespaceParts[whitespaceParts.length - 1];
+    const city = whitespaceParts.slice(0, -1).join(" ");
+    return {
+      city: city || input,
+      state: stateWord.slice(0, 2).toUpperCase(),
+      raw: input,
+    };
+  }
+
   return {
-    city: parts[0] || null,
-    state: parts[1]?.slice(0, 2).toUpperCase() || null,
+    city: parts[0] || input,
+    state: null,
     raw: input,
   };
 }
@@ -318,6 +409,10 @@ export async function discoverProspectCandidates(params: {
       }
 
       const lower = `${rawTitle} ${url}`.toLowerCase();
+      const domain = normalizeWebsite(url);
+      if (domain && AGGREGATOR_DOMAINS.some((blockedDomain) => domain === blockedDomain || domain.endsWith(`.${blockedDomain}`))) {
+        continue;
+      }
       if (excludeKeywords.some((keyword) => lower.includes(keyword.toLowerCase()))) {
         continue;
       }
