@@ -20,6 +20,10 @@ const AGGREGATOR_DOMAINS = [
 ];
 const GENERIC_TITLE_PARTS = new Set(["home", "welcome", "24", "site", "homepage"]);
 const INVALID_CONTACT_NAME_FRAGMENTS = ["started", "in the", "of", "resources", "hospital", "clinic", "welcome", "home"];
+const EMERGENCY_HINTS = ["emergency", "urgent care", "24-hour", "24 hour", "after hours", "critical care"];
+const SPECIALTY_HINTS = ["specialty", "specialist", "surgery", "oncology", "neurology", "dermatology", "internal medicine"];
+const INDEPENDENT_HINTS = ["independent", "locally owned", "family owned", "privately owned", "owner operated"];
+const TITLE_PREFIX_STRIPPERS = [/^welcome to\s+/i, /^trusted\s+/i, /^top rated\s+/i];
 
 type DiscoveryCandidate = {
   companyName: string;
@@ -175,9 +179,9 @@ function extractPhones(text: string) {
 
 function detectBusinessType(text: string) {
   const value = text.toLowerCase();
-  if (value.includes("emergency")) return "Emergency Practice";
-  if (value.includes("specialty")) return "Specialty Practice";
-  if (value.includes("independent")) return "Independent Practice";
+  if (SPECIALTY_HINTS.some((hint) => value.includes(hint))) return "Specialty Practice";
+  if (EMERGENCY_HINTS.some((hint) => value.includes(hint))) return "Emergency Practice";
+  if (INDEPENDENT_HINTS.some((hint) => value.includes(hint))) return "Independent Practice";
   if (value.includes("hospital")) return "Hospital";
   if (value.includes("clinic")) return "Clinic";
   return null;
@@ -215,10 +219,20 @@ function extractContactName(text: string) {
 }
 
 function normalizeCompanyTitlePart(value: string) {
-  return value
+  let normalized = value
     .replace(/\s+/g, " ")
     .replace(/^\d+[-:\s]*/, "")
     .trim();
+
+  for (const pattern of TITLE_PREFIX_STRIPPERS) {
+    normalized = normalized.replace(pattern, "").trim();
+  }
+
+  normalized = normalized.replace(/^Veterinarian in [^|]+/i, "").trim();
+  normalized = normalized.replace(/^Veterinarians in [^|]+/i, "").trim();
+  normalized = normalized.replace(/^Trusted Veterinarians in [^|]+/i, "").trim();
+
+  return normalized;
 }
 
 function extractCompanyName(title: string, url: string) {
@@ -244,6 +258,9 @@ function extractCompanyName(title: string, url: string) {
       if (/ in [A-Z][a-z]+|cincinnati|oh\b|book online|trusted|top rated|welcome/i.test(part)) {
         score -= 2;
       }
+      if (/veterinarian in|trusted veterinarians|book online/i.test(part)) {
+        score -= 3;
+      }
       if (/^[A-Z][a-z]+\s+[A-Z][a-z]+\s+(Clinic|Hospital|Veterinary|Vet|Animal)/.test(part)) {
         score += 3;
       }
@@ -253,7 +270,7 @@ function extractCompanyName(title: string, url: string) {
     .sort((a, b) => b.score - a.score);
 
   if (scored[0]?.score > 0) {
-    return scored[0].part;
+    return normalizeCompanyTitlePart(scored[0].part);
   }
 
   const usable = parts.find((part) => !GENERIC_TITLE_PARTS.has(part.toLowerCase()) && part.length >= 4);
@@ -442,7 +459,7 @@ export async function discoverProspectCandidates(params: {
       const website = websiteDomain ? `https://${websiteDomain}` : url;
       const companyName = extractCompanyName(rawTitle, url);
       const contactName = extractContactName(combinedText);
-      const businessType = detectBusinessType(`${rawTitle} ${combinedText}`);
+      const businessType = detectBusinessType(`${rawTitle} ${supporting.text} ${bodyText.slice(0, 1200)}`);
       const confidenceSignals = [websiteDomain, emails[0], phones[0], contactName, businessType].filter(Boolean).length;
 
       results.push({
