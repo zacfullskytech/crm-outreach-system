@@ -10,37 +10,69 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
   const [mode, setMode] = useState<"signin" | "signup" | "recovery">("signin");
   const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const invited = searchParams.get("invited");
-    const recovery = searchParams.get("recovery");
-    const nextError = searchParams.get("error");
-    const nextEmail = searchParams.get("email");
+    let cancelled = false;
 
-    if (nextEmail) {
-      setEmail(nextEmail);
+    async function initializeAuthState() {
+      const invited = searchParams.get("invited");
+      const recovery = searchParams.get("recovery");
+      const nextError = searchParams.get("error");
+      const nextEmail = searchParams.get("email");
+
+      if (nextEmail) {
+        setEmail(nextEmail);
+      }
+
+      if (nextError) {
+        setError(nextError);
+      }
+
+      const supabase = await createClient();
+
+      if (window.location.hash.includes("access_token") || window.location.hash.includes("refresh_token")) {
+        const { error: hashError } = await supabase.auth.getSession();
+        if (hashError && !cancelled) {
+          setError(hashError.message);
+        }
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.hash = "";
+        window.history.replaceState({}, "", cleanUrl.toString());
+      }
+
+      const { data } = await supabase.auth.getSession();
+      const hasSession = Boolean(data.session);
+
+      if (cancelled) {
+        return;
+      }
+
+      if (invited === "1") {
+        setMode("signup");
+        setNotice(hasSession
+          ? "Your invite was accepted. Set your password to finish joining the platform."
+          : "Your invite link opened, but the auth session is not ready yet. Reload the invite link from the email if password set fails.");
+        setError(null);
+      } else if (recovery === "1") {
+        setMode("recovery");
+        setNotice(hasSession
+          ? "Your recovery link is active. Enter a new password to continue."
+          : "Your recovery link opened, but the auth session is not ready yet. Reload the recovery link if password update fails.");
+        setError(null);
+      }
+
+      setAuthReady(true);
     }
 
-    if (invited === "1") {
-      setMode("signup");
-      setNotice("Your invite was accepted. Set your password to finish joining the platform.");
-      setError(null);
-      return;
-    }
+    void initializeAuthState();
 
-    if (recovery === "1") {
-      setMode("recovery");
-      setNotice("Your recovery link is active. Enter a new password to continue.");
-      setError(null);
-      return;
-    }
-
-    if (nextError) {
-      setError(nextError);
-    }
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -51,6 +83,13 @@ export function LoginPage() {
     const supabase = await createClient();
 
     if (mode === "signup") {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        setError("Auth Session missing");
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase.auth.updateUser({ password });
 
       if (error) {
@@ -65,6 +104,13 @@ export function LoginPage() {
     }
 
     if (mode === "recovery") {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        setError("Auth Session missing");
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase.auth.updateUser({ password });
       if (error) {
         setError(error.message);
@@ -138,7 +184,7 @@ export function LoginPage() {
           {notice && <div className="notice-msg">{notice}</div>}
           {error && <div className="error-msg">{error}</div>}
 
-          <button type="submit" className="button primary" disabled={loading}>
+          <button type="submit" className="button primary" disabled={loading || ((mode === "signup" || mode === "recovery") && !authReady)}>
             {loading ? "Please wait…" : mode === "signin" ? "Sign In" : mode === "signup" ? "Set Password" : "Update Password"}
           </button>
         </form>
