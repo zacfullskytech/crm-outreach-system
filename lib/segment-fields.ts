@@ -20,6 +20,7 @@ const baseFieldOptions: SegmentFieldOption[] = [
   { value: "services", label: "Company services", entityType: "company" },
   { value: "status", label: "Company status", entityType: "company" },
   { value: "name", label: "Company name", entityType: "company" },
+  { value: "email", label: "Company email", entityType: "company" },
   { value: "industry", label: "Prospect industry", entityType: "prospect" },
   { value: "state", label: "Prospect state", entityType: "prospect" },
   { value: "city", label: "Prospect city", entityType: "prospect" },

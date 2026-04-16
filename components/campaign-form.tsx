@@ -60,6 +60,9 @@ export function CampaignForm({
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
+  const selectedSegment = sendableSegments.find((segment) => segment.id === selectedSegmentId) || null;
+  const selectedMarketingContent = marketingContent.find((item) => item.id === selectedMarketingContentId) || null;
+
   async function previewAudience() {
     if (!selectedSegmentId) {
       setMessage("Choose a segment first.");
@@ -192,6 +195,20 @@ export function CampaignForm({
     <form ref={formRef} onSubmit={onSubmit} className="inline-grid">
       {!hasSegments ? <p className="help">Create a contact segment first so this campaign has a sendable audience.</p> : null}
 
+      <div className="card subtle-card">
+        <div className="record-summary-main">
+          <div className="record-summary-topline">
+            <h3>Send Setup</h3>
+            {selectedSegment ? <span className="badge badge-blue">{selectedSegment.name}</span> : null}
+          </div>
+          <div className="record-meta-row">
+            <span>{selectedSegment ? "Contact segment selected" : "No segment selected"}</span>
+            <span>{selectedMarketingContent ? `Using library asset: ${selectedMarketingContent.title}` : "No library asset applied"}</span>
+            <span>{defaults.fromEmail || "No default sender configured"}</span>
+          </div>
+        </div>
+      </div>
+
       <div className="form-grid">
         <div className="field">
           <label htmlFor="campaign-marketing-content">Marketing content</label>
@@ -294,8 +311,13 @@ export function CampaignForm({
       </div>
       {preview ? (
         <div className="card">
-          <h3>Audience Preview</h3>
-          <p>{preview.count} matching contacts with current filters.</p>
+          <div className="record-summary-main">
+            <div className="record-summary-topline">
+              <h3>Audience Preview</h3>
+              <span className="badge badge-blue">{preview.count} matches</span>
+            </div>
+            <p>{preview.count} matching contacts with current filters.</p>
+          </div>
           <table className="table">
             <thead>
               <tr>

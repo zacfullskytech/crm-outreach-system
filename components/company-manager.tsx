@@ -54,6 +54,7 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
       !q ||
       (c.name || "").toLowerCase().includes(q) ||
       (c.industry || "").toLowerCase().includes(q) ||
+      (c.email || "").toLowerCase().includes(q) ||
       (c.city || "").toLowerCase().includes(q) ||
       (c.state || "").toLowerCase().includes(q) ||
       servicesText.includes(q) ||
@@ -173,6 +174,7 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
                             <div className="record-meta-row">
                               <span>{company.city || "Unknown city"}{company.state ? `, ${company.state}` : ""}</span>
                               <span>{company.phone || "No phone"}</span>
+                              <span>{company.email || "No company email"}</span>
                               <span>{company.contacts?.length || 0} linked contact{company.contacts?.length === 1 ? "" : "s"}</span>
                             </div>
                             {services.length > 0 ? <p className="help">Services: {services.join(", ")}</p> : null}

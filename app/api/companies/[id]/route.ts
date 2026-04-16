@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/supabase/auth";
 import { normalizeCustomFields } from "@/lib/custom-fields";
 import { companySchema } from "@/lib/validators";
-import { normalizeWebsite } from "@/lib/utils";
+import { normalizeEmail, normalizeWebsite } from "@/lib/utils";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await requireAuth();
@@ -19,6 +19,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       where: { id },
       data: {
         ...companyFields,
+        email: parsed.email !== undefined ? normalizeEmail(parsed.email) : undefined,
         state: parsed.state?.toUpperCase() || null,
         emailDomain: parsed.website !== undefined ? normalizeWebsite(parsed.website) : undefined,
         customFieldsJson: customFields ? normalizeCustomFields(customFields) : undefined,

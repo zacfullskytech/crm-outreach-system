@@ -4,6 +4,9 @@ import type { Prospect } from "@prisma/client";
 
 export async function upsertCompanyFromProspect(prospect: Prospect) {
   const normalizedDomain = normalizeWebsite(prospect.website);
+  const normalizedEmailValue = normalizeEmail(prospect.email);
+  const hasNamedContact = Boolean(prospect.contactName && prospect.contactName.trim());
+  const shouldUseCompanyEmail = Boolean(normalizedEmailValue && !hasNamedContact);
 
   const existingCompany = normalizedDomain
     ? await prisma.company.findFirst({
@@ -27,6 +30,7 @@ export async function upsertCompanyFromProspect(prospect: Prospect) {
           businessType: existingCompany.businessType || prospect.businessType,
           website: existingCompany.website || prospect.website,
           emailDomain: existingCompany.emailDomain || normalizedDomain,
+          email: existingCompany.email || (shouldUseCompanyEmail ? normalizedEmailValue : null),
           phone: existingCompany.phone || prospect.phone,
           addressLine1: existingCompany.addressLine1 || prospect.addressLine1,
           city: existingCompany.city || prospect.city,
@@ -48,6 +52,7 @@ export async function upsertCompanyFromProspect(prospect: Prospect) {
           businessType: prospect.businessType,
           website: prospect.website,
           emailDomain: normalizedDomain,
+          email: shouldUseCompanyEmail ? normalizedEmailValue : null,
           phone: prospect.phone,
           addressLine1: prospect.addressLine1,
           city: prospect.city,
@@ -64,8 +69,7 @@ export async function upsertCompanyFromProspect(prospect: Prospect) {
       });
 
   let contact = null;
-  if (prospect.contactName || prospect.email || prospect.phone) {
-    const normalizedEmailValue = normalizeEmail(prospect.email);
+  if (prospect.contactName || (prospect.phone && hasNamedContact) || (normalizedEmailValue && hasNamedContact)) {
     const existingContact = normalizedEmailValue
       ? await prisma.contact.findFirst({ where: { email: normalizedEmailValue } })
       : null;
@@ -81,7 +85,7 @@ export async function upsertCompanyFromProspect(prospect: Prospect) {
           email: normalizedEmailValue,
           phone: prospect.phone,
           source: prospect.source,
-          status: prospect.email ? "ACTIVE" : "DO_NOT_CONTACT",
+          status: normalizedEmailValue ? "ACTIVE" : "DO_NOT_CONTACT",
         },
       });
     } else if (!existingContact.companyId) {

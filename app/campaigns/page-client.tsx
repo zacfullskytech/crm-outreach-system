@@ -63,6 +63,11 @@ export function CampaignsPageClient({
   const [isCreateOpen, setIsCreateOpen] = useState(true);
   const [isListOpen, setIsListOpen] = useState(true);
 
+  const draftCampaigns = campaigns.filter((campaign) => campaign.status === "DRAFT").length;
+  const scheduledCampaigns = campaigns.filter((campaign) => campaign.status === "SCHEDULED").length;
+  const sentCampaigns = campaigns.filter((campaign) => campaign.status === "SENT").length;
+  const totalRecipients = campaigns.reduce((count, campaign) => count + campaign.recipients.length, 0);
+
   const filtered = campaigns.filter((campaign) => {
     const q = search.toLowerCase();
     const matchesSearch =
@@ -83,6 +88,44 @@ export function CampaignsPageClient({
           <p>
             Campaigns should preview recipients before send, then keep delivery outcomes tied to the frozen audience snapshot.
           </p>
+        </section>
+
+        <section className="stat-grid compact-stat-grid">
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{campaigns.length}</div>
+              <div className="stat-label">Campaigns</div>
+              <div className="stat-desc">Drafts, scheduled sends, and completed sends in the system.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{draftCampaigns}</div>
+              <div className="stat-label">Drafts</div>
+              <div className="stat-desc">Campaigns still being assembled before send or scheduling.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{scheduledCampaigns}</div>
+              <div className="stat-label">Scheduled</div>
+              <div className="stat-desc">Campaigns queued with a future send time.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{sentCampaigns}</div>
+              <div className="stat-label">Sent</div>
+              <div className="stat-desc">Completed campaign sends with frozen recipient snapshots.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{totalRecipients}</div>
+              <div className="stat-label">Recipient Snapshots</div>
+              <div className="stat-desc">Stored recipients across all campaign records.</div>
+            </div>
+          </article>
         </section>
 
         <section className="card collapsible-card">
@@ -168,65 +211,75 @@ export function CampaignsPageClient({
                 </div>
               ) : (
                 <div className="inline-grid">
-                  {filtered.map((campaign) => (
-                    <details key={campaign.id} className="card content-item" open={false}>
-                      <summary className="card-header content-item-summary">
-                        <div>
-                          <h3>{campaign.name}</h3>
-                          <p className="help">{campaign.subject || "No subject"}</p>
-                          <p className="help">{campaign.fromEmail} · {campaign.recipients.length} recipient{campaign.recipients.length === 1 ? "" : "s"}</p>
-                        </div>
-                        <div className="content-item-summary-right">
-                          <span className={statusBadgeClass(campaign.status)}>{campaign.status}</span>
-                          <span className="help">View</span>
-                        </div>
-                      </summary>
-                      <div className="content-item-body inline-grid">
-                        <div className="grid">
-                          <div className="card">
-                            <h4>Sender</h4>
-                            <p>{campaign.fromName || "No from name"}</p>
-                            <p>{campaign.fromEmail}</p>
-                            <p>{campaign.replyTo || "No reply-to"}</p>
+                  {filtered.map((campaign) => {
+                    const sentCount = campaign.recipients.filter((recipient) => recipient.status === "SENT").length;
+                    const failedCount = campaign.recipients.filter((recipient) => recipient.status === "FAILED").length;
+                    const pendingCount = campaign.recipients.filter((recipient) => recipient.status === "PENDING").length;
+
+                    return (
+                      <details key={campaign.id} className="card content-item" open={false}>
+                        <summary className="card-header content-item-summary">
+                          <div className="record-summary-main">
+                            <div className="record-summary-topline">
+                              <h3>{campaign.name}</h3>
+                              <span className={statusBadgeClass(campaign.status)}>{campaign.status}</span>
+                            </div>
+                            <p className="help">{campaign.subject || "No subject"}</p>
+                            <div className="record-meta-row">
+                              <span>{campaign.fromEmail}</span>
+                              <span>{campaign.recipients.length} recipient{campaign.recipients.length === 1 ? "" : "s"}</span>
+                              <span>{campaign.scheduledAt ? `Scheduled ${new Date(campaign.scheduledAt).toLocaleString()}` : "Not scheduled"}</span>
+                            </div>
+                          </div>
+                          <div className="content-item-summary-right">
+                            <span className="help">View</span>
+                          </div>
+                        </summary>
+                        <div className="content-item-body inline-grid">
+                          <div className="grid">
+                            <div className="card">
+                              <h4>Sender</h4>
+                              <p>{campaign.fromName || "No from name"}</p>
+                              <p>{campaign.fromEmail}</p>
+                              <p>{campaign.replyTo || "No reply-to"}</p>
+                            </div>
+                            <div className="card">
+                              <h4>Timing</h4>
+                              <p>Created: {new Date(campaign.createdAt).toLocaleString()}</p>
+                              <p>Scheduled: {campaign.scheduledAt ? new Date(campaign.scheduledAt).toLocaleString() : "Not scheduled"}</p>
+                              <p>Sent: {campaign.sentAt ? new Date(campaign.sentAt).toLocaleString() : "Not sent"}</p>
+                              <p>Delivery summary: {sentCount} sent · {failedCount} failed · {pendingCount} pending</p>
+                            </div>
                           </div>
                           <div className="card">
-                            <h4>Timing</h4>
-                            <p>Created: {new Date(campaign.createdAt).toLocaleString()}</p>
-                            <p>Scheduled: {campaign.scheduledAt ? new Date(campaign.scheduledAt).toLocaleString() : "Not scheduled"}</p>
-                            <p>Sent: {campaign.sentAt ? new Date(campaign.sentAt).toLocaleString() : "Not sent"}</p>
-                            <p>
-                              Delivery summary: {campaign.recipients.filter((recipient) => recipient.status === "SENT").length} sent · {campaign.recipients.filter((recipient) => recipient.status === "FAILED").length} failed · {campaign.recipients.filter((recipient) => recipient.status === "PENDING").length} pending
-                            </p>
+                            <h4>HTML Body</h4>
+                            <p className="campaign-template-preview">{campaign.templateHtml}</p>
+                          </div>
+                          <div className="actions">
+                            <button
+                              className="button secondary"
+                              type="button"
+                              onClick={() => {
+                                setDraftSeed({
+                                  name: `${campaign.name} Copy`,
+                                  subject: campaign.subject,
+                                  templateHtml: campaign.templateHtml,
+                                  templateText: campaign.templateText || undefined,
+                                });
+                                setIsCreateOpen(true);
+                              }}
+                            >
+                              Duplicate Into Draft
+                            </button>
+                          </div>
+                          <div className="card">
+                            <h4>Plain-text Body</h4>
+                            <p className="campaign-template-preview">{campaign.templateText || "No plain-text body"}</p>
                           </div>
                         </div>
-                        <div className="card">
-                          <h4>HTML Body</h4>
-                          <p className="campaign-template-preview">{campaign.templateHtml}</p>
-                        </div>
-                        <div className="actions">
-                          <button
-                            className="button secondary"
-                            type="button"
-                            onClick={() => {
-                              setDraftSeed({
-                                name: `${campaign.name} Copy`,
-                                subject: campaign.subject,
-                                templateHtml: campaign.templateHtml,
-                                templateText: campaign.templateText || undefined,
-                              });
-                              setIsCreateOpen(true);
-                            }}
-                          >
-                            Duplicate Into Draft
-                          </button>
-                        </div>
-                        <div className="card">
-                          <h4>Plain-text Body</h4>
-                          <p className="campaign-template-preview">{campaign.templateText || "No plain-text body"}</p>
-                        </div>
-                      </div>
-                    </details>
-                  ))}
+                      </details>
+                    );
+                  })}
                 </div>
               )}
             </>

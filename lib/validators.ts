@@ -29,6 +29,7 @@ export const companySchema = z.object({
   industry: z.string().trim().min(1).optional().nullable(),
   website: z.string().trim().min(1).optional().nullable(),
   phone: z.string().trim().min(1).optional().nullable(),
+  email: z.string().trim().email().optional().nullable(),
   city: z.string().trim().min(1).optional().nullable(),
   state: z.string().trim().min(1).max(2).optional().nullable(),
   postalCode: z.string().trim().min(1).optional().nullable(),

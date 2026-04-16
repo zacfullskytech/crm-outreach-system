@@ -73,6 +73,7 @@ export function CompanyForm({
       businessType: String(form.get("businessType") || "") || null,
       website: String(form.get("website") || "") || null,
       phone: String(form.get("phone") || "") || null,
+      email: String(form.get("email") || "") || null,
       city: String(form.get("city") || "") || null,
       state: String(form.get("state") || "") || null,
       postalCode: String(form.get("postalCode") || "") || null,
@@ -168,6 +169,10 @@ export function CompanyForm({
         <div className="field">
           <label htmlFor={`company-phone-${company?.id || "new"}`}>Phone</label>
           <input id={`company-phone-${company?.id || "new"}`} name="phone" placeholder="+1 555 0100" defaultValue={company?.phone || ""} />
+        </div>
+        <div className="field">
+          <label htmlFor={`company-email-${company?.id || "new"}`}>Company email</label>
+          <input id={`company-email-${company?.id || "new"}`} name="email" type="email" placeholder="info@clinic.example" defaultValue={company?.email || ""} />
         </div>
         <div className="field">
           <label htmlFor={`company-city-${company?.id || "new"}`}>City</label>

@@ -42,6 +42,8 @@ export function MarketingContentManager({ initialItems, initialSegments, isAdmin
     setDraftSeed(draft);
   }
 
+  const aiReadyItems = items.filter((item) => item.bodyText || item.bodyHtml).length;
+  const imageBackedItems = items.filter((item) => item.imageUrl).length;
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
     return items.filter((item) => {
@@ -80,6 +82,37 @@ export function MarketingContentManager({ initialItems, initialSegments, isAdmin
           <p>
             Keep existing collateral organized by audience, service line, offer type, lifecycle stage, and reusable variables. Then generate new copy and image drafts with guardrailed prompts.
           </p>
+        </section>
+
+        <section className="stat-grid compact-stat-grid">
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{items.length}</div>
+              <div className="stat-label">Library Assets</div>
+              <div className="stat-desc">Saved collateral, generated drafts, and reusable campaign building blocks.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{aiReadyItems}</div>
+              <div className="stat-label">Copy Ready</div>
+              <div className="stat-desc">Assets that already include body copy for reuse in campaigns.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{imageBackedItems}</div>
+              <div className="stat-label">With Image</div>
+              <div className="stat-desc">Library entries that already have a generated or uploaded image.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{filtered.length}</div>
+              <div className="stat-label">In Current View</div>
+              <div className="stat-desc">Assets visible after the active content library filters.</div>
+            </div>
+          </article>
         </section>
 
         <section className="card form-section collapsible-card">
@@ -165,14 +198,21 @@ export function MarketingContentManager({ initialItems, initialSegments, isAdmin
                   {filtered.map((item) => (
                     <details key={item.id} className="card content-item" open={false}>
                       <summary className="card-header content-item-summary">
-                        <div>
-                          <h3>{item.title}</h3>
+                        <div className="record-summary-main">
+                          <div className="record-summary-topline">
+                            <h3>{item.title}</h3>
+                            <span className="badge">{item.channel || "Library"}</span>
+                          </div>
                           <p className="help">
                             {item.contentType} · {item.audience || "Unspecified audience"} · {item.serviceLine || "Unspecified service"} · {item.offerType || "Unspecified offer"}
                           </p>
+                          <div className="record-meta-row">
+                            <span>{item.industry || "No industry"}</span>
+                            <span>{item.lifecycleStage || "No lifecycle stage"}</span>
+                            <span>{item.imageUrl ? "Image attached" : "No image"}</span>
+                          </div>
                         </div>
                         <div className="content-item-summary-right">
-                          <span className="badge">{item.channel || "Library"}</span>
                           <span className="help">Edit</span>
                         </div>
                       </summary>

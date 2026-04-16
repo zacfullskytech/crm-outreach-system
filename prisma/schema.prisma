@@ -95,6 +95,7 @@ model Company {
   industry         String?
   website          String?
   phone            String?
+  email            String?
   emailDomain      String?
   addressLine1     String?
   addressLine2     String?

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/supabase/auth";
 import { normalizeCustomFields } from "@/lib/custom-fields";
 import { companySchema } from "@/lib/validators";
-import { normalizeWebsite } from "@/lib/utils";
+import { normalizeEmail, normalizeWebsite } from "@/lib/utils";
 
 export async function GET() {
   await requireAuth();
@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
         industry: parsed.industry ?? null,
         website: parsed.website ?? null,
         phone: parsed.phone ?? null,
+        email: normalizeEmail(parsed.email),
         city: parsed.city ?? null,
         state: parsed.state?.toUpperCase() || null,
         postalCode: parsed.postalCode ?? null,
