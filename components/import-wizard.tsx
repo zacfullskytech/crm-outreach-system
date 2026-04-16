@@ -38,6 +38,8 @@ export function ImportWizard() {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
+  const mappedFieldCount = Object.values(mapping).filter(Boolean).length;
+
   async function onFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) {
@@ -134,6 +136,21 @@ export function ImportWizard() {
 
   return (
     <div className="inline-grid">
+      <div className="card subtle-card">
+        <div className="record-summary-main">
+          <div className="record-summary-topline">
+            <h3>Import Progress</h3>
+            <span className="badge badge-blue">{step}</span>
+          </div>
+          <div className="record-meta-row">
+            <span>{filename}</span>
+            <span>{headers.length} columns loaded</span>
+            <span>{preview.length} preview rows</span>
+            <span>{mappedFieldCount} mapped fields</span>
+          </div>
+        </div>
+      </div>
+
       <div className="card">
         <h3>1. Upload CSV</h3>
         <div className="field">
@@ -191,6 +208,7 @@ export function ImportWizard() {
               {pending ? "Importing..." : "Run Import"}
             </button>
             <span className="help">Preview rows loaded: {preview.length}</span>
+            <span className="help">Mapped fields: {mappedFieldCount}</span>
           </div>
         </div>
       ) : null}

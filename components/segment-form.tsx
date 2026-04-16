@@ -88,6 +88,21 @@ export function SegmentForm({
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  const recipeHints: Record<string, Array<{ label: string; text: string }>> = {
+    contact: [
+      { label: "Client contacts by service gap", text: "Filter contacts where company status is CLIENT and company services do not include a target service." },
+      { label: "Reachable outreach audience", text: "Use contact status plus contact email and company filters to keep the audience sendable." },
+    ],
+    company: [
+      { label: "Upsell account list", text: "Filter CLIENT companies missing Internet, Phones, or other service tags to drive account expansion." },
+      { label: "Shared inbox fallback", text: "Use Company email and no linked contacts to find accounts with only general inbox coverage." },
+    ],
+    prospect: [
+      { label: "Qualified prospect queue", text: "Filter qualification status and geography to focus follow-up on higher-confidence leads." },
+      { label: "Protected duplicate review", text: "Use CRM match fields to inspect prospects that may overlap with current records." },
+    ],
+  };
   const formRef = useRef<HTMLFormElement | null>(null);
 
   const visibleFieldOptions = useMemo(
@@ -225,6 +240,20 @@ export function SegmentForm({
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="inline-grid">
+      <div className="card subtle-card">
+        <div className="record-summary-main">
+          <div className="record-summary-topline">
+            <h3>Segment Setup</h3>
+            <span className="badge badge-blue">{entityType}</span>
+          </div>
+          <div className="record-meta-row">
+            <span>{rules.length} rule{rules.length === 1 ? "" : "s"}</span>
+            <span>{operator} operator</span>
+            <span>{visibleFieldOptions.length} fields available</span>
+          </div>
+        </div>
+      </div>
+
       <div className="form-grid">
         <div className="field">
           <label htmlFor="segment-name">Segment name</label>
@@ -251,7 +280,12 @@ export function SegmentForm({
         <textarea id="segment-description" name="description" placeholder="Veterinary clients in Ohio who are not currently using us for internet services." defaultValue={segment?.description || ""} />
       </div>
       <div className="card">
-        <h3>Rules</h3>
+        <div className="card-header dashboard-panel-header">
+          <div>
+            <h3>Rules</h3>
+            <p className="help">Build reusable logic for {entityType} records. Preview before saving to avoid dead segments.</p>
+          </div>
+        </div>
         <div className="inline-grid">
           {rules.map((rule, index) => {
             const isServiceField = rule.field === "services" || rule.field === "company.services";
@@ -317,6 +351,20 @@ export function SegmentForm({
             {pending ? "Previewing..." : "Preview Count"}
           </button>
           {previewCount !== null ? <span className="help">Matching records: {previewCount}</span> : null}
+        </div>
+      </div>
+
+      <div className="card subtle-card">
+        <h3>Operator Recipes</h3>
+        <div className="inline-grid">
+          {recipeHints[entityType]?.map((recipe) => (
+            <div key={recipe.label} className="dashboard-list-row">
+              <div className="record-summary-main">
+                <strong>{recipe.label}</strong>
+                <p className="help">{recipe.text}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
       <div className="actions">

@@ -103,6 +103,20 @@ export function UserManagement({ initialUsers, currentUserId }: { initialUsers: 
 
   return (
     <div className="inline-grid">
+      <div className="card subtle-card">
+        <div className="record-summary-main">
+          <div className="record-summary-topline">
+            <h3>Access Overview</h3>
+            <span className="badge badge-blue">{users.length} users</span>
+          </div>
+          <div className="record-meta-row">
+            <span>{users.filter((user) => user.role === "admin").length} admin{users.filter((user) => user.role === "admin").length === 1 ? "" : "s"}</span>
+            <span>{users.filter((user) => user.role !== "admin").length} member{users.filter((user) => user.role !== "admin").length === 1 ? "" : "s"}</span>
+            <span>{users.find((user) => user.id === currentUserId)?.email || "Current operator"}</span>
+          </div>
+        </div>
+      </div>
+
       <form onSubmit={inviteUser} className="inline-grid">
         <div className="form-grid">
           <div className="field">

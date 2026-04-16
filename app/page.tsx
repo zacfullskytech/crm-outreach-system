@@ -1,83 +1,24 @@
+import Link from "next/link";
 import { requireAuth } from "@/lib/supabase/auth";
 import { AppShell } from "@/components/app-shell";
 import { getDashboardSummary } from "@/lib/dashboard";
 
 export const dynamic = "force-dynamic";
 
-const statCards = [
-  {
-    key: "contacts",
-    label: "Contacts",
-    desc: "People in your outreach database",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
-    ),
-  },
-  {
-    key: "companies",
-    label: "Companies",
-    desc: "Businesses anchoring your contacts",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 21h18" />
-        <path d="M9 8h1" />
-        <path d="M9 12h1" />
-        <path d="M9 16h1" />
-        <path d="M14 8h1" />
-        <path d="M14 12h1" />
-        <path d="M14 16h1" />
-        <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16" />
-      </svg>
-    ),
-  },
-  {
-    key: "segments",
-    label: "Segments",
-    desc: "Reusable audience filters",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M8 12l2 2 4-4" />
-      </svg>
-    ),
-  },
-  {
-    key: "campaigns",
-    label: "Campaigns",
-    desc: "Email sends with tracked outcomes",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.86 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.77 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
-      </svg>
-    ),
-  },
-  {
-    key: "prospects",
-    label: "Prospects",
-    desc: "Net-new leads in the qualification funnel",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-      </svg>
-    ),
-  },
-  {
-    key: "importJobs",
-    label: "Imports",
-    desc: "Bulk imports processed",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-        <polyline points="7 10 12 15 17 10" />
-        <line x1="12" y1="15" x2="12" y2="3" />
-      </svg>
-    ),
-  },
+const topStats = [
+  { key: "newProspects", label: "New Prospects", desc: "Fresh leads waiting for triage and qualification." },
+  { key: "qualifiedProspects", label: "Qualified Prospects", desc: "Approved leads that should be converted or contacted." },
+  { key: "clientAccounts", label: "Client Accounts", desc: "Current customers available for retention and upsell work." },
+  { key: "reachableContacts", label: "Reachable Contacts", desc: "Contacts with at least one usable outreach channel." },
+  { key: "scheduledCampaigns", label: "Scheduled Campaigns", desc: "Campaigns already queued for a future send time." },
+  { key: "failedCampaigns", label: "Failed Campaigns", desc: "Campaigns that need operator review or resend decisions." },
+] as const;
+
+const quickActions = [
+  { href: "/prospects", title: "Review Prospect Queue", desc: "Work new and qualified prospects before the list grows stale." },
+  { href: "/companies", title: "Find Upsell Targets", desc: "Inspect client accounts missing core service lines or shared inbox coverage." },
+  { href: "/campaigns", title: "Build Campaign Draft", desc: "Create a send-ready draft from a segment and reusable content asset." },
+  { href: "/marketing-content", title: "Create Sales Content", desc: "Generate acquisition and upsell content for current priorities." },
 ] as const;
 
 export default async function HomePage() {
@@ -86,26 +27,125 @@ export default async function HomePage() {
 
   return (
     <AppShell isAdmin={appUser.role === "admin"}>
-      <section className="hero">
-        <span className="kicker">Full Sky Technologies CRM</span>
-        <h2>Outbound CRM for veterinary and private practice markets.</h2>
-        <p>
-          Manage contacts, build targeted segments, and run email campaigns — all in one place.
-        </p>
-      </section>
+      <div className="stack">
+        <section className="hero">
+          <span className="kicker">Full Sky Technologies CRM</span>
+          <h2>Run prospecting, account growth, and campaign execution from one operating view.</h2>
+          <p>
+            Version 1 should help you find new prospects, expand service coverage inside current accounts, and turn strong content into usable outreach quickly.
+          </p>
+        </section>
 
-      <section className="stat-grid">
-        {statCards.map((card) => (
-          <article key={card.key} className="stat-card">
-            <div className="stat-icon">{card.icon}</div>
-            <div className="stat-body">
-              <div className="stat-value">{summary[card.key]}</div>
-              <div className="stat-label">{card.label}</div>
-              <div className="stat-desc">{card.desc}</div>
+        <section className="stat-grid compact-stat-grid dashboard-stat-grid">
+          {topStats.map((card) => (
+            <article key={card.key} className="stat-card compact-stat-card">
+              <div className="stat-body">
+                <div className="stat-value">{summary[card.key]}</div>
+                <div className="stat-label">{card.label}</div>
+                <div className="stat-desc">{card.desc}</div>
+              </div>
+            </article>
+          ))}
+        </section>
+
+        <section className="dashboard-grid">
+          <article className="card dashboard-panel">
+            <div className="card-header dashboard-panel-header">
+              <div>
+                <h3>Quick Actions</h3>
+                <p className="help">Start with the highest-value work for pipeline growth and account expansion.</p>
+              </div>
+            </div>
+            <div className="dashboard-action-grid">
+              {quickActions.map((action) => (
+                <Link key={action.href} href={action.href} className="dashboard-action-card">
+                  <strong>{action.title}</strong>
+                  <span>{action.desc}</span>
+                </Link>
+              ))}
             </div>
           </article>
-        ))}
-      </section>
+
+          <article className="card dashboard-panel">
+            <div className="card-header dashboard-panel-header">
+              <div>
+                <h3>Upsell Signals</h3>
+                <p className="help">Use company coverage gaps to prioritize expansion inside current client accounts.</p>
+              </div>
+            </div>
+            <div className="dashboard-mini-stats">
+              <div className="dashboard-mini-stat">
+                <strong>{summary.clientsMissingInternet}</strong>
+                <span>Clients missing Internet</span>
+              </div>
+              <div className="dashboard-mini-stat">
+                <strong>{summary.clientsMissingPhones}</strong>
+                <span>Clients missing Phones</span>
+              </div>
+              <div className="dashboard-mini-stat">
+                <strong>{summary.companiesWithInbox}</strong>
+                <span>Companies with shared inbox</span>
+              </div>
+              <div className="dashboard-mini-stat">
+                <strong>{summary.companiesWithoutContacts}</strong>
+                <span>Companies missing named contacts</span>
+              </div>
+            </div>
+          </article>
+
+          <article className="card dashboard-panel">
+            <div className="card-header dashboard-panel-header">
+              <div>
+                <h3>Recent Prospect Focus</h3>
+                <p className="help">Highest-scoring recent prospects that should move through review or conversion next.</p>
+              </div>
+              <Link href="/prospects" className="button secondary">Open Prospects</Link>
+            </div>
+            <div className="inline-grid">
+              {summary.recentProspects.map((prospect) => (
+                <div key={prospect.id} className="dashboard-list-row">
+                  <div className="record-summary-main">
+                    <div className="record-summary-topline">
+                      <strong>{prospect.companyName}</strong>
+                      <span className="badge">{prospect.qualificationStatus}</span>
+                    </div>
+                    <div className="record-meta-row">
+                      <span>{prospect.city || "Unknown city"}{prospect.state ? `, ${prospect.state}` : ""}</span>
+                      <span>score {prospect.score ?? 0}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="card dashboard-panel">
+            <div className="card-header dashboard-panel-header">
+              <div>
+                <h3>Campaign Pipeline</h3>
+                <p className="help">Keep visibility on what is drafted, scheduled, and already sent.</p>
+              </div>
+              <Link href="/campaigns" className="button secondary">Open Campaigns</Link>
+            </div>
+            <div className="inline-grid">
+              {summary.recentCampaigns.map((campaign) => (
+                <div key={campaign.id} className="dashboard-list-row">
+                  <div className="record-summary-main">
+                    <div className="record-summary-topline">
+                      <strong>{campaign.name}</strong>
+                      <span className="badge">{campaign.status}</span>
+                    </div>
+                    <div className="record-meta-row">
+                      <span>{campaign._count.recipients} recipients</span>
+                      <span>{campaign.scheduledAt ? `Scheduled ${new Date(campaign.scheduledAt).toLocaleString()}` : campaign.sentAt ? `Sent ${new Date(campaign.sentAt).toLocaleString()}` : "Not scheduled"}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+        </section>
+      </div>
     </AppShell>
   );
 }

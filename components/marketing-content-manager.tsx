@@ -18,6 +18,7 @@ export function MarketingContentManager({ initialItems, initialSegments, isAdmin
   const [industry, setIndustry] = useState("ALL");
   const [offerType, setOfferType] = useState("ALL");
   const [lifecycleStage, setLifecycleStage] = useState("ALL");
+  const [contentView, setContentView] = useState("ALL");
   const [draftSeed, setDraftSeed] = useState<Record<string, unknown> | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(true);
   const [isAiOpen, setIsAiOpen] = useState(true);
@@ -61,6 +62,12 @@ export function MarketingContentManager({ initialItems, initialSegments, isAdmin
         tags,
         taxonomy,
       ].join(" ").toLowerCase();
+      const matchesView =
+        contentView === "ALL" ||
+        (contentView === "ACQUISITION" && item.lifecycleStage !== "Retention") ||
+        (contentView === "UPSELL" && item.lifecycleStage === "Retention") ||
+        (contentView === "EMAIL_READY" && Boolean(item.bodyText || item.bodyHtml)) ||
+        (contentView === "IMAGE_READY" && Boolean(item.imageUrl));
       return (
         (!q || haystack.includes(q)) &&
         (serviceLine === "ALL" || item.serviceLine === serviceLine) &&
@@ -68,7 +75,8 @@ export function MarketingContentManager({ initialItems, initialSegments, isAdmin
         (contentType === "ALL" || item.contentType === contentType) &&
         (industry === "ALL" || item.industry === industry) &&
         (offerType === "ALL" || item.offerType === offerType) &&
-        (lifecycleStage === "ALL" || item.lifecycleStage === lifecycleStage)
+        (lifecycleStage === "ALL" || item.lifecycleStage === lifecycleStage) &&
+        matchesView
       );
     });
   }, [items, query, serviceLine, audience, contentType, industry, offerType, lifecycleStage]);
@@ -111,6 +119,13 @@ export function MarketingContentManager({ initialItems, initialSegments, isAdmin
               <div className="stat-value">{filtered.length}</div>
               <div className="stat-label">In Current View</div>
               <div className="stat-desc">Assets visible after the active content library filters.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{items.filter((item) => item.lifecycleStage === "Retention").length}</div>
+              <div className="stat-label">Upsell Ready</div>
+              <div className="stat-desc">Assets currently tagged for retention or expansion-stage messaging.</div>
             </div>
           </article>
         </section>
@@ -186,6 +201,13 @@ export function MarketingContentManager({ initialItems, initialSegments, isAdmin
                 <select className="filter-select" value={lifecycleStage} onChange={(event) => setLifecycleStage(event.target.value)}>
                   <option value="ALL">All Lifecycle Stages</option>
                   {lifecycleStages.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+                <select className="filter-select" value={contentView} onChange={(event) => setContentView(event.target.value)}>
+                  <option value="ALL">All content views</option>
+                  <option value="ACQUISITION">Acquisition</option>
+                  <option value="UPSELL">Upsell / retention</option>
+                  <option value="EMAIL_READY">Email ready</option>
+                  <option value="IMAGE_READY">Image ready</option>
                 </select>
               </div>
 

@@ -27,12 +27,16 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
   const [companies, setCompanies] = useState(initialCompanies);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [serviceGapFilter, setServiceGapFilter] = useState("ALL");
   const [isCreateOpen, setIsCreateOpen] = useState(true);
   const [isListOpen, setIsListOpen] = useState(true);
 
   const activeCompanies = companies.filter((company) => company.status !== "INACTIVE").length;
   const clientCompanies = companies.filter((company) => company.status === "CLIENT").length;
   const totalServices = companies.reduce((count, company) => count + readServices(company.customFieldsJson).length, 0);
+  const companiesWithInbox = companies.filter((company) => company.email).length;
+  const clientsMissingInternet = companies.filter((company) => company.status === "CLIENT" && !readServices(company.customFieldsJson).includes("Internet")).length;
+  const clientsMissingPhones = companies.filter((company) => company.status === "CLIENT" && !readServices(company.customFieldsJson).includes("Phones")).length;
 
   function upsertCompany(company: SavedCompany) {
     setCompanies((current) => {
@@ -49,7 +53,8 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
   const filtered = companies.filter((c) => {
     const q = search.toLowerCase();
     const customText = customFieldsToPairs(c.customFieldsJson).map((pair) => `${pair.key} ${pair.value}`).join(" ").toLowerCase();
-    const servicesText = readServices(c.customFieldsJson).join(" ").toLowerCase();
+    const services = readServices(c.customFieldsJson);
+    const servicesText = services.join(" ").toLowerCase();
     const matchesSearch = (
       !q ||
       (c.name || "").toLowerCase().includes(q) ||
@@ -61,7 +66,13 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
       customText.includes(q)
     );
     const matchesStatus = statusFilter === "ALL" || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesServiceGap =
+      serviceGapFilter === "ALL" ||
+      (serviceGapFilter === "MISSING_INTERNET" && c.status === "CLIENT" && !services.includes("Internet")) ||
+      (serviceGapFilter === "MISSING_PHONES" && c.status === "CLIENT" && !services.includes("Phones")) ||
+      (serviceGapFilter === "HAS_COMPANY_EMAIL" && Boolean(c.email)) ||
+      (serviceGapFilter === "NO_LINKED_CONTACTS" && (c.contacts?.length || 0) === 0);
+    return matchesSearch && matchesStatus && matchesServiceGap;
   });
 
   return (
@@ -102,6 +113,27 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
               <div className="stat-value">{totalServices}</div>
               <div className="stat-label">Service Tags</div>
               <div className="stat-desc">Service-line selections stored across company profiles.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{companiesWithInbox}</div>
+              <div className="stat-label">Shared Inbox</div>
+              <div className="stat-desc">Companies with a general business email ready for fallback outreach.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{clientsMissingInternet}</div>
+              <div className="stat-label">Clients Missing Internet</div>
+              <div className="stat-desc">Current clients without Internet tagged in service coverage.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{clientsMissingPhones}</div>
+              <div className="stat-label">Clients Missing Phones</div>
+              <div className="stat-desc">Current clients without Phones tagged in service coverage.</div>
             </div>
           </article>
         </section>
@@ -152,6 +184,13 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
                   <option value="PROSPECT">Prospect</option>
                   <option value="INACTIVE">Inactive</option>
                 </select>
+                <select className="filter-select" value={serviceGapFilter} onChange={(event) => setServiceGapFilter(event.target.value)}>
+                  <option value="ALL">All account views</option>
+                  <option value="MISSING_INTERNET">Clients missing Internet</option>
+                  <option value="MISSING_PHONES">Clients missing Phones</option>
+                  <option value="HAS_COMPANY_EMAIL">Has company email</option>
+                  <option value="NO_LINKED_CONTACTS">No linked contacts</option>
+                </select>
               </div>
 
               {filtered.length === 0 ? (
@@ -162,6 +201,8 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
                 <div className="inline-grid">
                   {filtered.map((company) => {
                     const services = readServices(company.customFieldsJson);
+                    const isClientMissingInternet = company.status === "CLIENT" && !services.includes("Internet");
+                    const isClientMissingPhones = company.status === "CLIENT" && !services.includes("Phones");
                     return (
                       <details key={company.id} className="card content-item" open={false}>
                         <summary className="card-header content-item-summary">
@@ -177,7 +218,12 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
                               <span>{company.email || "No company email"}</span>
                               <span>{company.contacts?.length || 0} linked contact{company.contacts?.length === 1 ? "" : "s"}</span>
                             </div>
-                            {services.length > 0 ? <p className="help">Services: {services.join(", ")}</p> : null}
+                            {services.length > 0 ? <p className="help">Services: {services.join(", ")}</p> : <p className="help">Services: none tagged yet</p>}
+                            {(isClientMissingInternet || isClientMissingPhones) ? (
+                              <p className="help">
+                                Upsell gaps: {[isClientMissingInternet ? "Internet" : null, isClientMissingPhones ? "Phones" : null].filter(Boolean).join(", ")}
+                              </p>
+                            ) : null}
                           </div>
                           <div className="content-item-summary-right">
                             <span className="help">Edit</span>

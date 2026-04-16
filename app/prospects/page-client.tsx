@@ -66,6 +66,7 @@ export function ProspectsPageClient({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [candidateFilter, setCandidateFilter] = useState("ALL");
+  const [prospectView, setProspectView] = useState("ALL");
   const [jobMessage, setJobMessage] = useState<string | null>(null);
   const [candidateMessage, setCandidateMessage] = useState<string | null>(null);
   const [pendingJob, setPendingJob] = useState(false);
@@ -88,12 +89,19 @@ export function ProspectsPageClient({
       (p.state || "").toLowerCase().includes(q) ||
       (p.matchStatus || "").toLowerCase().includes(q);
     const matchesStatus = statusFilter === "ALL" || p.qualificationStatus === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesView =
+      prospectView === "ALL" ||
+      (prospectView === "CLEAN_NET_NEW" && p.matchStatus === "NEW") ||
+      (prospectView === "NEEDS_REVIEW" && p.qualificationStatus === "REVIEWING") ||
+      (prospectView === "QUALIFIED" && p.qualificationStatus === "QUALIFIED") ||
+      (prospectView === "MATCHED" && p.matchStatus !== "NEW");
+    return matchesSearch && matchesStatus && matchesView;
   });
 
   const filteredCandidates = candidates.filter((candidate) => {
     if (candidateFilter === "ALL") return true;
     if (candidateFilter === "REVIEW") return candidate.matchStatus !== "NEW" || candidate.status === "NEW";
+    if (candidateFilter === "MATCHED") return candidate.matchStatus !== "NEW";
     return candidate.status === candidateFilter;
   });
 
@@ -293,28 +301,42 @@ export function ProspectsPageClient({
         </section>
 
         <section className="stat-grid compact-stat-grid">
-          <article className="stat-card">
+          <article className="stat-card compact-stat-card">
             <div className="stat-body">
               <div className="stat-value">{jobs.length}</div>
               <div className="stat-label">Search Jobs</div>
               <div className="stat-desc">Saved search intents for industries and geographies.</div>
             </div>
           </article>
-          <article className="stat-card">
+          <article className="stat-card compact-stat-card">
             <div className="stat-body">
               <div className="stat-value">{candidates.filter((candidate) => candidate.status === "NEW").length}</div>
               <div className="stat-label">Review Queue</div>
               <div className="stat-desc">Candidates awaiting approval or rejection.</div>
             </div>
           </article>
-          <article className="stat-card">
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{candidates.filter((candidate) => candidate.matchStatus !== "NEW").length}</div>
+              <div className="stat-label">Duplicate Flags</div>
+              <div className="stat-desc">Discovered candidates that may overlap with current CRM records.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
             <div className="stat-body">
               <div className="stat-value">{prospects.filter((prospect) => prospect.matchStatus === "NEW").length}</div>
               <div className="stat-label">Clean Net-New</div>
               <div className="stat-desc">Prospects that do not currently match existing CRM records.</div>
             </div>
           </article>
-          <article className="stat-card">
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{prospects.filter((prospect) => prospect.qualificationStatus === "QUALIFIED").length}</div>
+              <div className="stat-label">Qualified</div>
+              <div className="stat-desc">Accepted prospects ready for conversion or next-step outreach.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
             <div className="stat-body">
               <div className="stat-value">{[...candidates, ...prospects].filter((item) => item.matchStatus !== "NEW").length}</div>
               <div className="stat-label">Protected Matches</div>
@@ -441,6 +463,7 @@ export function ProspectsPageClient({
                 <select className="filter-select" value={candidateFilter} onChange={(event) => setCandidateFilter(event.target.value)}>
                   <option value="ALL">All candidates</option>
                   <option value="REVIEW">Needs review</option>
+                  <option value="MATCHED">Duplicate flags</option>
                   <option value="IMPORTED">Imported</option>
                   <option value="REJECTED">Rejected</option>
                 </select>
@@ -581,6 +604,13 @@ export function ProspectsPageClient({
                 <option value="QUALIFIED">Qualified</option>
                 <option value="REJECTED">Rejected</option>
                 <option value="CONVERTED">Converted</option>
+              </select>
+              <select className="filter-select" value={prospectView} onChange={(e) => setProspectView(e.target.value)}>
+                <option value="ALL">All prospect views</option>
+                <option value="CLEAN_NET_NEW">Clean net-new</option>
+                <option value="NEEDS_REVIEW">Needs review</option>
+                <option value="QUALIFIED">Qualified</option>
+                <option value="MATCHED">Protected matches</option>
               </select>
               <button className="button secondary" type="button" onClick={() => setIsAcceptedOpen((value) => !value)}>
                 {isAcceptedOpen ? "Collapse" : "Expand"}

@@ -25,6 +25,8 @@ export default async function SettingsPage() {
     prisma.tag.findMany({ orderBy: { name: "asc" }, take: 100 }),
   ]);
 
+  const providerMode = settings.emailProvider || "dry-run";
+
   return (
     <AppShell isAdmin={appUser.role === "admin"}>
       <div className="stack">
@@ -34,6 +36,37 @@ export default async function SettingsPage() {
           <p>
             This view is the operating panel for sender defaults, suppression management, and tag vocabulary.
           </p>
+        </section>
+
+        <section className="stat-grid compact-stat-grid">
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{providerMode}</div>
+              <div className="stat-label">Email Provider</div>
+              <div className="stat-desc">Current outbound mode for campaigns and tests.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{settings.targetStates.length}</div>
+              <div className="stat-label">Target States</div>
+              <div className="stat-desc">Configured geographies for prospecting and targeting defaults.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{suppressions.length}</div>
+              <div className="stat-label">Suppressions</div>
+              <div className="stat-desc">Addresses blocked from future outreach.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{tags.length}</div>
+              <div className="stat-label">Tags</div>
+              <div className="stat-desc">Shared label vocabulary across the CRM workspace.</div>
+            </div>
+          </article>
         </section>
 
         <section className="card">

@@ -656,6 +656,14 @@ main {
 
 /* Responsive */
 @media (max-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-panel-header {
+    flex-direction: column;
+  }
+
   .record-meta-row {
     flex-direction: column;
     gap: 4px;
@@ -871,6 +879,97 @@ main {
 
 .action-bar-tight {
   gap: 8px;
+}
+
+.dashboard-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.dashboard-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dashboard-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.dashboard-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dashboard-action-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.dashboard-action-card {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(222, 235, 255, 0.32) 0%, rgba(255, 255, 255, 0.92) 100%);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.dashboard-action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-soft);
+  border-color: rgba(47, 111, 237, 0.24);
+}
+
+.dashboard-action-card strong {
+  color: var(--blue-deep);
+}
+
+.dashboard-action-card span {
+  color: var(--gray-500);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.dashboard-mini-stats {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.dashboard-mini-stat {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(244, 248, 255, 0.9);
+  border: 1px solid var(--line);
+}
+
+.dashboard-mini-stat strong {
+  font-size: 1.5rem;
+  color: var(--blue-deep);
+  letter-spacing: -0.03em;
+}
+
+.dashboard-mini-stat span {
+  color: var(--gray-500);
+  font-size: 0.88rem;
+}
+
+.dashboard-list-row {
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.subtle-card {
+  background: linear-gradient(180deg, rgba(222, 235, 255, 0.36) 0%, rgba(255, 255, 255, 0.92) 100%);
 }
 
 /* Prospecting */

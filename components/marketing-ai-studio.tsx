@@ -44,6 +44,7 @@ export function MarketingAiStudio({
   const [variables, setVariables] = useState<Array<{ id: string; key: string; value: string }>>([]);
   const [generateImage, setGenerateImage] = useState(true);
   const [selectedSegmentId, setSelectedSegmentId] = useState(segments[0]?.id || "");
+  const selectedSegment = segments.find((segment) => segment.id === selectedSegmentId) || null;
 
   async function saveResultToLibrary() {
     if (!result) return;
@@ -128,6 +129,19 @@ export function MarketingAiStudio({
   return (
     <div className="inline-grid">
       <form onSubmit={onSubmit} className="inline-grid">
+        <div className="card subtle-card">
+          <div className="record-summary-main">
+            <div className="record-summary-topline">
+              <h3>Generation Setup</h3>
+              {selectedSegment ? <span className="badge badge-blue">{selectedSegment.name}</span> : null}
+            </div>
+            <div className="record-meta-row">
+              <span>{selectedSegment ? `${selectedSegment.entityType} segment context applied` : "No segment context applied"}</span>
+              <span>{generateImage ? "Image generation on" : "Copy only"}</span>
+              <span>{variables.length} variable{variables.length === 1 ? "" : "s"}</span>
+            </div>
+          </div>
+        </div>
         <div className="form-grid">
           <div className="field">
             <label htmlFor="ai-title">Asset title</label>

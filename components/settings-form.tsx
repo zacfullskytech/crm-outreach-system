@@ -44,6 +44,20 @@ export function SettingsForm({ initial }: { initial: GeneralSettings }) {
 
   return (
     <form onSubmit={onSubmit} className="inline-grid">
+      <div className="card subtle-card">
+        <div className="record-summary-main">
+          <div className="record-summary-topline">
+            <h3>Operator Defaults</h3>
+            <span className="badge badge-blue">{initial.emailProvider}</span>
+          </div>
+          <div className="record-meta-row">
+            <span>{initial.defaultFromEmail || "No default from email"}</span>
+            <span>{initial.defaultReplyTo || "No reply-to"}</span>
+            <span>{initial.targetStates.length} target state{initial.targetStates.length === 1 ? "" : "s"}</span>
+          </div>
+        </div>
+      </div>
+
       <div className="form-grid">
         <div className="field">
           <label htmlFor="settings-default-from-name">Default from name</label>

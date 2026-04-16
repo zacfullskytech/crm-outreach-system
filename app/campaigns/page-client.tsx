@@ -60,6 +60,7 @@ export function CampaignsPageClient({
   const [draftSeed, setDraftSeed] = useState<CampaignDraftSeed>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [campaignView, setCampaignView] = useState("ALL");
   const [isCreateOpen, setIsCreateOpen] = useState(true);
   const [isListOpen, setIsListOpen] = useState(true);
 
@@ -67,16 +68,27 @@ export function CampaignsPageClient({
   const scheduledCampaigns = campaigns.filter((campaign) => campaign.status === "SCHEDULED").length;
   const sentCampaigns = campaigns.filter((campaign) => campaign.status === "SENT").length;
   const totalRecipients = campaigns.reduce((count, campaign) => count + campaign.recipients.length, 0);
+  const campaignsNeedingAttention = campaigns.filter((campaign) => campaign.status === "FAILED" || campaign.recipients.some((recipient) => recipient.status === "FAILED")).length;
 
   const filtered = campaigns.filter((campaign) => {
     const q = search.toLowerCase();
+    const sentCount = campaign.recipients.filter((recipient) => recipient.status === "SENT").length;
+    const failedCount = campaign.recipients.filter((recipient) => recipient.status === "FAILED").length;
+    const pendingCount = campaign.recipients.filter((recipient) => recipient.status === "PENDING").length;
     const matchesSearch =
       !q ||
       (campaign.name || "").toLowerCase().includes(q) ||
       (campaign.subject || "").toLowerCase().includes(q) ||
       (campaign.fromEmail || "").toLowerCase().includes(q);
     const matchesStatus = statusFilter === "ALL" || campaign.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesView =
+      campaignView === "ALL" ||
+      (campaignView === "READY_TO_SEND" && campaign.status === "DRAFT") ||
+      (campaignView === "SCHEDULED" && campaign.status === "SCHEDULED") ||
+      (campaignView === "ATTENTION" && (campaign.status === "FAILED" || failedCount > 0)) ||
+      (campaignView === "SENT" && (campaign.status === "SENT" || sentCount > 0)) ||
+      (campaignView === "PENDING" && pendingCount > 0);
+    return matchesSearch && matchesStatus && matchesView;
   });
 
   return (
@@ -124,6 +136,13 @@ export function CampaignsPageClient({
               <div className="stat-value">{totalRecipients}</div>
               <div className="stat-label">Recipient Snapshots</div>
               <div className="stat-desc">Stored recipients across all campaign records.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{campaignsNeedingAttention}</div>
+              <div className="stat-label">Needs Attention</div>
+              <div className="stat-desc">Campaigns with failed sends or failed overall status.</div>
             </div>
           </article>
         </section>
@@ -202,6 +221,14 @@ export function CampaignsPageClient({
                   <option value="SENDING">Sending</option>
                   <option value="SENT">Sent</option>
                   <option value="FAILED">Failed</option>
+                </select>
+                <select className="filter-select" value={campaignView} onChange={(e) => setCampaignView(e.target.value)}>
+                  <option value="ALL">All campaign views</option>
+                  <option value="READY_TO_SEND">Ready to send</option>
+                  <option value="SCHEDULED">Scheduled</option>
+                  <option value="ATTENTION">Needs attention</option>
+                  <option value="PENDING">Has pending recipients</option>
+                  <option value="SENT">Sent / delivered</option>
                 </select>
               </div>
 

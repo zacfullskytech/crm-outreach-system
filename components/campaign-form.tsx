@@ -62,6 +62,7 @@ export function CampaignForm({
 
   const selectedSegment = sendableSegments.find((segment) => segment.id === selectedSegmentId) || null;
   const selectedMarketingContent = marketingContent.find((item) => item.id === selectedMarketingContentId) || null;
+  const libraryEmailAssets = marketingContent.filter((item) => item.contentType === "Email copy").length;
 
   async function previewAudience() {
     if (!selectedSegmentId) {
@@ -205,6 +206,31 @@ export function CampaignForm({
             <span>{selectedSegment ? "Contact segment selected" : "No segment selected"}</span>
             <span>{selectedMarketingContent ? `Using library asset: ${selectedMarketingContent.title}` : "No library asset applied"}</span>
             <span>{defaults.fromEmail || "No default sender configured"}</span>
+            <span>{libraryEmailAssets} reusable email assets in library</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="card subtle-card">
+        <h3>Operator Guidance</h3>
+        <div className="inline-grid">
+          <div className="dashboard-list-row">
+            <div className="record-summary-main">
+              <strong>Use contact segments only</strong>
+              <p className="help">Campaign sending still targets contacts, not companies or prospects directly.</p>
+            </div>
+          </div>
+          <div className="dashboard-list-row">
+            <div className="record-summary-main">
+              <strong>Preview before scheduling</strong>
+              <p className="help">Check the audience sample before you lock a campaign into scheduled send mode.</p>
+            </div>
+          </div>
+          <div className="dashboard-list-row">
+            <div className="record-summary-main">
+              <strong>Prefer library-backed drafts</strong>
+              <p className="help">Start from reusable content when possible so messaging stays consistent across acquisition and upsell campaigns.</p>
+            </div>
           </div>
         </div>
       </div>

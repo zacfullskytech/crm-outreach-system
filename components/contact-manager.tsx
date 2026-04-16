@@ -22,12 +22,15 @@ export function ContactManager({
 }) {
   const [contacts, setContacts] = useState(initialContacts);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [contactView, setContactView] = useState("ALL");
   const [isCreateOpen, setIsCreateOpen] = useState(true);
   const [isListOpen, setIsListOpen] = useState(true);
 
   const linkedContacts = contacts.filter((contact) => contact.company?.id).length;
   const reachableContacts = contacts.filter((contact) => contact.email || contact.phone).length;
   const activeContacts = contacts.filter((contact) => contact.status === "ACTIVE").length;
+  const contactsWithoutEmail = contacts.filter((contact) => !contact.email).length;
 
   function upsertContact(contact: SavedContact) {
     setContacts((current) => {
@@ -45,15 +48,22 @@ export function ContactManager({
     return contacts.filter((c) => {
       const q = search.toLowerCase();
       const customText = customFieldsToPairs(c.customFieldsJson).map((pair) => `${pair.key} ${pair.value}`).join(" ").toLowerCase();
-      return (
+      const matchesSearch = (
         !q ||
         (c.fullName || "").toLowerCase().includes(q) ||
         (c.email || "").toLowerCase().includes(q) ||
         (c.company?.name || "").toLowerCase().includes(q) ||
         customText.includes(q)
       );
+      const matchesStatus = statusFilter === "ALL" || c.status === statusFilter;
+      const matchesView =
+        contactView === "ALL" ||
+        (contactView === "REACHABLE" && Boolean(c.email || c.phone)) ||
+        (contactView === "NO_EMAIL" && !c.email) ||
+        (contactView === "UNLINKED" && !c.company?.id);
+      return matchesSearch && matchesStatus && matchesView;
     });
-  }, [contacts, search]);
+  }, [contacts, search, statusFilter, contactView]);
 
   return (
     <AppShell isAdmin={isAdmin}>
@@ -95,6 +105,13 @@ export function ContactManager({
               <div className="stat-desc">Contacts with at least one email or phone channel.</div>
             </div>
           </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{contactsWithoutEmail}</div>
+              <div className="stat-label">Missing Email</div>
+              <div className="stat-desc">Contacts that cannot be used directly in email-driven outreach.</div>
+            </div>
+          </article>
         </section>
 
         <section className="card form-section collapsible-card">
@@ -122,18 +139,34 @@ export function ContactManager({
           </div>
           {isListOpen ? (
             <>
-              <div className="search-wrap">
-                <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.35-4.35" />
-                </svg>
-                <input
-                  type="search"
-                  placeholder="Search by name, email, company, or custom field…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="search-input"
-                />
+              <div className="filter-row">
+                <div className="search-wrap">
+                  <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.35-4.35" />
+                  </svg>
+                  <input
+                    type="search"
+                    placeholder="Search by name, email, company, or custom field…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="search-input"
+                  />
+                </div>
+                <select className="filter-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                  <option value="ALL">All statuses</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="UNSUBSCRIBED">Unsubscribed</option>
+                  <option value="BOUNCED">Bounced</option>
+                  <option value="INVALID">Invalid</option>
+                  <option value="DO_NOT_CONTACT">Do not contact</option>
+                </select>
+                <select className="filter-select" value={contactView} onChange={(event) => setContactView(event.target.value)}>
+                  <option value="ALL">All contact views</option>
+                  <option value="REACHABLE">Reachable</option>
+                  <option value="NO_EMAIL">Missing email</option>
+                  <option value="UNLINKED">Unlinked company</option>
+                </select>
               </div>
 
               {filtered.length === 0 ? (
