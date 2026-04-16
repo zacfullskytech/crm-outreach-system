@@ -20,8 +20,8 @@ const AGGREGATOR_DOMAINS = [
 ];
 const GENERIC_TITLE_PARTS = new Set(["home", "welcome", "24", "site", "homepage"]);
 const INVALID_CONTACT_NAME_FRAGMENTS = ["started", "in the", "of", "resources", "hospital", "clinic", "welcome", "home"];
-const EMERGENCY_HINTS = ["emergency", "urgent care", "24-hour", "24 hour", "after hours", "critical care"];
-const SPECIALTY_HINTS = ["specialty", "specialist", "surgery", "oncology", "neurology", "dermatology", "internal medicine"];
+const EMERGENCY_HINTS = ["emergency vet", "emergency veterinary", "urgent care", "24-hour emergency", "24 hour emergency", "critical care"];
+const SPECIALTY_HINTS = ["specialty practice", "specialist", "board-certified", "surgery", "oncology", "neurology", "dermatology", "internal medicine"];
 const INDEPENDENT_HINTS = ["independent", "locally owned", "family owned", "privately owned", "owner operated"];
 const TITLE_PREFIX_STRIPPERS = [/^welcome to\s+/i, /^trusted\s+/i, /^top rated\s+/i];
 
@@ -173,17 +173,50 @@ function extractEmails(text: string) {
   return Array.from(new Set(text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [])).slice(0, 3);
 }
 
-function extractPhones(text: string) {
-  return Array.from(new Set(text.match(/(?:\+1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)\d{3}[-.\s]?\d{4}/g) || [])).slice(0, 2);
+function normalizePhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return value.trim();
 }
 
-function detectBusinessType(text: string) {
+function extractPhones(text: string, websiteDomain?: string | null) {
+  const emails = extractEmails(text);
+  const domainEmails = websiteDomain ? emails.filter((email) => email.toLowerCase().endsWith(`@${websiteDomain}`)) : [];
+  const matches = Array.from(new Set(text.match(/(?:\+1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)\d{3}[-.\s]?\d{4}/g) || []));
+
+  const scored = matches.map((phone) => {
+    let score = 0;
+    const normalized = normalizePhone(phone);
+    if (/contact|call|phone|text|appointment|schedule/i.test(text.slice(Math.max(0, text.indexOf(phone) - 80), text.indexOf(phone) + 80))) {
+      score += 3;
+    }
+    if (domainEmails.length > 0) {
+      score += 1;
+    }
+    if (/fax/i.test(text.slice(Math.max(0, text.indexOf(phone) - 40), text.indexOf(phone) + 40))) {
+      score -= 3;
+    }
+    return { phone: normalized, score };
+  }).sort((a, b) => b.score - a.score);
+
+  return scored.map((entry) => entry.phone).slice(0, 2);
+}
+
+function detectBusinessType(text: string, title?: string | null) {
   const value = text.toLowerCase();
-  if (SPECIALTY_HINTS.some((hint) => value.includes(hint))) return "Specialty Practice";
-  if (EMERGENCY_HINTS.some((hint) => value.includes(hint))) return "Emergency Practice";
+  const titleValue = (title || "").toLowerCase();
+
+  if (SPECIALTY_HINTS.some((hint) => titleValue.includes(hint))) return "Specialty Practice";
+  if (EMERGENCY_HINTS.some((hint) => titleValue.includes(hint))) return "Emergency Practice";
   if (INDEPENDENT_HINTS.some((hint) => value.includes(hint))) return "Independent Practice";
-  if (value.includes("hospital")) return "Hospital";
-  if (value.includes("clinic")) return "Clinic";
+
+  if (/specialty\s+(care|services|hospital|clinic|practice)/i.test(value)) return "Specialty Practice";
+  if (/emergency\s+(care|services|hospital|clinic|vet|veterinary)/i.test(value)) return "Emergency Practice";
+
+  if (titleValue.includes("hospital")) return "Hospital";
+  if (titleValue.includes("clinic")) return "Clinic";
   return null;
 }
 
@@ -444,7 +477,8 @@ export async function discoverProspectCandidates(params: {
       }
 
       const emails = extractEmails(combinedText);
-      const phones = extractPhones(combinedText);
+      const websiteDomain = normalizeWebsite(url);
+      const phones = extractPhones(combinedText, websiteDomain);
       const matchedLocation = parsedLocations.find((location) => {
         if (!location.city) {
           return false;
@@ -455,11 +489,10 @@ export async function discoverProspectCandidates(params: {
         return cityMatch && stateMatch;
       }) || parsedLocations[0] || { city: null, state: null, raw: null };
 
-      const websiteDomain = normalizeWebsite(url);
       const website = websiteDomain ? `https://${websiteDomain}` : url;
       const companyName = extractCompanyName(rawTitle, url);
       const contactName = extractContactName(combinedText);
-      const businessType = detectBusinessType(`${rawTitle} ${supporting.text} ${bodyText.slice(0, 1200)}`);
+      const businessType = detectBusinessType(`${supporting.text.slice(0, 1200)} ${bodyText.slice(0, 500)}`, rawTitle);
       const confidenceSignals = [websiteDomain, emails[0], phones[0], contactName, businessType].filter(Boolean).length;
 
       results.push({
