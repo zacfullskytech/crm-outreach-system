@@ -33,14 +33,37 @@ export function LoginPage() {
       }
 
       const supabase = await createClient();
+      const currentUrl = new URL(window.location.href);
+      const authCode = currentUrl.searchParams.get("code");
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const hashType = hashParams.get("type");
 
-      if (window.location.hash.includes("access_token") || window.location.hash.includes("refresh_token")) {
-        const { error: hashError } = await supabase.auth.getSession();
-        if (hashError && !cancelled) {
-          setError(hashError.message);
+      if (authCode) {
+        const { error: codeError } = await supabase.auth.exchangeCodeForSession(authCode);
+        if (codeError && !cancelled) {
+          setError(codeError.message);
+        }
+        currentUrl.searchParams.delete("code");
+        window.history.replaceState({}, "", currentUrl.toString());
+      } else if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (sessionError && !cancelled) {
+          setError(sessionError.message);
         }
         const cleanUrl = new URL(window.location.href);
         cleanUrl.hash = "";
+        if (hashType === "recovery") {
+          cleanUrl.searchParams.set("recovery", "1");
+          cleanUrl.searchParams.delete("invited");
+        } else if (hashType === "invite") {
+          cleanUrl.searchParams.set("invited", "1");
+          cleanUrl.searchParams.delete("recovery");
+        }
         window.history.replaceState({}, "", cleanUrl.toString());
       }
 
@@ -55,13 +78,13 @@ export function LoginPage() {
         setMode("signup");
         setNotice(hasSession
           ? "Your invite was accepted. Set your password to finish joining the platform."
-          : "Your invite link opened, but the auth session is not ready yet. Reload the invite link from the email if password set fails.");
+          : "We could not start your invite session from this link. Open the latest invite email again, or ask for a fresh invite if this one has expired.");
         setError(null);
       } else if (recovery === "1") {
         setMode("recovery");
         setNotice(hasSession
           ? "Your recovery link is active. Enter a new password to continue."
-          : "Your recovery link opened, but the auth session is not ready yet. Reload the recovery link if password update fails.");
+          : "We could not start your recovery session from this link. Open the latest recovery email again, or request a new reset link.");
         setError(null);
       }
 

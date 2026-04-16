@@ -60,9 +60,14 @@ export async function POST(request: NextRequest) {
       }
     } else {
       const appBaseUrl = process.env.APP_BASE_URL || "http://localhost:3000";
+      const inviteRedirect = new URL("/login", appBaseUrl);
+      inviteRedirect.searchParams.set("invited", "1");
+      inviteRedirect.searchParams.set("next", "/");
+      inviteRedirect.searchParams.set("email", email);
+
       const inviteResult = await adminClient.auth.admin.inviteUserByEmail(email, {
         data: metadata,
-        redirectTo: `${appBaseUrl}/auth/confirm?next=/&email=${encodeURIComponent(email)}`,
+        redirectTo: inviteRedirect.toString(),
       });
 
       if (inviteResult.error) {
