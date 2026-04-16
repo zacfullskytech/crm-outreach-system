@@ -25,6 +25,10 @@ export function ContactManager({
   const [isCreateOpen, setIsCreateOpen] = useState(true);
   const [isListOpen, setIsListOpen] = useState(true);
 
+  const linkedContacts = contacts.filter((contact) => contact.company?.id).length;
+  const reachableContacts = contacts.filter((contact) => contact.email || contact.phone).length;
+  const activeContacts = contacts.filter((contact) => contact.status === "ACTIVE").length;
+
   function upsertContact(contact: SavedContact) {
     setContacts((current) => {
       const existing = current.find((entry) => entry.id === contact.id);
@@ -60,6 +64,37 @@ export function ContactManager({
           <p>
             Contacts stay linked to companies and now support your own internal classification fields for filtering and operations.
           </p>
+        </section>
+
+        <section className="stat-grid compact-stat-grid">
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{contacts.length}</div>
+              <div className="stat-label">Contact Records</div>
+              <div className="stat-desc">People stored in the working CRM dataset.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{activeContacts}</div>
+              <div className="stat-label">Active</div>
+              <div className="stat-desc">Contacts still available for normal outreach.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{linkedContacts}</div>
+              <div className="stat-label">Company Linked</div>
+              <div className="stat-desc">Contacts already tied to a company account.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{reachableContacts}</div>
+              <div className="stat-label">Reachable</div>
+              <div className="stat-desc">Contacts with at least one email or phone channel.</div>
+            </div>
+          </article>
         </section>
 
         <section className="card form-section collapsible-card">
@@ -110,12 +145,19 @@ export function ContactManager({
                   {filtered.map((contact) => (
                     <details key={contact.id} className="card content-item" open={false}>
                       <summary className="card-header content-item-summary">
-                        <div>
-                          <h3>{contact.fullName || "Unnamed contact"}</h3>
-                          <p className="help">{contact.email || "No email"} · {contact.company?.name || "Unlinked company"}</p>
+                        <div className="record-summary-main">
+                          <div className="record-summary-topline">
+                            <h3>{contact.fullName || "Unnamed contact"}</h3>
+                            <span className="badge">{contact.status}</span>
+                          </div>
+                          <p className="help">{contact.jobTitle || "No title"} · {contact.company?.name || "Unlinked company"}</p>
+                          <div className="record-meta-row">
+                            <span>{contact.email || "No email"}</span>
+                            <span>{contact.phone || "No phone"}</span>
+                            <span>{contact.source || "No source"}</span>
+                          </div>
                         </div>
                         <div className="content-item-summary-right">
-                          <span className="badge">{contact.status}</span>
                           <span className="help">Edit</span>
                         </div>
                       </summary>

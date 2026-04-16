@@ -30,6 +30,10 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
   const [isCreateOpen, setIsCreateOpen] = useState(true);
   const [isListOpen, setIsListOpen] = useState(true);
 
+  const activeCompanies = companies.filter((company) => company.status !== "INACTIVE").length;
+  const clientCompanies = companies.filter((company) => company.status === "CLIENT").length;
+  const totalServices = companies.reduce((count, company) => count + readServices(company.customFieldsJson).length, 0);
+
   function upsertCompany(company: SavedCompany) {
     setCompanies((current) => {
       const existing = current.find((entry) => entry.id === company.id);
@@ -68,6 +72,37 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
           <p>
             Company profiles hold geography, industry, status, and your own internal classification fields.
           </p>
+        </section>
+
+        <section className="stat-grid compact-stat-grid">
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{companies.length}</div>
+              <div className="stat-label">Company Records</div>
+              <div className="stat-desc">Accounts currently stored in the CRM.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{clientCompanies}</div>
+              <div className="stat-label">Clients</div>
+              <div className="stat-desc">Companies currently marked as paying customers.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{activeCompanies}</div>
+              <div className="stat-label">Active Accounts</div>
+              <div className="stat-desc">Leads, prospects, and clients not marked inactive.</div>
+            </div>
+          </article>
+          <article className="stat-card compact-stat-card">
+            <div className="stat-body">
+              <div className="stat-value">{totalServices}</div>
+              <div className="stat-label">Service Tags</div>
+              <div className="stat-desc">Service-line selections stored across company profiles.</div>
+            </div>
+          </article>
         </section>
 
         <section className="card form-section collapsible-card">
@@ -129,13 +164,20 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
                     return (
                       <details key={company.id} className="card content-item" open={false}>
                         <summary className="card-header content-item-summary">
-                          <div>
-                            <h3>{company.name}</h3>
-                            <p className="help">{company.industry || "No industry"} · {company.city || "Unknown city"}{company.state ? `, ${company.state}` : ""}</p>
+                          <div className="record-summary-main">
+                            <div className="record-summary-topline">
+                              <h3>{company.name}</h3>
+                              <span className="badge">{company.status}</span>
+                            </div>
+                            <p className="help">{company.industry || "No industry"} · {company.businessType || "No business type"}</p>
+                            <div className="record-meta-row">
+                              <span>{company.city || "Unknown city"}{company.state ? `, ${company.state}` : ""}</span>
+                              <span>{company.phone || "No phone"}</span>
+                              <span>{company.contacts?.length || 0} linked contact{company.contacts?.length === 1 ? "" : "s"}</span>
+                            </div>
                             {services.length > 0 ? <p className="help">Services: {services.join(", ")}</p> : null}
                           </div>
                           <div className="content-item-summary-right">
-                            <span className="badge">{company.status}</span>
                             <span className="help">Edit</span>
                           </div>
                         </summary>

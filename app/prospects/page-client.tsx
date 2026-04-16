@@ -292,7 +292,7 @@ export function ProspectsPageClient({
           </p>
         </section>
 
-        <section className="stat-grid">
+        <section className="stat-grid compact-stat-grid">
           <article className="stat-card">
             <div className="stat-body">
               <div className="stat-value">{jobs.length}</div>
@@ -403,9 +403,12 @@ export function ProspectsPageClient({
 
                   return (
                     <div key={job.id} className="prospecting-list-item">
-                      <div>
-                        <strong>{job.name}</strong>
-                        <p className="help">{job.industry || "General search"} · {job.status} · {job.realDataOnly ? "real-data-only" : discoveryMode === "seed" ? "seed fallback used" : discoveryMode === "blocked" ? "search provider blocked" : "web discovery"}</p>
+                      <div className="record-summary-main">
+                        <div className="record-summary-topline">
+                          <strong>{job.name}</strong>
+                          <span className="badge badge-blue">{job.status}</span>
+                        </div>
+                        <p className="help">{job.industry || "General search"} · {job.realDataOnly ? "real-data-only" : discoveryMode === "seed" ? "seed fallback used" : discoveryMode === "blocked" ? "search provider blocked" : "web discovery"}</p>
                         {blockedReason ? <p className="help">{blockedReason}</p> : null}
                         {discoveryMode === "web" ? <p className="help">Provider: Brave Search</p> : null}
                       </div>
@@ -463,13 +466,19 @@ export function ProspectsPageClient({
                   return (
                     <div key={candidate.id} className="prospecting-candidate">
                       <div className="prospecting-candidate-head">
-                        <div>
-                          <strong>{candidate.companyName}</strong>
+                        <div className="record-summary-main">
+                          <div className="record-summary-topline">
+                            <strong>{candidate.companyName}</strong>
+                            <span className={matchBadgeClass(candidate.matchStatus)}>{candidate.matchStatus}</span>
+                          </div>
                           <p className="help">{candidate.contactName || "No contact found"} · {candidate.industry || "Unknown industry"}</p>
+                          <div className="record-meta-row">
+                            <span>{candidate.city || "Unknown city"}{candidate.state ? `, ${candidate.state}` : ""}</span>
+                            <span>score {candidate.score ?? 0}</span>
+                            <span>{candidate.status}</span>
+                          </div>
                         </div>
-                        <span className={matchBadgeClass(candidate.matchStatus)}>{candidate.matchStatus}</span>
                       </div>
-                      <p className="help">{candidate.city || "Unknown city"}{candidate.state ? `, ${candidate.state}` : ""} · score {candidate.score ?? 0}</p>
                       <p className="help">
                         Data source: {candidate.source === "AI prospecting seed" ? "Fallback seeded placeholder" : candidate.source || "Unknown"}
                       </p>
@@ -496,7 +505,7 @@ export function ProspectsPageClient({
                           })}
                         </div>
                       ) : null}
-                      <div className="actions">
+                      <div className="actions action-bar-tight">
                         <button
                           className="button primary"
                           type="button"

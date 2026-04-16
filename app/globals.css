@@ -656,6 +656,11 @@ main {
 
 /* Responsive */
 @media (max-width: 900px) {
+  .record-meta-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
   .shell {
     grid-template-columns: 1fr;
   }
@@ -828,6 +833,44 @@ main {
 .inline-grid {
   display: grid;
   gap: 18px;
+}
+
+.compact-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.compact-stat-card {
+  min-height: 100%;
+}
+
+.record-summary-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.record-summary-topline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.record-summary-topline h3,
+.record-summary-topline strong {
+  margin: 0;
+}
+
+.record-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  color: var(--gray-500);
+  font-size: 0.84rem;
+}
+
+.action-bar-tight {
+  gap: 8px;
 }
 
 /* Prospecting */
