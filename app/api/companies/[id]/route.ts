@@ -13,14 +13,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { id } = await params;
     const payload = await request.json();
     const parsed = companySchema.partial({ name: true }).parse(payload);
+    const { services: _services, customFields, ...companyFields } = parsed;
 
     const company = await prisma.company.update({
       where: { id },
       data: {
-        ...parsed,
+        ...companyFields,
         state: parsed.state?.toUpperCase() || null,
         emailDomain: parsed.website !== undefined ? normalizeWebsite(parsed.website) : undefined,
-        customFieldsJson: parsed.customFields ? normalizeCustomFields(parsed.customFields) : undefined,
+        customFieldsJson: customFields ? normalizeCustomFields(customFields) : undefined,
       },
     });
 
