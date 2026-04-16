@@ -52,7 +52,9 @@ export function CampaignForm({
   onDraftApplied?: () => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
-  const [selectedSegmentId, setSelectedSegmentId] = useState(segments[0]?.id || "");
+  const sendableSegments = segments.filter((segment) => segment.entityType === "contact");
+  const unavailableSegments = segments.filter((segment) => segment.entityType !== "contact");
+  const [selectedSegmentId, setSelectedSegmentId] = useState(sendableSegments[0]?.id || "");
   const [selectedMarketingContentId, setSelectedMarketingContentId] = useState("");
   const [preview, setPreview] = useState<PreviewState>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -184,11 +186,11 @@ export function CampaignForm({
     setPending(false);
   }
 
-  const hasSegments = segments.length > 0;
+  const hasSegments = sendableSegments.length > 0;
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="inline-grid">
-      {!hasSegments ? <p className="help">Create a segment first so this campaign has an audience.</p> : null}
+      {!hasSegments ? <p className="help">Create a contact segment first so this campaign has a sendable audience.</p> : null}
 
       <div className="form-grid">
         <div className="field">
@@ -219,12 +221,26 @@ export function CampaignForm({
           <label htmlFor="campaign-segment">Segment</label>
           <select id="campaign-segment" value={selectedSegmentId} onChange={(event) => setSelectedSegmentId(event.target.value)}>
             <option value="">No segment selected</option>
-            {segments.map((segment) => (
-              <option key={segment.id} value={segment.id}>
-                {segment.name} ({segment.entityType})
-              </option>
-            ))}
+            {sendableSegments.length > 0 ? (
+              <optgroup label="Sendable contact segments">
+                {sendableSegments.map((segment) => (
+                  <option key={segment.id} value={segment.id}>
+                    {segment.name}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
+            {unavailableSegments.length > 0 ? (
+              <optgroup label="Unavailable for campaigns right now">
+                {unavailableSegments.map((segment) => (
+                  <option key={segment.id} value={segment.id} disabled>
+                    {segment.name} ({segment.entityType})
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
           </select>
+          <p className="help">Campaign sending currently supports contact segments only.</p>
         </div>
         <div className="field">
           <label htmlFor="campaign-status">Status</label>
