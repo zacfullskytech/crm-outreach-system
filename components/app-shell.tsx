@@ -162,25 +162,36 @@ export function AppShell({ children, isAdmin = false }: { children: React.ReactN
     <div className="shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <h1>Full Sky Technologies</h1>
-          <div className="tagline">
-            Client Management <span>|</span> CRM
+          <div className="sidebar-brand-mark" aria-hidden="true">
+            <span>FS</span>
+          </div>
+          <div>
+            <h1>Full Sky Technologies</h1>
+            <div className="tagline">
+              Client Management <span>|</span> CRM
+            </div>
           </div>
         </div>
+        <div className="sidebar-section-label">Workspace</div>
         <nav className="nav">
           {navItems
             .filter((item) => !item.adminOnly || isAdmin)
             .map(({ label, href, icon }) => (
               <Link key={href} href={href as any} className={pathname === href ? "active" : ""}>
                 <span className="nav-icon">{icon}</span>
-                {label}
+                <span className="nav-label">{label}</span>
               </Link>
             ))}
         </nav>
         <div className="sidebar-footer">
-          {userEmail && (
-            <p className="user-email" title={userEmail}>{userEmail}</p>
-          )}
+          <div className="sidebar-user-card">
+            <div className="sidebar-user-title">Signed in</div>
+            {userEmail ? (
+              <p className="user-email" title={userEmail}>{userEmail}</p>
+            ) : (
+              <p className="user-email">Current session</p>
+            )}
+          </div>
           <button className="logout-btn" onClick={handleLogout}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
