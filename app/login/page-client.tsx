@@ -11,7 +11,7 @@ export function LoginPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [authReady, setAuthReady] = useState(false);
-  const [mode, setMode] = useState<"signin" | "signup" | "recovery">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "recovery" | "forgot">("signin");
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -105,6 +105,28 @@ export function LoginPage() {
 
     const supabase = await createClient();
 
+    if (mode === "forgot") {
+      if (!email.trim()) {
+        setError("Email is required.");
+        setLoading(false);
+        return;
+      }
+
+      const redirectTo = `${window.location.origin}/login?recovery=1`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+
+      setNotice("Password reset link sent. Check your email for the recovery link.");
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     if (mode === "signup") {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
@@ -191,36 +213,46 @@ export function LoginPage() {
             </div>
           ) : null}
 
-          <div className="field">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              minLength={6}
-            />
-          </div>
+          {mode !== "forgot" ? (
+            <div className="field">
+              <label htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                minLength={6}
+              />
+            </div>
+          ) : null}
 
           {notice && <div className="notice-msg">{notice}</div>}
           {error && <div className="error-msg">{error}</div>}
 
           <button type="submit" className="button primary" disabled={loading || ((mode === "signup" || mode === "recovery") && !authReady)}>
-            {loading ? "Please wait…" : mode === "signin" ? "Sign In" : mode === "signup" ? "Set Password" : "Update Password"}
+            {loading ? "Please wait…" : mode === "signin" ? "Sign In" : mode === "signup" ? "Set Password" : mode === "recovery" ? "Update Password" : "Send Reset Link"}
           </button>
         </form>
 
         <div className="login-toggle">
           {mode === "signin" ? (
-            <p>
-              Need to finish an invite? Open the email link, then set your password here.
-            </p>
+            <div className="inline-grid" style={{ gap: "10px" }}>
+              <p>
+                Need to finish an invite? Open the email link, then set your password here.
+              </p>
+              <p>
+                Forgot your password?{" "}
+                <button onClick={() => { setMode("forgot"); setNotice(null); setError(null); setPassword(""); }} className="link-btn" type="button">
+                  Send reset link
+                </button>
+              </p>
+            </div>
           ) : (
             <p>
               Already have a password?{" "}
-              <button onClick={() => { setMode("signin"); setNotice(null); setError(null); }} className="link-btn">
+              <button onClick={() => { setMode("signin"); setNotice(null); setError(null); }} className="link-btn" type="button">
                 Sign in
               </button>
             </p>
