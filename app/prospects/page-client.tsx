@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { ProspectForm } from "@/components/prospect-form";
 import { AppShell } from "@/components/app-shell";
@@ -651,9 +652,17 @@ export function ProspectsPageClient({
                       <td><span className="score-badge">{prospect.score ?? 0}</span></td>
                       <td>{prospect.source || <span className="muted">Manual</span>}</td>
                       <td>
-                        <button className="button secondary" type="button" disabled={pendingProspectId === prospect.id} onClick={() => void deleteProspect(prospect.id)}>
-                          {pendingProspectId === prospect.id ? "Removing..." : "Delete"}
-                        </button>
+                        <div className="actions action-bar-tight">
+                          <Link
+                            className="button secondary"
+                            href={`/pipeline?name=${encodeURIComponent(`${prospect.companyName} Opportunity`)}&opportunityType=NEW_SALE&serviceLine=${encodeURIComponent(prospect.industry || "")}&notes=${encodeURIComponent([prospect.notes || "Created from accepted prospect", prospect.city || prospect.state ? `Location: ${[prospect.city, prospect.state].filter(Boolean).join(", ")}` : null, prospect.source ? `Source: ${prospect.source}` : null].filter(Boolean).join("\n"))}`}
+                          >
+                            Create Opportunity
+                          </Link>
+                          <button className="button secondary" type="button" disabled={pendingProspectId === prospect.id} onClick={() => void deleteProspect(prospect.id)}>
+                            {pendingProspectId === prospect.id ? "Removing..." : "Delete"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

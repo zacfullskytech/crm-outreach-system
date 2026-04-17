@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { CompanyForm } from "@/components/company-form";
 import { AppShell } from "@/components/app-shell";
@@ -229,7 +230,15 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
                             <span className="help">Edit</span>
                           </div>
                         </summary>
-                        <div className="content-item-body">
+                        <div className="content-item-body inline-grid">
+                          <div className="actions">
+                            <Link
+                              className="button secondary"
+                              href={`/pipeline?companyId=${company.id}&name=${encodeURIComponent(`${company.name} ${company.status === "CLIENT" ? "Upsell" : "Opportunity"}`)}&opportunityType=${company.status === "CLIENT" ? "UPSELL" : "NEW_SALE"}&serviceLine=${encodeURIComponent(isClientMissingInternet ? "Internet" : isClientMissingPhones ? "Phones" : services[0] || "")}&notes=${encodeURIComponent(company.status === "CLIENT" ? `Created from company account review. Coverage gaps: ${[isClientMissingInternet ? "Internet" : null, isClientMissingPhones ? "Phones" : null].filter(Boolean).join(", ") || "review existing services"}.` : "Created from company record.")}`}
+                            >
+                              Create Opportunity
+                            </Link>
+                          </div>
                           <CompanyForm company={company} onSaved={upsertCompany} onDeleted={removeCompany} submitLabel="Save Company" />
                         </div>
                       </details>

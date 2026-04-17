@@ -112,6 +112,16 @@ enum OpportunityTaskStatus {
   BLOCKED
 }
 
+enum OpportunityDeliveryStatus {
+  NOT_STARTED
+  KICKOFF_SCHEDULED
+  PAPERWORK_COMPLETE
+  IMPLEMENTATION_IN_PROGRESS
+  INSTALL_SCHEDULED
+  LIVE
+  FOLLOW_UP_COMPLETE
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -478,6 +488,7 @@ model Opportunity {
   monthlyValue       Int?
   oneTimeValue       Int?
   targetCloseDate    DateTime?
+  deliveryStatus     OpportunityDeliveryStatus?
   checklistJson      Json?
   notes              String?
   createdAt          DateTime          @default(now())

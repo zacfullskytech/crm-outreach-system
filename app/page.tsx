@@ -8,15 +8,16 @@ export const dynamic = "force-dynamic";
 const topStats = [
   { key: "newProspects", label: "New Prospects", desc: "Fresh leads waiting for triage and qualification." },
   { key: "qualifiedProspects", label: "Qualified Prospects", desc: "Approved leads that should be converted or contacted." },
-  { key: "clientAccounts", label: "Client Accounts", desc: "Current customers available for retention and upsell work." },
-  { key: "reachableContacts", label: "Reachable Contacts", desc: "Contacts with at least one usable outreach channel." },
-  { key: "scheduledCampaigns", label: "Scheduled Campaigns", desc: "Campaigns already queued for a future send time." },
-  { key: "failedCampaigns", label: "Failed Campaigns", desc: "Campaigns that need operator review or resend decisions." },
+  { key: "openOpportunities", label: "Open Opportunities", desc: "Revenue opportunities still moving through the pipeline." },
+  { key: "followUpOpportunities", label: "Follow-Up Needed", desc: "Open opportunities parked in follow-up and needing next action." },
+  { key: "overduePipelineTasks", label: "Overdue Pipeline Tasks", desc: "Incomplete opportunity tasks already past their due date." },
+  { key: "wonPendingDelivery", label: "Won Not Live", desc: "Won deals still waiting on delivery completion or go-live follow-through." },
 ] as const;
 
 const quickActions = [
   { href: "/prospects", title: "Review Prospect Queue", desc: "Work new and qualified prospects before the list grows stale." },
   { href: "/companies", title: "Find Upsell Targets", desc: "Inspect client accounts missing core service lines or shared inbox coverage." },
+  { href: "/pipeline", title: "Work Pipeline", desc: "Move active deals forward, clean up follow-up work, and manage delivery handoff." },
   { href: "/campaigns", title: "Build Campaign Draft", desc: "Create a send-ready draft from a segment and reusable content asset." },
   { href: "/marketing-content", title: "Create Sales Content", desc: "Generate acquisition and upsell content for current priorities." },
 ] as const;
@@ -116,6 +117,34 @@ export default async function HomePage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </article>
+
+          <article className="card dashboard-panel">
+            <div className="card-header dashboard-panel-header">
+              <div>
+                <h3>Pipeline Watchlist</h3>
+                <p className="help">Keep open follow-ups, overdue work, and won accounts waiting on delivery visible from the dashboard.</p>
+              </div>
+              <Link href="/pipeline" className="button secondary">Open Pipeline</Link>
+            </div>
+            <div className="dashboard-mini-stats">
+              <div className="dashboard-mini-stat">
+                <strong>{summary.openOpportunities}</strong>
+                <span>Open opportunities</span>
+              </div>
+              <div className="dashboard-mini-stat">
+                <strong>{summary.followUpOpportunities}</strong>
+                <span>In follow-up</span>
+              </div>
+              <div className="dashboard-mini-stat">
+                <strong>{summary.overduePipelineTasks}</strong>
+                <span>Overdue tasks</span>
+              </div>
+              <div className="dashboard-mini-stat">
+                <strong>{summary.wonPendingDelivery}</strong>
+                <span>Won not live</span>
+              </div>
             </div>
           </article>
 

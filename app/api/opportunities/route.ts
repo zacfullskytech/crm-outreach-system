@@ -2,8 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/supabase/auth";
-import { opportunitySchema } from "@/lib/validators";
-import { ensurePipelineTemplates } from "@/lib/pipeline";
+import { opportunitySchema, opportunityTemplateSchema } from "@/lib/validators";
+import { applyDeliveryAutomation, ensurePipelineTemplates, normalizeChecklistEntries, normalizeTaskTemplates } from "@/lib/pipeline";
+
+function serializeOpportunity(opportunity: {
+  id: string;
+  name: string;
+  opportunityType: string;
+  stage: string;
+  status: string;
+  deliveryStatus: string | null;
+  serviceLine: string | null;
+  valueEstimate: number | null;
+  monthlyValue: number | null;
+  oneTimeValue: number | null;
+  targetCloseDate: Date | null;
+  notes: string | null;
+  checklistJson: unknown;
+  company: { id: string; name: string };
+  contact: { id: string; fullName: string | null; email: string | null } | null;
+  owner: { id: string; email: string; name: string | null } | null;
+  template: { id: string; name: string; serviceLine: string | null } | null;
+  tasks: Array<{ id: string; title: string; description: string | null; status: string; dueDate: Date | null; checklistKey: string | null; assignee: { id: string; email: string; name: string | null } | null }>;
+}) {
+  return {
+    ...opportunity,
+    checklistJson: normalizeChecklistEntries(opportunity.checklistJson),
+    tasks: opportunity.tasks.map((task) => ({
+      ...task,
+      dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+    })),
+    targetCloseDate: opportunity.targetCloseDate ? opportunity.targetCloseDate.toISOString() : null,
+  };
+}
 
 export async function GET() {
   const { appUser } = await requireAuth();
@@ -30,7 +61,15 @@ export async function GET() {
     prisma.contact.findMany({ select: { id: true, fullName: true, email: true, companyId: true }, orderBy: [{ fullName: "asc" }], take: 300 }),
   ]);
 
-  return NextResponse.json({ data: { opportunities, templates, users, companies, contacts } });
+  return NextResponse.json({
+    data: {
+      opportunities: opportunities.map((opportunity) => serializeOpportunity(opportunity)),
+      templates,
+      users,
+      companies,
+      contacts,
+    },
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -38,29 +77,43 @@ export async function POST(request: NextRequest) {
 
   try {
     const payload = await request.json();
+    if (payload && typeof payload === "object" && "template" in payload) {
+      const parsedTemplate = opportunityTemplateSchema.parse((payload as { template: unknown }).template);
+      const createdTemplate = await prisma.opportunityTemplate.create({
+        data: {
+          name: parsedTemplate.name,
+          description: parsedTemplate.description ?? null,
+          opportunityType: parsedTemplate.opportunityType,
+          serviceLine: parsedTemplate.serviceLine ?? null,
+          checklistJson: parsedTemplate.checklist,
+          taskTemplateJson: parsedTemplate.taskTemplates,
+          isActive: parsedTemplate.isActive ?? true,
+          createdById: appUser.id,
+        },
+      });
+
+      return NextResponse.json({ data: createdTemplate }, { status: 201 });
+    }
+
     const parsed = opportunitySchema.parse(payload);
     const template = parsed.templateId
       ? await prisma.opportunityTemplate.findUnique({ where: { id: parsed.templateId } })
       : null;
 
-    const checklist = parsed.checklist.length > 0
+    const baseChecklist = parsed.checklist.length > 0
       ? parsed.checklist
-      : Array.isArray(template?.checklistJson)
-        ? template.checklistJson
-        : [];
+      : normalizeChecklistEntries(template?.checklistJson);
 
-    const taskTemplates = (parsed.tasks.length > 0
+    const baseTasks = parsed.tasks.length > 0
       ? parsed.tasks
-      : Array.isArray(template?.taskTemplateJson)
-        ? template.taskTemplateJson
-        : []) as Array<{
-      title: string;
-      description?: string | null;
-      assigneeUserId?: string | null;
-      dueDate?: string | null;
-      status?: "TODO" | "IN_PROGRESS" | "DONE" | "BLOCKED";
-      checklistKey?: string | null;
-    }>;
+      : normalizeTaskTemplates(template?.taskTemplateJson);
+
+    const automated = applyDeliveryAutomation({
+      status: parsed.status ?? "OPEN",
+      deliveryStatus: parsed.deliveryStatus ?? null,
+      checklistJson: baseChecklist,
+      tasks: baseTasks,
+    });
 
     const opportunity = await prisma.opportunity.create({
       data: {
@@ -78,10 +131,11 @@ export async function POST(request: NextRequest) {
         monthlyValue: parsed.monthlyValue ?? null,
         oneTimeValue: parsed.oneTimeValue ?? null,
         targetCloseDate: parsed.targetCloseDate ? new Date(parsed.targetCloseDate) : null,
-        checklistJson: checklist,
+        deliveryStatus: automated.deliveryStatus,
+        checklistJson: automated.checklist,
         notes: parsed.notes ?? null,
         tasks: {
-          create: taskTemplates.map((task, index) => ({
+          create: automated.tasks.map((task, index) => ({
             title: String(task.title),
             description: task.description ? String(task.description) : null,
             assigneeUserId: task.assigneeUserId ? String(task.assigneeUserId) : null,
@@ -104,7 +158,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ data: opportunity }, { status: 201 });
+    return NextResponse.json({ data: serializeOpportunity(opportunity) }, { status: 201 });
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || "Invalid opportunity payload" }, { status: 400 });

@@ -34,6 +34,10 @@ export async function getDashboardSummary() {
     importJobs,
     recentCampaigns,
     recentProspects,
+    openOpportunities,
+    followUpOpportunities,
+    overduePipelineTasks,
+    wonPendingDelivery,
   ] = await Promise.all([
     prisma.contact.count(),
     prisma.contact.count({
@@ -88,6 +92,10 @@ export async function getDashboardSummary() {
       orderBy: [{ score: "desc" }, { createdAt: "desc" }],
       take: 6,
     }),
+    prisma.opportunity.count({ where: { status: "OPEN" } }),
+    prisma.opportunity.count({ where: { stage: "FOLLOW_UP", status: "OPEN" } }),
+    prisma.opportunityTask.count({ where: { status: { not: "DONE" }, dueDate: { lt: new Date() }, opportunity: { status: "OPEN" } } }),
+    prisma.opportunity.count({ where: { status: "WON", deliveryStatus: { notIn: ["LIVE", "FOLLOW_UP_COMPLETE"] } } }),
   ]);
 
   const clientAccounts = companyRecords.filter((company) => company.status === "CLIENT");
@@ -116,5 +124,9 @@ export async function getDashboardSummary() {
     companiesWithoutContacts,
     recentCampaigns,
     recentProspects,
+    openOpportunities,
+    followUpOpportunities,
+    overduePipelineTasks,
+    wonPendingDelivery,
   };
 }

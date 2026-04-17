@@ -171,6 +171,7 @@ export const opportunitySchema = z.object({
   opportunityType: z.enum(["NEW_SALE", "UPSELL", "RENEWAL"]),
   stage: z.enum(["DISCOVERED", "CONTACTED", "QUALIFIED", "MEETING_SCHEDULED", "PROPOSAL_REQUESTED", "QUOTE_SENT", "FOLLOW_UP", "VERBAL_YES", "CLOSED_WON", "CLOSED_LOST"]).optional(),
   status: z.enum(["OPEN", "WON", "LOST", "ON_HOLD"]).optional(),
+  deliveryStatus: z.enum(["NOT_STARTED", "KICKOFF_SCHEDULED", "PAPERWORK_COMPLETE", "IMPLEMENTATION_IN_PROGRESS", "INSTALL_SCHEDULED", "LIVE", "FOLLOW_UP_COMPLETE"]).optional().nullable(),
   serviceLine: z.string().trim().min(1).optional().nullable(),
   valueEstimate: z.number().int().optional().nullable(),
   monthlyValue: z.number().int().optional().nullable(),

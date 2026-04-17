@@ -1,5 +1,20 @@
 import { prisma } from "@/lib/db";
 
+export type PipelineChecklistEntry = {
+  key: string;
+  label: string;
+  done?: boolean;
+};
+
+export type PipelineTaskTemplate = {
+  title: string;
+  description?: string | null;
+  assigneeUserId?: string | null;
+  dueDate?: string | null;
+  status?: "TODO" | "IN_PROGRESS" | "DONE" | "BLOCKED";
+  checklistKey?: string | null;
+};
+
 export const opportunityTypeOptions = [
   "NEW_SALE",
   "UPSELL",
@@ -87,6 +102,101 @@ export const pipelineTemplateSeeds = [
     ],
   },
 ] as const;
+
+export function normalizeChecklistEntries(value: unknown): PipelineChecklistEntry[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object" && !Array.isArray(entry))
+    .map((entry, index) => ({
+      key: typeof entry.key === "string" && entry.key.trim() ? entry.key.trim() : `item-${index + 1}`,
+      label: typeof entry.label === "string" ? entry.label.trim() : "",
+      done: Boolean(entry.done),
+    }))
+    .filter((entry) => entry.label);
+}
+
+export function normalizeTaskTemplates(value: unknown): PipelineTaskTemplate[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object" && !Array.isArray(entry))
+    .map((entry) => {
+      const status: PipelineTaskTemplate["status"] =
+        entry.status === "TODO" ||
+        entry.status === "IN_PROGRESS" ||
+        entry.status === "DONE" ||
+        entry.status === "BLOCKED"
+          ? entry.status
+          : "TODO";
+
+      return {
+        title: typeof entry.title === "string" ? entry.title.trim() : "",
+        description: typeof entry.description === "string" ? entry.description.trim() || null : null,
+        assigneeUserId: typeof entry.assigneeUserId === "string" ? entry.assigneeUserId : null,
+        dueDate: typeof entry.dueDate === "string" ? entry.dueDate : null,
+        status,
+        checklistKey: typeof entry.checklistKey === "string" ? entry.checklistKey : null,
+      };
+    })
+    .filter((entry) => entry.title);
+}
+
+export function applyDeliveryAutomation(opportunity: {
+  status?: string | null;
+  deliveryStatus?: "NOT_STARTED" | "KICKOFF_SCHEDULED" | "PAPERWORK_COMPLETE" | "IMPLEMENTATION_IN_PROGRESS" | "INSTALL_SCHEDULED" | "LIVE" | "FOLLOW_UP_COMPLETE" | null;
+  checklistJson?: unknown;
+  tasks?: Array<{ title: string; description?: string | null; assigneeUserId?: string | null; dueDate?: Date | string | null; status?: string | null; checklistKey?: string | null }>;
+}) {
+  const normalizedChecklist = normalizeChecklistEntries(opportunity.checklistJson);
+  const normalizedTasks = normalizeTaskTemplates(opportunity.tasks || []);
+
+  if (opportunity.status !== "WON") {
+    return {
+      deliveryStatus: null,
+      checklist: normalizedChecklist,
+      tasks: normalizedTasks,
+    };
+  }
+
+  const deliveryStatus = opportunity.deliveryStatus || "NOT_STARTED";
+  const deliveryChecklist = [
+    { key: "kickoff_booked", label: "Schedule kickoff with client" },
+    { key: "paperwork_signed", label: "Complete paperwork and approvals" },
+    { key: "delivery_handoff", label: "Hand off delivery scope to implementation" },
+    { key: "go_live_confirmed", label: "Confirm live date and acceptance" },
+    { key: "post_launch_followup", label: "Run post-launch follow-up" },
+  ];
+  const deliveryTasks = [
+    { title: "Schedule kickoff call", description: "Align scope, timing, and delivery owner.", checklistKey: "kickoff_booked", status: "TODO" as const },
+    { title: "Confirm paperwork completion", description: "Verify signatures, billing, and required internal approvals.", checklistKey: "paperwork_signed", status: "TODO" as const },
+    { title: "Prepare implementation handoff", description: "Package all sold details for delivery and provisioning.", checklistKey: "delivery_handoff", status: "TODO" as const },
+  ];
+
+  const mergedChecklist = [...normalizedChecklist];
+  for (const entry of deliveryChecklist) {
+    if (!mergedChecklist.some((item) => item.key === entry.key)) {
+      mergedChecklist.push({ ...entry, done: false });
+    }
+  }
+
+  const mergedTasks = [...normalizedTasks];
+  for (const task of deliveryTasks) {
+    if (!mergedTasks.some((entry) => entry.checklistKey === task.checklistKey || entry.title.toLowerCase() === task.title.toLowerCase())) {
+      mergedTasks.push(task);
+    }
+  }
+
+  return {
+    deliveryStatus,
+    checklist: mergedChecklist,
+    tasks: mergedTasks,
+  };
+}
 
 export async function ensurePipelineTemplates(userId?: string | null) {
   const existing = await prisma.opportunityTemplate.count();
