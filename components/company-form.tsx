@@ -16,6 +16,7 @@ const serviceOptions = [
   "Firewall",
   "Website and Hosting Services",
   "X-Ray Rental Services",
+  "Xray Services",
   "Dark Web Monitoring",
   "Pay Roll and HR Services",
 ] as const;
