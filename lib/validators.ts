@@ -137,6 +137,59 @@ export const prospectCandidateReviewSchema = z.object({
   matchReason: z.string().trim().min(1).optional().nullable(),
 });
 
+export const opportunityChecklistEntrySchema = z.object({
+  key: z.string().trim().min(1),
+  label: z.string().trim().min(1),
+  done: z.boolean().optional().default(false),
+});
+
+export const opportunityTaskEntrySchema = z.object({
+  title: z.string().trim().min(1),
+  description: z.string().trim().min(1).optional().nullable(),
+  assigneeUserId: z.string().cuid().optional().nullable(),
+  dueDate: z.string().trim().min(1).optional().nullable(),
+  status: z.enum(["TODO", "IN_PROGRESS", "DONE", "BLOCKED"]).optional(),
+  checklistKey: z.string().trim().min(1).optional().nullable(),
+});
+
+export const opportunityTemplateSchema = z.object({
+  name: z.string().trim().min(1),
+  description: z.string().trim().min(1).optional().nullable(),
+  opportunityType: z.enum(["NEW_SALE", "UPSELL", "RENEWAL"]),
+  serviceLine: z.string().trim().min(1).optional().nullable(),
+  checklist: z.array(opportunityChecklistEntrySchema).optional().default([]),
+  taskTemplates: z.array(opportunityTaskEntrySchema).optional().default([]),
+  isActive: z.boolean().optional().default(true),
+});
+
+export const opportunitySchema = z.object({
+  name: z.string().trim().min(1),
+  companyId: z.string().cuid(),
+  contactId: z.string().cuid().optional().nullable(),
+  templateId: z.string().cuid().optional().nullable(),
+  ownerUserId: z.string().cuid().optional().nullable(),
+  opportunityType: z.enum(["NEW_SALE", "UPSELL", "RENEWAL"]),
+  stage: z.enum(["DISCOVERED", "CONTACTED", "QUALIFIED", "MEETING_SCHEDULED", "PROPOSAL_REQUESTED", "QUOTE_SENT", "FOLLOW_UP", "VERBAL_YES", "CLOSED_WON", "CLOSED_LOST"]).optional(),
+  status: z.enum(["OPEN", "WON", "LOST", "ON_HOLD"]).optional(),
+  serviceLine: z.string().trim().min(1).optional().nullable(),
+  valueEstimate: z.number().int().optional().nullable(),
+  monthlyValue: z.number().int().optional().nullable(),
+  oneTimeValue: z.number().int().optional().nullable(),
+  targetCloseDate: z.string().trim().min(1).optional().nullable(),
+  checklist: z.array(opportunityChecklistEntrySchema).optional().default([]),
+  notes: z.string().trim().min(1).optional().nullable(),
+  tasks: z.array(opportunityTaskEntrySchema).optional().default([]),
+});
+
+export const opportunityTaskSchema = z.object({
+  title: z.string().trim().min(1),
+  description: z.string().trim().min(1).optional().nullable(),
+  assigneeUserId: z.string().cuid().optional().nullable(),
+  dueDate: z.string().trim().min(1).optional().nullable(),
+  status: z.enum(["TODO", "IN_PROGRESS", "DONE", "BLOCKED"]).optional(),
+  checklistKey: z.string().trim().min(1).optional().nullable(),
+});
+
 export const marketingContentSchema = z.object({
   title: z.string().trim().min(1),
   description: z.string().trim().min(1).optional().nullable(),

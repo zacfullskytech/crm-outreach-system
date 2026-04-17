@@ -77,6 +77,19 @@ const navItems: NavItem[] = [
     ),
   },
   {
+    label: "Pipeline",
+    href: "/pipeline",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 5h6v4H3z" />
+        <path d="M9 7h3" />
+        <path d="M12 9h4v6h-4z" />
+        <path d="M16 12h3" />
+        <path d="M19 10h2v10h-6v-5" />
+      </svg>
+    ),
+  },
+  {
     label: "Imports",
     href: "/imports",
     icon: (
