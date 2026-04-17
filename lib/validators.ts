@@ -141,6 +141,7 @@ export const opportunityChecklistEntrySchema = z.object({
   key: z.string().trim().min(1),
   label: z.string().trim().min(1),
   done: z.boolean().optional().default(false),
+  notes: z.string().trim().min(1).optional().nullable(),
 });
 
 export const opportunityTaskEntrySchema = z.object({

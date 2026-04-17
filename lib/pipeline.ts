@@ -4,6 +4,7 @@ export type PipelineChecklistEntry = {
   key: string;
   label: string;
   done?: boolean;
+  notes?: string | null;
 };
 
 export type PipelineTaskTemplate = {
@@ -55,12 +56,12 @@ export const pipelineTemplateSeeds = [
     opportunityType: "NEW_SALE",
     serviceLine: "Internet",
     checklistJson: [
-      { key: "service_address", label: "Confirm service address", done: false },
-      { key: "current_provider", label: "Capture current provider", done: false },
-      { key: "current_bill", label: "Collect current bill", done: false },
-      { key: "requirements", label: "Confirm bandwidth and usage requirements", done: false },
-      { key: "quote", label: "Prepare and send quote", done: false },
-      { key: "follow_up", label: "Schedule follow-up", done: false },
+      { key: "service_address", label: "Confirm service address", done: false, notes: null },
+      { key: "current_provider", label: "Capture current provider", done: false, notes: null },
+      { key: "current_bill", label: "Collect current bill", done: false, notes: null },
+      { key: "requirements", label: "Confirm bandwidth and usage requirements", done: false, notes: null },
+      { key: "quote", label: "Prepare and send quote", done: false, notes: null },
+      { key: "follow_up", label: "Schedule follow-up", done: false, notes: null },
     ],
     taskTemplateJson: [
       { title: "Collect current internet bill", description: "Request the latest provider bill and review contract timing.", checklistKey: "current_bill" },
@@ -73,11 +74,11 @@ export const pipelineTemplateSeeds = [
     opportunityType: "NEW_SALE",
     serviceLine: "Phones",
     checklistJson: [
-      { key: "line_count", label: "Confirm line and handset count", done: false },
-      { key: "current_provider", label: "Capture current provider", done: false },
-      { key: "feature_needs", label: "Confirm required phone features", done: false },
-      { key: "quote", label: "Prepare and send quote", done: false },
-      { key: "follow_up", label: "Schedule follow-up", done: false },
+      { key: "line_count", label: "Confirm line and handset count", done: false, notes: null },
+      { key: "current_provider", label: "Capture current provider", done: false, notes: null },
+      { key: "feature_needs", label: "Confirm required phone features", done: false, notes: null },
+      { key: "quote", label: "Prepare and send quote", done: false, notes: null },
+      { key: "follow_up", label: "Schedule follow-up", done: false, notes: null },
     ],
     taskTemplateJson: [
       { title: "Review current phone environment", description: "Document provider, line count, and device requirements.", checklistKey: "line_count" },
@@ -90,11 +91,11 @@ export const pipelineTemplateSeeds = [
     opportunityType: "UPSELL",
     serviceLine: "Managed I.T. Services",
     checklistJson: [
-      { key: "pain_points", label: "Confirm pain points and support gaps", done: false },
-      { key: "environment", label: "Review current environment", done: false },
-      { key: "scope", label: "Define support scope", done: false },
-      { key: "quote", label: "Prepare and send quote", done: false },
-      { key: "handoff", label: "Prep implementation handoff", done: false },
+      { key: "pain_points", label: "Confirm pain points and support gaps", done: false, notes: null },
+      { key: "environment", label: "Review current environment", done: false, notes: null },
+      { key: "scope", label: "Define support scope", done: false, notes: null },
+      { key: "quote", label: "Prepare and send quote", done: false, notes: null },
+      { key: "handoff", label: "Prep implementation handoff", done: false, notes: null },
     ],
     taskTemplateJson: [
       { title: "Assess current IT support model", description: "Document how the client is currently covering IT operations.", checklistKey: "environment" },
@@ -114,6 +115,7 @@ export function normalizeChecklistEntries(value: unknown): PipelineChecklistEntr
       key: typeof entry.key === "string" && entry.key.trim() ? entry.key.trim() : `item-${index + 1}`,
       label: typeof entry.label === "string" ? entry.label.trim() : "",
       done: Boolean(entry.done),
+      notes: typeof entry.notes === "string" ? entry.notes.trim() || null : null,
     }))
     .filter((entry) => entry.label);
 }
@@ -180,7 +182,7 @@ export function applyDeliveryAutomation(opportunity: {
   const mergedChecklist = [...normalizedChecklist];
   for (const entry of deliveryChecklist) {
     if (!mergedChecklist.some((item) => item.key === entry.key)) {
-      mergedChecklist.push({ ...entry, done: false });
+      mergedChecklist.push({ ...entry, done: false, notes: null });
     }
   }
 
