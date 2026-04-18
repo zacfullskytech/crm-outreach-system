@@ -714,11 +714,17 @@ main {
 
   .sidebar {
     position: static;
-    display: none;
+    display: flex;
     min-height: auto;
+    margin: 12px;
+    border-radius: 20px;
     border-right: 0;
     padding: 18px;
-    box-shadow: none;
+    box-shadow: var(--shadow-card);
+  }
+
+  .sidebar:not(.mobile-open) {
+    display: none;
   }
 
   .sidebar.mobile-open {

@@ -157,7 +157,7 @@ export function AppShell({ children, isAdmin = false }: { children: React.ReactN
   const pathname = usePathname();
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(true);
 
   useEffect(() => {
     let active = true;
