@@ -13,7 +13,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { id } = await params;
     const payload = await request.json();
     const parsed = companySchema.partial({ name: true }).parse(payload);
-    const { services: _services, customFields, ...companyFields } = parsed;
+    const { services, customFields, ...companyFields } = parsed;
+
+    const normalizedCustomFields = customFields ? normalizeCustomFields(customFields) : undefined;
+    if (services !== undefined && normalizedCustomFields) {
+      if (services.length > 0) {
+        normalizedCustomFields.services = services.join(", ");
+      } else {
+        delete normalizedCustomFields.services;
+      }
+    }
 
     const company = await prisma.company.update({
       where: { id },
@@ -22,7 +31,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         email: parsed.email !== undefined ? normalizeEmail(parsed.email) : undefined,
         state: parsed.state?.toUpperCase() || null,
         emailDomain: parsed.website !== undefined ? normalizeWebsite(parsed.website) : undefined,
-        customFieldsJson: customFields ? normalizeCustomFields(customFields) : undefined,
+        customFieldsJson: services !== undefined || customFields ? (normalizedCustomFields || {}) : undefined,
       },
     });
 

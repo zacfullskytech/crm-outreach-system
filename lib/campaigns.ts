@@ -110,7 +110,12 @@ export async function deliverCampaignRecipients(campaignId: string) {
     throw new Error("Campaign not found");
   }
 
-  if (campaign.status !== "SENDING") {
+  if (campaign.status === "SCHEDULED") {
+    await prisma.campaign.update({
+      where: { id: campaignId },
+      data: { status: "SENDING" },
+    });
+  } else if (campaign.status !== "SENDING") {
     throw new Error(`Campaign is not in SENDING state (current: ${campaign.status})`);
   }
 
@@ -118,6 +123,24 @@ export async function deliverCampaignRecipients(campaignId: string) {
     where: { campaignId, status: "PENDING" },
     take: 500,
   });
+
+  if (pending.length === 0) {
+    const scheduledCampaign = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { status: true, scheduledAt: true },
+    });
+
+    if (scheduledCampaign?.status === "SCHEDULED") {
+      const prepared = await prepareCampaignRecipients(campaignId);
+      return {
+        sent: 0,
+        failed: 0,
+        remaining: prepared.recipientCount,
+        message: "Recipients prepared for scheduled campaign delivery",
+      };
+    }
+  }
+
 
   if (pending.length === 0) {
     const finalState = await finalizeCampaignDelivery(campaignId);
