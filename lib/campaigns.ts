@@ -35,8 +35,22 @@ export async function prepareCampaignRecipients(campaignId: string) {
     throw new Error(`Campaign sending only supports contact segments right now. Linked segment type: ${segment.entityType}.`);
   }
 
-  const existingRecipients = await prisma.campaignRecipient.count({ where: { campaignId } });
-  if (existingRecipients > 0) {
+  const existingRecipients = await prisma.campaignRecipient.findMany({ where: { campaignId } });
+  if (existingRecipients.length > 0) {
+    const failedRecipientIds = existingRecipients.filter((recipient) => recipient.status === "FAILED").map((recipient) => recipient.id);
+
+    if (failedRecipientIds.length > 0) {
+      await prisma.campaignRecipient.updateMany({
+        where: { id: { in: failedRecipientIds } },
+        data: {
+          status: "PENDING",
+          errorMessage: null,
+          providerMessageId: null,
+          sentAt: null,
+        },
+      });
+    }
+
     await prisma.campaign.update({
       where: { id: campaignId },
       data: { status: "SENDING" },
@@ -44,9 +58,10 @@ export async function prepareCampaignRecipients(campaignId: string) {
 
     return {
       campaignId,
-      recipientCount: existingRecipients,
+      recipientCount: existingRecipients.length,
       status: "SENDING" as const,
       reusedExistingRecipients: true,
+      resetFailedRecipients: failedRecipientIds.length,
     };
   }
 
