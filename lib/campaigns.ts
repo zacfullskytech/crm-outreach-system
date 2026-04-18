@@ -276,6 +276,12 @@ export async function runCampaignNow(campaignId: string) {
 }
 
 export async function runDueScheduledCampaigns(now = new Date()) {
+  const emailProvider = process.env.EMAIL_PROVIDER || "resend";
+  const providerConfigOk =
+    emailProvider === "dry-run" ||
+    (emailProvider === "resend" && Boolean(process.env.RESEND_API_KEY)) ||
+    (emailProvider === "mailgun" && Boolean(process.env.MAILGUN_API_KEY) && Boolean(process.env.MAILGUN_DOMAIN));
+
   const dueCampaigns = await prisma.campaign.findMany({
     where: {
       status: "SCHEDULED",
@@ -325,6 +331,12 @@ export async function runDueScheduledCampaigns(now = new Date()) {
     dueCount: dueCampaigns.length,
     successCount: results.filter((result) => result.success).length,
     failureCount: results.filter((result) => !result.success).length,
+    runtime: {
+      emailProvider,
+      providerConfigOk,
+      schedulerSecretConfigured: Boolean(process.env.SCHEDULER_SECRET?.trim()),
+      appBaseUrl: process.env.APP_BASE_URL || null,
+    },
     results,
   };
 }

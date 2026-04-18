@@ -54,6 +54,7 @@ These must be present during `docker build`.
 - `MAILGUN_API_KEY` when `EMAIL_PROVIDER=mailgun`
 - `MAILGUN_DOMAIN` when `EMAIL_PROVIDER=mailgun`
 - `EMAIL_WEBHOOK_SECRET` when using `/api/email/webhook`
+- `SCHEDULER_SECRET` when using the scheduled campaign runner
 
 ### Not used by this app
 
@@ -166,6 +167,29 @@ After deployment, test in this order:
 - `/settings`
 
 If `/login` briefly renders and then fails, check the browser console first. In current builds, server auth depends on `SUPABASE_URL` and `SUPABASE_ANON_KEY`, while browser auth depends on runtime config plus `NEXT_PUBLIC_SUPABASE_URL`.
+
+## Scheduled Campaign Runner
+
+This repo includes an Azure Container Apps Job manifest at `azure/campaign-scheduler-job.yaml` that calls:
+
+- `POST /api/campaigns/scheduler/run-due`
+
+Recommended setup requirements:
+
+- Set `SCHEDULER_SECRET` in the app runtime environment.
+- Configure the scheduler job to send `Authorization: Bearer <same-secret>`.
+- Set `EMAIL_PROVIDER=resend` and provide `RESEND_API_KEY` if you expect real traffic to appear in Resend.
+- Set `APP_BASE_URL` to the public app URL so unsubscribe links are correct.
+
+If `EMAIL_PROVIDER=dry-run`, the scheduler can run successfully but no email will be sent to Resend.
+
+The scheduler endpoint now returns diagnostics including:
+
+- whether token auth succeeded
+- whether `SCHEDULER_SECRET` is configured
+- current `EMAIL_PROVIDER`
+- whether provider credentials are present
+- current `APP_BASE_URL`
 
 ## Optional Next Step
 
