@@ -216,6 +216,7 @@ export function ImportWizard() {
       {sampleRows.length > 0 ? (
         <div className="card">
           <h3>Preview</h3>
+          <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
@@ -234,6 +235,26 @@ export function ImportWizard() {
               ))}
             </tbody>
           </table>
+          </div>
+          <div className="inline-grid mobile-card-list">
+            {sampleRows.map((row, index) => (
+              <div key={`preview-mobile-${index}`} className="dashboard-list-row mobile-record-card">
+                <div className="record-summary-main">
+                  <div className="record-summary-topline">
+                    <strong>Preview row {index + 1}</strong>
+                  </div>
+                  <div className="inline-grid">
+                    {headers.map((header) => (
+                      <div key={`${index}-${header}`} className="field">
+                        <label>{header}</label>
+                        <div className="help">{row[header] || "—"}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
 

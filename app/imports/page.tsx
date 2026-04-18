@@ -65,6 +65,7 @@ export default async function ImportsPage() {
           <ImportWizard />
         </section>
         <section className="card">
+          <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
@@ -91,6 +92,27 @@ export default async function ImportsPage() {
               )}
             </tbody>
           </table>
+          </div>
+          <div className="inline-grid mobile-card-list">
+            {importJobs.length === 0 ? (
+              <div className="dashboard-list-row mobile-record-card"><p>No imports yet.</p></div>
+            ) : (
+              importJobs.map((job) => (
+                <div key={`${job.id}-mobile`} className="dashboard-list-row mobile-record-card">
+                  <div className="record-summary-main">
+                    <div className="record-summary-topline">
+                      <strong>{job.filename}</strong>
+                      <span className="badge">{job.status}</span>
+                    </div>
+                    <div className="record-meta-row">
+                      <span>{job.rowCount ?? 0} source rows</span>
+                      <span>{job.rows.length} imported</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </section>
       </div>
     </AppShell>

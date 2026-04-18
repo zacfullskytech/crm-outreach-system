@@ -81,30 +81,51 @@ export default async function SettingsPage() {
 
         <section className="card">
           <h3>Suppression List</h3>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Reason</th>
-                <th>Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {suppressions.length === 0 ? (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
                 <tr>
-                  <td colSpan={3}>No suppressions yet.</td>
+                  <th>Email</th>
+                  <th>Reason</th>
+                  <th>Source</th>
                 </tr>
-              ) : (
-                suppressions.map((suppression) => (
-                  <tr key={suppression.id}>
-                    <td>{suppression.email}</td>
-                    <td><span className="badge">{suppression.reason}</span></td>
-                    <td>{suppression.source || "Unknown"}</td>
+              </thead>
+              <tbody>
+                {suppressions.length === 0 ? (
+                  <tr>
+                    <td colSpan={3}>No suppressions yet.</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  suppressions.map((suppression) => (
+                    <tr key={suppression.id}>
+                      <td>{suppression.email}</td>
+                      <td><span className="badge">{suppression.reason}</span></td>
+                      <td>{suppression.source || "Unknown"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="inline-grid mobile-card-list">
+            {suppressions.length === 0 ? (
+              <div className="dashboard-list-row mobile-record-card"><p>No suppressions yet.</p></div>
+            ) : (
+              suppressions.map((suppression) => (
+                <div key={`${suppression.id}-mobile`} className="dashboard-list-row mobile-record-card">
+                  <div className="record-summary-main">
+                    <div className="record-summary-topline">
+                      <strong>{suppression.email}</strong>
+                      <span className="badge">{suppression.reason}</span>
+                    </div>
+                    <div className="record-meta-row">
+                      <span>{suppression.source || "Unknown"}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </section>
 
         <section className="card">
@@ -114,48 +135,80 @@ export default async function SettingsPage() {
 
         <section className="card">
           <h3>Tag Library</h3>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Color</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tags.length === 0 ? (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
                 <tr>
-                  <td colSpan={2}>No tags yet.</td>
+                  <th>Name</th>
+                  <th>Color</th>
                 </tr>
-              ) : (
-                tags.map((tag) => (
-                  <tr key={tag.id}>
-                    <td>{tag.name}</td>
-                    <td>{tag.color || "None"}</td>
+              </thead>
+              <tbody>
+                {tags.length === 0 ? (
+                  <tr>
+                    <td colSpan={2}>No tags yet.</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  tags.map((tag) => (
+                    <tr key={tag.id}>
+                      <td>{tag.name}</td>
+                      <td>{tag.color || "None"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="inline-grid mobile-card-list">
+            {tags.length === 0 ? (
+              <div className="dashboard-list-row mobile-record-card"><p>No tags yet.</p></div>
+            ) : (
+              tags.map((tag) => (
+                <div key={`${tag.id}-mobile`} className="dashboard-list-row mobile-record-card">
+                  <div className="record-summary-main">
+                    <div className="record-summary-topline">
+                      <strong>{tag.name}</strong>
+                      <span className="badge badge-blue">{tag.color || "None"}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </section>
 
         <section className="card">
           <h3>Environment Requirements</h3>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Variable</th>
-                <th>Purpose</th>
-              </tr>
-            </thead>
-            <tbody>
-              {envRows.map(([name, purpose]) => (
-                <tr key={name}>
-                  <td>{name}</td>
-                  <td>{purpose}</td>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Variable</th>
+                  <th>Purpose</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {envRows.map(([name, purpose]) => (
+                  <tr key={name}>
+                    <td>{name}</td>
+                    <td>{purpose}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="inline-grid mobile-card-list">
+            {envRows.map(([name, purpose]) => (
+              <div key={`${name}-mobile`} className="dashboard-list-row mobile-record-card">
+                <div className="record-summary-main">
+                  <div className="record-summary-topline">
+                    <strong>{name}</strong>
+                  </div>
+                  <p className="help">{purpose}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       </div>
     </AppShell>

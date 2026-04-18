@@ -227,10 +227,24 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
                             ) : null}
                           </div>
                           <div className="content-item-summary-right">
+                            <span className="badge badge-blue">{services.length} service{services.length === 1 ? "" : "s"}</span>
                             <span className="help">Edit</span>
                           </div>
                         </summary>
                         <div className="content-item-body inline-grid">
+                          <div className="card subtle-card">
+                            <div className="record-summary-main">
+                              <div className="record-summary-topline">
+                                <strong>Account snapshot</strong>
+                                <span className="badge">{company.status}</span>
+                              </div>
+                              <div className="record-meta-row">
+                                <span>{company.website || "No website"}</span>
+                                <span>{company.source || "No source"}</span>
+                                <span>{company.contacts?.length || 0} linked contact{company.contacts?.length === 1 ? "" : "s"}</span>
+                              </div>
+                            </div>
+                          </div>
                           <div className="actions">
                             <Link
                               className="button secondary"

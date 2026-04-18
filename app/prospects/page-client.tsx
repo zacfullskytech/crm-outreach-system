@@ -624,6 +624,7 @@ export function ProspectsPageClient({
               <p>{search || statusFilter !== "ALL" ? "No prospects match your filters." : "No accepted prospects yet."}</p>
             </div>
           ) : (
+            <>
             <div className="table-wrap">
               <table className="table">
                 <thead>
@@ -669,6 +670,39 @@ export function ProspectsPageClient({
                 </tbody>
               </table>
             </div>
+            <div className="inline-grid mobile-card-list">
+              {filteredProspects.map((prospect) => (
+                <div key={`${prospect.id}-mobile`} className="dashboard-list-row mobile-record-card">
+                  <div className="record-summary-main">
+                    <div className="record-summary-topline">
+                      <strong>{prospect.companyName}</strong>
+                      <span className="badge badge-blue">{prospect.qualificationStatus}</span>
+                    </div>
+                    <div className="record-meta-row">
+                      <span>{prospect.industry || "Unknown industry"}</span>
+                      <span>{[prospect.city, prospect.state].filter(Boolean).join(", ") || "Unknown location"}</span>
+                      <span>Score {prospect.score ?? 0}</span>
+                    </div>
+                    <div className="record-meta-row">
+                      <span className={matchBadgeClass(prospect.matchStatus)}>{prospect.matchStatus}</span>
+                      <span>{prospect.source || "Manual"}</span>
+                    </div>
+                    <div className="actions">
+                      <Link
+                        className="button secondary"
+                        href={`/pipeline?name=${encodeURIComponent(`${prospect.companyName} Opportunity`)}&opportunityType=NEW_SALE&serviceLine=${encodeURIComponent(prospect.industry || "")}&notes=${encodeURIComponent([prospect.notes || "Created from accepted prospect", prospect.city || prospect.state ? `Location: ${[prospect.city, prospect.state].filter(Boolean).join(", ")}` : null, prospect.source ? `Source: ${prospect.source}` : null].filter(Boolean).join("\n"))}`}
+                      >
+                        Create Opportunity
+                      </Link>
+                      <button className="button secondary" type="button" disabled={pendingProspectId === prospect.id} onClick={() => void deleteProspect(prospect.id)}>
+                        {pendingProspectId === prospect.id ? "Removing..." : "Delete"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            </>
           ) : null}
           {filteredProspects.length > 0 && (
             <p className="results-count">{filteredProspects.length} prospect{filteredProspects.length !== 1 ? "s" : ""}</p>

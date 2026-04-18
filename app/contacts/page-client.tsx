@@ -84,6 +84,7 @@ export function ContactsPageClient({
               <p>{search ? "No contacts match your search." : "No contacts yet."}</p>
             </div>
           ) : (
+            <>
             <div className="table-wrap">
               <table className="table">
                 <thead>
@@ -108,6 +109,24 @@ export function ContactsPageClient({
                 </tbody>
               </table>
             </div>
+            <div className="inline-grid mobile-card-list">
+              {filtered.map((contact) => (
+                <div key={`${contact.id}-mobile`} className="dashboard-list-row mobile-record-card">
+                  <div className="record-summary-main">
+                    <div className="record-summary-topline">
+                      <strong>{contact.fullName || [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "—"}</strong>
+                      <span className="badge">{contact.status}</span>
+                    </div>
+                    <div className="record-meta-row">
+                      <span>{contact.email || "No email"}</span>
+                      <span>{contact.company?.name || "Unlinked"}</span>
+                      <span>Added {new Date(contact.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            </>
           )}
           {search && filtered.length > 0 && (
             <p className="results-count">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>

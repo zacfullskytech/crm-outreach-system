@@ -259,6 +259,9 @@ export function CampaignsPageClient({
                             </div>
                           </div>
                           <div className="content-item-summary-right">
+                            <span className="badge badge-blue">{sentCount} sent</span>
+                            {failedCount > 0 ? <span className="badge badge-red">{failedCount} failed</span> : null}
+                            {pendingCount > 0 ? <span className="badge badge-yellow">{pendingCount} pending</span> : null}
                             <span className="help">View</span>
                           </div>
                         </summary>
@@ -278,7 +281,7 @@ export function CampaignsPageClient({
                               <p>Delivery summary: {sentCount} sent · {failedCount} failed · {pendingCount} pending</p>
                             </div>
                           </div>
-                          <div className="card">
+                          <div className="card campaign-body-card">
                             <h4>HTML Body</h4>
                             <p className="campaign-template-preview">{campaign.templateHtml}</p>
                           </div>
@@ -299,7 +302,7 @@ export function CampaignsPageClient({
                               Duplicate Into Draft
                             </button>
                           </div>
-                          <div className="card">
+                          <div className="card campaign-body-card">
                             <h4>Plain-text Body</h4>
                             <p className="campaign-template-preview">{campaign.templateText || "No plain-text body"}</p>
                           </div>

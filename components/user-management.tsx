@@ -144,33 +144,83 @@ export function UserManagement({ initialUsers, currentUserId }: { initialUsers: 
         <p className="help">If Supabase email rate limits are hit, the platform user can still be saved and invited again later.</p>
       </form>
 
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Added</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.length === 0 ? (
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
             <tr>
-              <td colSpan={5}>No platform users yet.</td>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Added</th>
+              <th>Actions</th>
             </tr>
-          ) : (
-            users.map((user) => {
-              const isSelf = user.id === currentUserId;
-              const isPrimaryAdmin = user.email.toLowerCase() === "zac@fullskytech.com";
-              const roleLocked = isSelf || isPrimaryAdmin;
-              const deleteLocked = isSelf || isPrimaryAdmin;
+          </thead>
+          <tbody>
+            {users.length === 0 ? (
+              <tr>
+                <td colSpan={5}>No platform users yet.</td>
+              </tr>
+            ) : (
+              users.map((user) => {
+                const isSelf = user.id === currentUserId;
+                const isPrimaryAdmin = user.email.toLowerCase() === "zac@fullskytech.com";
+                const roleLocked = isSelf || isPrimaryAdmin;
+                const deleteLocked = isSelf || isPrimaryAdmin;
 
-              return (
-                <tr key={user.id}>
-                  <td>{user.name || "-"}</td>
-                  <td>{user.email}</td>
-                  <td>
+                return (
+                  <tr key={user.id}>
+                    <td>{user.name || "-"}</td>
+                    <td>{user.email}</td>
+                    <td>
+                      <select
+                        value={user.role}
+                        disabled={pending || roleLocked}
+                        onChange={(event) => void updateRole(user.id, event.target.value)}
+                      >
+                        <option value="member">member</option>
+                        <option value="admin">admin</option>
+                      </select>
+                    </td>
+                    <td>{new Date(user.createdAt).toLocaleDateString()}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="button secondary"
+                        disabled={pending || deleteLocked}
+                        onClick={() => void deleteUser(user.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className="inline-grid mobile-card-list">
+        {users.length === 0 ? (
+          <div className="dashboard-list-row mobile-record-card"><p>No platform users yet.</p></div>
+        ) : (
+          users.map((user) => {
+            const isSelf = user.id === currentUserId;
+            const isPrimaryAdmin = user.email.toLowerCase() === "zac@fullskytech.com";
+            const roleLocked = isSelf || isPrimaryAdmin;
+            const deleteLocked = isSelf || isPrimaryAdmin;
+
+            return (
+              <div key={`${user.id}-mobile`} className="dashboard-list-row mobile-record-card">
+                <div className="record-summary-main">
+                  <div className="record-summary-topline">
+                    <strong>{user.name || user.email}</strong>
+                    <span className="badge badge-blue">{user.role}</span>
+                  </div>
+                  <div className="record-meta-row">
+                    <span>{user.email}</span>
+                    <span>Added {new Date(user.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <div className="actions">
                     <select
                       value={user.role}
                       disabled={pending || roleLocked}
@@ -179,9 +229,6 @@ export function UserManagement({ initialUsers, currentUserId }: { initialUsers: 
                       <option value="member">member</option>
                       <option value="admin">admin</option>
                     </select>
-                  </td>
-                  <td>{new Date(user.createdAt).toLocaleDateString()}</td>
-                  <td>
                     <button
                       type="button"
                       className="button secondary"
@@ -190,13 +237,13 @@ export function UserManagement({ initialUsers, currentUserId }: { initialUsers: 
                     >
                       Delete
                     </button>
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }

@@ -5,6 +5,21 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
+function MenuIcon({ open }: { open: boolean }) {
+  return open ? (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12h18" />
+      <path d="M3 6h18" />
+      <path d="M3 18h18" />
+    </svg>
+  );
+}
+
 type NavItem = { label: string; href: string; icon: React.ReactNode; adminOnly?: boolean };
 
 const navItems: NavItem[] = [
@@ -142,6 +157,7 @@ export function AppShell({ children, isAdmin = false }: { children: React.ReactN
   const pathname = usePathname();
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -171,9 +187,23 @@ export function AppShell({ children, isAdmin = false }: { children: React.ReactN
     router.refresh();
   }
 
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
+
   return (
     <div className="shell">
-      <aside className="sidebar">
+      <button
+        className="mobile-nav-toggle"
+        type="button"
+        aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}
+        aria-expanded={mobileNavOpen}
+        onClick={() => setMobileNavOpen((value) => !value)}
+      >
+        <MenuIcon open={mobileNavOpen} />
+        <span>{mobileNavOpen ? "Close" : "Menu"}</span>
+      </button>
+      <aside className={`sidebar${mobileNavOpen ? " mobile-open" : ""}`}>
         <div className="sidebar-brand">
           <div className="sidebar-brand-mark" aria-hidden="true">
             <span>FS</span>
