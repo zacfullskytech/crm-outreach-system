@@ -273,9 +273,9 @@ export function MarketingContentForm({
 
   return (
     <form onSubmit={onSubmit} className="inline-grid">
-      <div className="actions" style={{ justifyContent: "space-between", alignItems: "center" }}>
+      <div className="actions marketing-upload-row" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <span className="help">Upload an existing flyer, PDF, image, or other collateral, then save its metadata into the library.</span>
-        <label className="button secondary" style={{ cursor: uploading ? "progress" : "pointer", opacity: uploading ? 0.7 : 1 }}>
+        <label className="button secondary marketing-upload-button" style={{ cursor: uploading ? "progress" : "pointer", opacity: uploading ? 0.7 : 1 }}>
           {uploading ? "Uploading..." : "Upload Existing Asset"}
           <input ref={uploadInputRef} type="file" hidden onChange={handleAssetUpload} disabled={uploading || pending} />
         </label>

@@ -235,6 +235,8 @@ export function MarketingContentManager({ initialItems, initialSegments, isAdmin
                           </div>
                         </div>
                         <div className="content-item-summary-right">
+                          <span className="badge badge-blue">{item.contentType}</span>
+                          {item.imageUrl ? <span className="badge badge-green">Image</span> : null}
                           <span className="help">Edit</span>
                         </div>
                       </summary>

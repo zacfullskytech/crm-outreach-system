@@ -290,7 +290,7 @@ export function SegmentForm({
           {rules.map((rule, index) => {
             const isServiceField = rule.field === "services" || rule.field === "company.services";
             return (
-              <div key={`${rule.field}-${index}`} className="form-grid">
+              <div key={`${rule.field}-${index}`} className="form-grid segment-rule-row">
                 <div className="field">
                   <label htmlFor={`field-${index}`}>Field</label>
                   <select id={`field-${index}`} value={rule.field} onChange={(event) => updateRule(index, { field: event.target.value })}>
@@ -334,7 +334,7 @@ export function SegmentForm({
                     />
                   )}
                 </div>
-                <div className="actions">
+                <div className="actions segment-rule-actions">
                   <button className="button secondary" type="button" onClick={() => removeRule(index)} disabled={rules.length === 1}>
                     Remove Rule
                   </button>

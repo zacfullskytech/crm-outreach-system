@@ -226,9 +226,9 @@ export function MarketingAiStudio({
       </form>
 
       {result ? (
-        <div className="card">
+        <div className="card ai-result-card">
           <h3>Generated Draft</h3>
-          <div className="inline-grid">
+          <div className="inline-grid ai-result-grid">
             <p><strong>Headline:</strong> {result.headline || "—"}</p>
             <p><strong>Subheadline:</strong> {result.subheadline || "—"}</p>
             <p><strong>Call to action:</strong> {result.callToAction || "—"}</p>
