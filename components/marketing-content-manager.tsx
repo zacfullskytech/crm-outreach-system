@@ -20,8 +20,8 @@ export function MarketingContentManager({ initialItems, initialSegments, isAdmin
   const [lifecycleStage, setLifecycleStage] = useState("ALL");
   const [contentView, setContentView] = useState("ALL");
   const [draftSeed, setDraftSeed] = useState<Record<string, unknown> | null>(null);
-  const [isAddOpen, setIsAddOpen] = useState(true);
-  const [isAiOpen, setIsAiOpen] = useState(true);
+  const [listMessage, setListMessage] = useState<string | null>(null);
+  const [isCreatorOpen, setIsCreatorOpen] = useState(true);
   const [isLibraryOpen, setIsLibraryOpen] = useState(true);
 
   const serviceLines = Array.from(new Set(items.map((item) => item.serviceLine).filter(Boolean))) as string[];
@@ -33,14 +33,18 @@ export function MarketingContentManager({ initialItems, initialSegments, isAdmin
 
   function upsertItem(item: MarketingContentRecord) {
     setItems((current) => [item, ...current.filter((entry) => entry.id !== item.id)]);
+    setListMessage("Marketing content saved.");
   }
 
   function removeItem(id: string) {
     setItems((current) => current.filter((entry) => entry.id !== id));
+    setListMessage("Marketing content deleted.");
   }
 
   function saveDraftAsContent(draft: Record<string, unknown>) {
     setDraftSeed(draft);
+    setIsCreatorOpen(true);
+    setListMessage("AI draft ready in the content creator.");
   }
 
   const aiReadyItems = items.filter((item) => item.bodyText || item.bodyHtml).length;
@@ -133,29 +137,27 @@ export function MarketingContentManager({ initialItems, initialSegments, isAdmin
         <section className="card form-section collapsible-card">
           <div className="card-header collapsible-header">
             <div>
-              <h3>Add Marketing Content</h3>
-              <p className="help">Upload existing collateral, save generated drafts, or manually catalog assets already in use.</p>
+              <h3>Content Creator</h3>
+              <p className="help">Upload existing collateral, create a library entry, or generate an AI draft and drop it into the same form.</p>
             </div>
-            <button className="button secondary" type="button" onClick={() => setIsAddOpen((value) => !value)}>
-              {isAddOpen ? "Collapse" : "Expand"}
+            <button className="button secondary" type="button" onClick={() => setIsCreatorOpen((value) => !value)}>
+              {isCreatorOpen ? "Collapse" : "Expand"}
             </button>
           </div>
-          {isAddOpen ? (
-            <MarketingContentForm onSaved={upsertItem} submitLabel={draftSeed ? "Save Draft to Library" : "Create Content"} draftSeed={draftSeed} onDraftApplied={() => setDraftSeed(null)} />
+          {isCreatorOpen ? (
+            <div className="inline-grid">
+              <div className="card subtle-card">
+                <div className="card-header dashboard-panel-header">
+                  <div>
+                    <h3>AI Assist</h3>
+                    <p className="help">Generate a new draft here and send it straight into the content form below.</p>
+                  </div>
+                </div>
+                <MarketingAiStudio onUseDraft={saveDraftAsContent} onSaved={upsertItem} segments={initialSegments} />
+              </div>
+              <MarketingContentForm onSaved={upsertItem} submitLabel={draftSeed ? "Save Draft to Library" : "Create Content"} draftSeed={draftSeed} onDraftApplied={() => setDraftSeed(null)} />
+            </div>
           ) : null}
-        </section>
-
-        <section className="card collapsible-card">
-          <div className="card-header collapsible-header">
-            <div>
-              <h3>AI Studio</h3>
-              <p className="help">Generate new copy and image drafts, then push the best version straight into the library form.</p>
-            </div>
-            <button className="button secondary" type="button" onClick={() => setIsAiOpen((value) => !value)}>
-              {isAiOpen ? "Collapse" : "Expand"}
-            </button>
-          </div>
-          {isAiOpen ? <MarketingAiStudio onUseDraft={saveDraftAsContent} onSaved={upsertItem} segments={initialSegments} /> : null}
         </section>
 
         <section className="card collapsible-card">
@@ -164,9 +166,12 @@ export function MarketingContentManager({ initialItems, initialSegments, isAdmin
               <h3>Content Library</h3>
               <p className="help">{filtered.length} asset{filtered.length === 1 ? "" : "s"} in view.</p>
             </div>
-            <button className="button secondary" type="button" onClick={() => setIsLibraryOpen((value) => !value)}>
-              {isLibraryOpen ? "Collapse" : "Expand"}
-            </button>
+            <div className="actions">
+              {listMessage ? <span className="help">{listMessage}</span> : null}
+              <button className="button secondary" type="button" onClick={() => setIsLibraryOpen((value) => !value)}>
+                {isLibraryOpen ? "Collapse" : "Expand"}
+              </button>
+            </div>
           </div>
           {isLibraryOpen ? (
             <>
@@ -237,7 +242,7 @@ export function MarketingContentManager({ initialItems, initialSegments, isAdmin
                         <div className="content-item-summary-right">
                           <span className="badge badge-blue">{item.contentType}</span>
                           {item.imageUrl ? <span className="badge badge-green">Image</span> : null}
-                          <span className="help">Edit</span>
+                          <span className="help">Edit or delete</span>
                         </div>
                       </summary>
                       <div className="content-item-body">
