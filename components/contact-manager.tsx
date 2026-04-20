@@ -27,6 +27,8 @@ export function ContactManager({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isListOpen, setIsListOpen] = useState(true);
   const [listMessage, setListMessage] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkPending, setBulkPending] = useState(false);
 
   const linkedContacts = contacts.filter((contact) => contact.company?.id).length;
   const reachableContacts = contacts.filter((contact) => contact.email || contact.phone).length;
@@ -45,6 +47,32 @@ export function ContactManager({
   function removeContact(id: string) {
     setContacts((current) => current.filter((entry) => entry.id !== id));
     setListMessage("Contact deleted.");
+  }
+
+  async function bulkDeleteContacts() {
+    if (selectedIds.length === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.length} selected contact${selectedIds.length === 1 ? "" : "s"}?`)) return;
+
+    setBulkPending(true);
+    setListMessage(null);
+
+    const response = await fetch("/api/contacts/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: selectedIds }),
+    });
+    const body = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      setListMessage(body.error || "Failed to bulk delete contacts.");
+      setBulkPending(false);
+      return;
+    }
+
+    setContacts((current) => current.filter((entry) => !selectedIds.includes(entry.id)));
+    setSelectedIds([]);
+    setListMessage(`${body.deletedCount || 0} contacts deleted.`);
+    setBulkPending(false);
   }
 
   const filtered = useMemo(() => {
@@ -146,6 +174,9 @@ export function ContactManager({
           {isListOpen ? (
             <>
               <div className="filter-row">
+                <button className="button secondary" type="button" disabled={bulkPending || selectedIds.length === 0} onClick={() => void bulkDeleteContacts()}>
+                  {bulkPending ? "Deleting..." : `Delete Selected${selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}`}
+                </button>
                 <div className="search-wrap">
                   <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="11" cy="11" r="8" />
@@ -183,6 +214,16 @@ export function ContactManager({
                 <div className="inline-grid">
                   {filtered.map((contact) => (
                     <details key={contact.id} className="card content-item" open={false}>
+                      <div className="actions" style={{ padding: "0.75rem 1rem 0" }}>
+                        <label className="help" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(contact.id)}
+                            onChange={(event) => setSelectedIds((current) => event.target.checked ? [...current, contact.id] : current.filter((id) => id !== contact.id))}
+                          />
+                          Select for bulk delete
+                        </label>
+                      </div>
                       <summary className="card-header content-item-summary">
                         <div className="record-summary-main">
                           <div className="record-summary-topline">

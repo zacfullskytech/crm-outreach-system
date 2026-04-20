@@ -76,6 +76,8 @@ export function ProspectsPageClient({
   const [pendingProspectId, setPendingProspectId] = useState<string | null>(null);
   const [pendingQueueClear, setPendingQueueClear] = useState(false);
   const [pendingJobClearId, setPendingJobClearId] = useState<string | null>(null);
+  const [selectedProspectIds, setSelectedProspectIds] = useState<string[]>([]);
+  const [pendingBulkProspects, setPendingBulkProspects] = useState(false);
   const [isJobFormOpen, setIsJobFormOpen] = useState(false);
   const [isJobsOpen, setIsJobsOpen] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(true);
@@ -259,6 +261,31 @@ export function ProspectsPageClient({
     );
     setPendingQueueClear(false);
     setPendingJobClearId(null);
+  }
+
+  async function bulkDeleteProspects() {
+    if (selectedProspectIds.length === 0) return;
+    if (!window.confirm(`Delete ${selectedProspectIds.length} selected prospect${selectedProspectIds.length === 1 ? "" : "s"}?`)) return;
+
+    setPendingBulkProspects(true);
+    setCandidateMessage(null);
+
+    const response = await fetch("/api/prospects/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: selectedProspectIds }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setCandidateMessage(body.error || "Failed to bulk delete prospects.");
+      setPendingBulkProspects(false);
+      return;
+    }
+
+    setProspects((current) => current.filter((prospect) => !selectedProspectIds.includes(prospect.id)));
+    setSelectedProspectIds([]);
+    setCandidateMessage(`${body.deletedCount || 0} prospects removed.`);
+    setPendingBulkProspects(false);
   }
 
   async function deleteProspect(id: string) {
@@ -621,6 +648,9 @@ export function ProspectsPageClient({
           <div className="card-header collapsible-header">
             <h3>Accepted Prospects</h3>
             <div className="filter-row">
+              <button className="button secondary" type="button" disabled={pendingBulkProspects || selectedProspectIds.length === 0} onClick={() => void bulkDeleteProspects()}>
+                {pendingBulkProspects ? "Deleting..." : `Delete Selected${selectedProspectIds.length > 0 ? ` (${selectedProspectIds.length})` : ""}`}
+              </button>
               <div className="search-wrap">
                 <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="11" cy="11" r="8" />
@@ -665,6 +695,7 @@ export function ProspectsPageClient({
               <table className="table">
                 <thead>
                   <tr>
+                    <th></th>
                     <th>Company</th>
                     <th>Industry</th>
                     <th>Location</th>
@@ -678,6 +709,7 @@ export function ProspectsPageClient({
                 <tbody>
                   {filteredProspects.map((prospect) => (
                     <tr key={prospect.id}>
+                      <td><input type="checkbox" checked={selectedProspectIds.includes(prospect.id)} onChange={(event) => setSelectedProspectIds((current) => event.target.checked ? [...current, prospect.id] : current.filter((id) => id !== prospect.id))} /></td>
                       <td className="primary-cell">{prospect.companyName}</td>
                       <td>{prospect.industry || <span className="muted">—</span>}</td>
                       <td>{[prospect.city, prospect.state].filter(Boolean).join(", ") || <span className="muted">Unknown</span>}</td>
@@ -709,6 +741,10 @@ export function ProspectsPageClient({
             <div className="inline-grid mobile-card-list">
               {filteredProspects.map((prospect) => (
                 <div key={`${prospect.id}-mobile`} className="dashboard-list-row mobile-record-card">
+                  <label className="help" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <input type="checkbox" checked={selectedProspectIds.includes(prospect.id)} onChange={(event) => setSelectedProspectIds((current) => event.target.checked ? [...current, prospect.id] : current.filter((id) => id !== prospect.id))} />
+                    Select for bulk delete
+                  </label>
                   <div className="record-summary-main">
                     <div className="record-summary-topline">
                       <strong>{prospect.companyName}</strong>

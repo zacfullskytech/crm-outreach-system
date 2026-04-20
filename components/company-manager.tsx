@@ -32,6 +32,8 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isListOpen, setIsListOpen] = useState(true);
   const [listMessage, setListMessage] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkPending, setBulkPending] = useState(false);
 
   const activeCompanies = companies.filter((company) => company.status !== "INACTIVE").length;
   const clientCompanies = companies.filter((company) => company.status === "CLIENT").length;
@@ -52,6 +54,32 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
   function removeCompany(id: string) {
     setCompanies((current) => current.filter((entry) => entry.id !== id));
     setListMessage("Company deleted.");
+  }
+
+  async function bulkDeleteCompanies() {
+    if (selectedIds.length === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.length} selected compan${selectedIds.length === 1 ? "y" : "ies"}?`)) return;
+
+    setBulkPending(true);
+    setListMessage(null);
+
+    const response = await fetch("/api/companies/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: selectedIds }),
+    });
+    const body = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      setListMessage(body.error || "Failed to bulk delete companies.");
+      setBulkPending(false);
+      return;
+    }
+
+    setCompanies((current) => current.filter((entry) => !selectedIds.includes(entry.id)));
+    setSelectedIds([]);
+    setListMessage(`${body.deletedCount || 0} companies deleted.`);
+    setBulkPending(false);
   }
 
   const filtered = companies.filter((c) => {
@@ -171,6 +199,9 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
           {isListOpen ? (
             <>
               <div className="filter-row">
+                <button className="button secondary" type="button" disabled={bulkPending || selectedIds.length === 0} onClick={() => void bulkDeleteCompanies()}>
+                  {bulkPending ? "Deleting..." : `Delete Selected${selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}`}
+                </button>
                 <div className="search-wrap">
                   <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="11" cy="11" r="8" />
@@ -212,6 +243,16 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
                     const isClientMissingPhones = company.status === "CLIENT" && !services.includes("Phones");
                     return (
                       <details key={company.id} className="card content-item" open={false}>
+                        <div className="actions" style={{ padding: "0.75rem 1rem 0" }}>
+                          <label className="help" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(company.id)}
+                              onChange={(event) => setSelectedIds((current) => event.target.checked ? [...current, company.id] : current.filter((id) => id !== company.id))}
+                            />
+                            Select for bulk delete
+                          </label>
+                        </div>
                         <summary className="card-header content-item-summary">
                           <div className="record-summary-main">
                             <div className="record-summary-topline">
