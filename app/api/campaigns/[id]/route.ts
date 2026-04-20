@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/supabase/auth";
 import { prisma } from "@/lib/db";
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -49,4 +50,17 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
       recipients: campaign.recipients,
     },
   });
+}
+
+export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  await requireAuth();
+
+  try {
+    const { id } = await params;
+    await prisma.campaignRecipient.deleteMany({ where: { campaignId: id } });
+    await prisma.campaign.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "Failed to delete campaign." }, { status: 500 });
+  }
 }

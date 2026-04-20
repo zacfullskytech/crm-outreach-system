@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { MarketingAiStudio } from "@/components/marketing-ai-studio";
 
 type SegmentOption = {
   id: string;
@@ -44,12 +45,14 @@ export function CampaignForm({
   marketingContent,
   draftSeed,
   onDraftApplied,
+  showAiAssist = false,
 }: {
   segments: SegmentOption[];
   defaults: { fromName: string; fromEmail: string; replyTo: string };
   marketingContent: MarketingContentOption[];
   draftSeed?: CampaignDraftSeed | null;
   onDraftApplied?: () => void;
+  showAiAssist?: boolean;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const sendableSegments = segments.filter((segment) => segment.entityType === "contact");
@@ -210,6 +213,33 @@ export function CampaignForm({
           </div>
         </div>
       </div>
+
+      {showAiAssist ? (
+        <div className="card subtle-card">
+          <div className="card-header dashboard-panel-header">
+            <div>
+              <h3>AI Assist</h3>
+              <p className="help">Generate campaign-ready copy here, then drop it straight into this draft form.</p>
+            </div>
+          </div>
+          <MarketingAiStudio
+            segments={segments}
+            onUseCampaignDraft={(draft) => {
+              if (!draftSeed && formRef.current) {
+                const nameInput = formRef.current.elements.namedItem("name") as HTMLInputElement | null;
+                const subjectInput = formRef.current.elements.namedItem("subject") as HTMLInputElement | null;
+                const htmlInput = formRef.current.elements.namedItem("templateHtml") as HTMLTextAreaElement | null;
+                const textInput = formRef.current.elements.namedItem("templateText") as HTMLTextAreaElement | null;
+
+                if (nameInput && draft.name) nameInput.value = draft.name;
+                if (subjectInput && draft.subject) subjectInput.value = draft.subject;
+                if (htmlInput && draft.templateHtml) htmlInput.value = draft.templateHtml;
+                if (textInput && draft.templateText) textInput.value = draft.templateText;
+              }
+            }}
+          />
+        </div>
+      ) : null}
 
       <div className="card subtle-card">
         <h3>Operator Guidance</h3>

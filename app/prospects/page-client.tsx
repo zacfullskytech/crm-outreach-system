@@ -75,6 +75,7 @@ export function ProspectsPageClient({
   const [pendingRerunJobId, setPendingRerunJobId] = useState<string | null>(null);
   const [pendingProspectId, setPendingProspectId] = useState<string | null>(null);
   const [pendingQueueClear, setPendingQueueClear] = useState(false);
+  const [pendingJobClearId, setPendingJobClearId] = useState<string | null>(null);
   const [isJobFormOpen, setIsJobFormOpen] = useState(true);
   const [isJobsOpen, setIsJobsOpen] = useState(true);
   const [isQueueOpen, setIsQueueOpen] = useState(true);
@@ -213,11 +214,19 @@ export function ProspectsPageClient({
     setPendingRerunJobId(null);
   }
 
-  async function clearDiscoveryQueue(onlyReviewed = false) {
-    setPendingQueueClear(true);
+  async function clearDiscoveryQueue(onlyReviewed = false, jobId?: string) {
+    if (jobId) {
+      setPendingJobClearId(jobId);
+    } else {
+      setPendingQueueClear(true);
+    }
     setCandidateMessage(null);
 
-    const response = await fetch(`/api/prospecting/candidates${onlyReviewed ? "?onlyReviewed=true" : ""}`, {
+    const searchParams = new URLSearchParams();
+    if (onlyReviewed) searchParams.set("onlyReviewed", "true");
+    if (jobId) searchParams.set("jobId", jobId);
+
+    const response = await fetch(`/api/prospecting/candidates${searchParams.toString() ? `?${searchParams.toString()}` : ""}`, {
       method: "DELETE",
     });
 
@@ -225,12 +234,31 @@ export function ProspectsPageClient({
     if (!response.ok) {
       setCandidateMessage(body.error || "Failed to clear discovery queue.");
       setPendingQueueClear(false);
+      setPendingJobClearId(null);
       return;
     }
 
-    setCandidates((current) => current.filter((candidate) => (onlyReviewed ? candidate.status === "NEW" : false)));
-    setCandidateMessage(onlyReviewed ? "Reviewed candidates cleared from the queue." : "Discovery queue cleared.");
+    setCandidates((current) =>
+      current.filter((candidate) => {
+        const matchesJob = jobId ? candidate.searchJobId === jobId : true;
+        if (!matchesJob) {
+          return true;
+        }
+        if (onlyReviewed) {
+          return candidate.status === "NEW";
+        }
+        return false;
+      }),
+    );
+    setCandidateMessage(
+      jobId
+        ? "Candidates cleared for that job."
+        : onlyReviewed
+          ? "Reviewed candidates cleared from the queue."
+          : "Discovery queue cleared.",
+    );
     setPendingQueueClear(false);
+    setPendingJobClearId(null);
   }
 
   async function deleteProspect(id: string) {
@@ -445,6 +473,14 @@ export function ProspectsPageClient({
                           onClick={() => void rerunJob(job)}
                         >
                           {pendingRerunJobId === job.id ? "Rerunning..." : "Rerun"}
+                        </button>
+                        <button
+                          className="button secondary"
+                          type="button"
+                          disabled={pendingJobClearId === job.id}
+                          onClick={() => void clearDiscoveryQueue(false, job.id)}
+                        >
+                          {pendingJobClearId === job.id ? "Clearing..." : "Clear Job Queue"}
                         </button>
                       </div>
                     </div>

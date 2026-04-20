@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { CampaignForm } from "@/components/campaign-form";
-import { MarketingAiStudio } from "@/components/marketing-ai-studio";
 import { AppShell } from "@/components/app-shell";
 import type { Campaign, Segment, CampaignRecipient } from "@prisma/client";
 
@@ -56,13 +55,33 @@ export function CampaignsPageClient({
   initialMarketingContent: MarketingContentOption[];
   isAdmin: boolean;
 }) {
-  const [campaigns] = useState(initialCampaigns);
+  const [campaigns, setCampaigns] = useState(initialCampaigns);
   const [draftSeed, setDraftSeed] = useState<CampaignDraftSeed>(null);
+  const [listMessage, setListMessage] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [campaignView, setCampaignView] = useState("ALL");
   const [isCreateOpen, setIsCreateOpen] = useState(true);
   const [isListOpen, setIsListOpen] = useState(true);
+
+  async function deleteCampaign(id: string) {
+    setPendingDeleteId(id);
+    setListMessage(null);
+
+    const response = await fetch(`/api/campaigns/${id}`, { method: "DELETE" });
+    const body = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      setListMessage(body.error || "Failed to delete campaign.");
+      setPendingDeleteId(null);
+      return;
+    }
+
+    setCampaigns((current) => current.filter((campaign) => campaign.id !== id));
+    setListMessage("Campaign deleted.");
+    setPendingDeleteId(null);
+  }
 
   const draftCampaigns = campaigns.filter((campaign) => campaign.status === "DRAFT").length;
   const scheduledCampaigns = campaigns.filter((campaign) => campaign.status === "SCHEDULED").length;
@@ -147,30 +166,11 @@ export function CampaignsPageClient({
           </article>
         </section>
 
-        <section className="card collapsible-card">
-          <div className="card-header collapsible-header">
-            <div>
-              <h3>AI Campaign Drafts</h3>
-              <p className="help">Generate campaign-ready copy and push it directly into the draft form.</p>
-            </div>
-            <button className="button secondary" type="button" onClick={() => setIsCreateOpen((value) => !value)}>
-              {isCreateOpen ? "Collapse Draft Form" : "Expand Draft Form"}
-            </button>
-          </div>
-          <MarketingAiStudio
-            segments={initialSegments}
-            onUseCampaignDraft={(draft) => {
-              setDraftSeed(draft);
-              setIsCreateOpen(true);
-            }}
-          />
-        </section>
-
         <section className="card form-section collapsible-card">
           <div className="card-header collapsible-header">
             <div>
-              <h3>Create Campaign Draft</h3>
-              <p className="help">Build a draft, preview the audience, and keep the send configuration together.</p>
+              <h3>Campaign Creator</h3>
+              <p className="help">Build a draft, generate copy with AI if needed, preview the audience, and keep the whole send setup in one place.</p>
             </div>
             <button className="button secondary" type="button" onClick={() => setIsCreateOpen((value) => !value)}>
               {isCreateOpen ? "Collapse" : "Expand"}
@@ -183,6 +183,7 @@ export function CampaignsPageClient({
               marketingContent={initialMarketingContent}
               draftSeed={draftSeed}
               onDraftApplied={() => setDraftSeed(null)}
+              showAiAssist
             />
           ) : null}
         </section>
@@ -201,6 +202,7 @@ export function CampaignsPageClient({
           {isListOpen ? (
             <>
               <div className="filter-row">
+                {listMessage ? <span className="help">{listMessage}</span> : null}
                 <div className="search-wrap">
                   <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="11" cy="11" r="8" />
@@ -300,6 +302,14 @@ export function CampaignsPageClient({
                               }}
                             >
                               Duplicate Into Draft
+                            </button>
+                            <button
+                              className="button secondary"
+                              type="button"
+                              disabled={pendingDeleteId === campaign.id}
+                              onClick={() => void deleteCampaign(campaign.id)}
+                            >
+                              {pendingDeleteId === campaign.id ? "Deleting..." : "Delete Campaign"}
                             </button>
                           </div>
                           <div className="card campaign-body-card">
