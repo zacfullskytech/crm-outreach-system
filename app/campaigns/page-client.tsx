@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CampaignForm } from "@/components/campaign-form";
 import { AppShell } from "@/components/app-shell";
 import type { Campaign, Segment, CampaignRecipient } from "@prisma/client";
@@ -42,6 +42,12 @@ type CampaignDraftSeed = {
   marketingContentId?: string;
 } | null;
 
+type CampaignActionState = {
+  pending: string | null;
+  message: string | null;
+  testEmailByCampaign: Record<string, string>;
+};
+
 export function CampaignsPageClient({
   initialCampaigns,
   initialSegments,
@@ -59,6 +65,7 @@ export function CampaignsPageClient({
   const [draftSeed, setDraftSeed] = useState<CampaignDraftSeed>(null);
   const [listMessage, setListMessage] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [actionState, setActionState] = useState<CampaignActionState>({ pending: null, message: null, testEmailByCampaign: {} });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [campaignView, setCampaignView] = useState("ALL");
@@ -83,11 +90,75 @@ export function CampaignsPageClient({
     setPendingDeleteId(null);
   }
 
+  async function runCampaignAction(campaignId: string, action: "send" | "dispatch" | "test-send") {
+    setActionState((current) => ({ ...current, pending: `${campaignId}:${action}`, message: null }));
+
+    const init: RequestInit = { method: "POST", headers: { "Content-Type": "application/json" } };
+    if (action === "test-send") {
+      const email = actionState.testEmailByCampaign[campaignId]?.trim();
+      if (!email) {
+        setActionState((current) => ({ ...current, pending: null, message: "Enter a test email first." }));
+        return;
+      }
+      init.body = JSON.stringify({ email });
+    }
+
+    const response = await fetch(`/api/campaigns/${campaignId}/${action}`, init);
+    const body = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      setActionState((current) => ({ ...current, pending: null, message: body.error || `Failed to ${action} campaign.` }));
+      return;
+    }
+
+    if (action === "test-send") {
+      setActionState((current) => ({ ...current, pending: null, message: `Test email sent to ${body.data?.sentTo || "recipient"}.` }));
+      return;
+    }
+
+    const refreshed = await fetch(`/api/campaigns/${campaignId}`);
+    const refreshedBody = await refreshed.json().catch(() => ({}));
+    const refreshedCampaign = refreshedBody?.data?.campaign
+      ? campaigns.find((entry) => entry.id === campaignId)
+      : null;
+
+    setCampaigns((current) => current.map((entry) => {
+      if (entry.id !== campaignId) return entry;
+      const totals = refreshedBody?.data?.totals;
+      const recipients = Array.isArray(refreshedBody?.data?.recipients) ? refreshedBody.data.recipients : entry.recipients;
+      return {
+        ...entry,
+        status: refreshedBody?.data?.campaign?.status || entry.status,
+        sentAt: refreshedBody?.data?.campaign?.sentAt || entry.sentAt,
+        recipients,
+        name: refreshedBody?.data?.campaign?.name || refreshedCampaign?.name || entry.name,
+      };
+    }));
+
+    const summary = action === "send"
+      ? `Campaign send finished. ${body.data?.delivered?.sent ?? 0} sent, ${body.data?.delivered?.failed ?? 0} failed.`
+      : `Dispatch finished. ${body.data?.sent ?? 0} sent, ${body.data?.failed ?? 0} failed, ${body.data?.remaining ?? 0} remaining.`;
+
+    setActionState((current) => ({ ...current, pending: null, message: summary }));
+  }
+
   const draftCampaigns = campaigns.filter((campaign) => campaign.status === "DRAFT").length;
   const scheduledCampaigns = campaigns.filter((campaign) => campaign.status === "SCHEDULED").length;
   const sentCampaigns = campaigns.filter((campaign) => campaign.status === "SENT").length;
   const totalRecipients = campaigns.reduce((count, campaign) => count + campaign.recipients.length, 0);
   const campaignsNeedingAttention = campaigns.filter((campaign) => campaign.status === "FAILED" || campaign.recipients.some((recipient) => recipient.status === "FAILED")).length;
+
+  const readinessByCampaign = useMemo(
+    () => Object.fromEntries(campaigns.map((campaign) => {
+      const issues: string[] = [];
+      if (!campaign.segmentId) issues.push("No segment selected");
+      if (!campaign.fromEmail) issues.push("Missing sender email");
+      if (!campaign.subject?.trim()) issues.push("Missing subject");
+      if (!campaign.templateHtml?.trim()) issues.push("Missing HTML body");
+      return [campaign.id, { issues, ready: issues.length === 0 }];
+    })),
+    [campaigns],
+  );
 
   const filtered = campaigns.filter((campaign) => {
     const q = search.toLowerCase();
@@ -203,6 +274,7 @@ export function CampaignsPageClient({
             <>
               <div className="filter-row">
                 {listMessage ? <span className="help">{listMessage}</span> : null}
+                {actionState.message ? <span className="help">{actionState.message}</span> : null}
                 <div className="search-wrap">
                   <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="11" cy="11" r="8" />
@@ -264,7 +336,8 @@ export function CampaignsPageClient({
                             <span className="badge badge-blue">{sentCount} sent</span>
                             {failedCount > 0 ? <span className="badge badge-red">{failedCount} failed</span> : null}
                             {pendingCount > 0 ? <span className="badge badge-yellow">{pendingCount} pending</span> : null}
-                            <span className="help">View</span>
+                            <span className={`badge ${readinessByCampaign[campaign.id]?.ready ? "badge-green" : "badge-yellow"}`}>{readinessByCampaign[campaign.id]?.ready ? "Ready" : "Needs setup"}</span>
+                            <span className="help">Operate</span>
                           </div>
                         </summary>
                         <div className="content-item-body inline-grid">
@@ -281,11 +354,27 @@ export function CampaignsPageClient({
                               <p>Scheduled: {campaign.scheduledAt ? new Date(campaign.scheduledAt).toLocaleString() : "Not scheduled"}</p>
                               <p>Sent: {campaign.sentAt ? new Date(campaign.sentAt).toLocaleString() : "Not sent"}</p>
                               <p>Delivery summary: {sentCount} sent · {failedCount} failed · {pendingCount} pending</p>
+                              <p>{campaign.status === "SCHEDULED" ? "Scheduled campaigns will wait for the scheduler unless you send now manually." : "Manual send is available below."}</p>
                             </div>
                           </div>
                           <div className="card campaign-body-card">
                             <h4>HTML Body</h4>
                             <p className="campaign-template-preview">{campaign.templateHtml}</p>
+                          </div>
+                          <div className="card subtle-card">
+                            <div className="record-summary-main">
+                              <div className="record-summary-topline">
+                                <h4>Readiness Check</h4>
+                                <span className={`badge ${readinessByCampaign[campaign.id]?.ready ? "badge-green" : "badge-yellow"}`}>{readinessByCampaign[campaign.id]?.ready ? "Ready to send" : "Needs setup"}</span>
+                              </div>
+                              {readinessByCampaign[campaign.id]?.issues.length ? (
+                                <ul>
+                                  {readinessByCampaign[campaign.id].issues.map((issue) => <li key={`${campaign.id}-${issue}`}>{issue}</li>)}
+                                </ul>
+                              ) : (
+                                <p className="help">Sender, subject, body, and segment are in place.</p>
+                              )}
+                            </div>
                           </div>
                           <div className="actions">
                             <button
@@ -303,6 +392,41 @@ export function CampaignsPageClient({
                             >
                               Duplicate Into Draft
                             </button>
+                            <input
+                              className="search-input"
+                              placeholder="test@example.com"
+                              value={actionState.testEmailByCampaign[campaign.id] || ""}
+                              onChange={(event) => setActionState((current) => ({
+                                ...current,
+                                testEmailByCampaign: { ...current.testEmailByCampaign, [campaign.id]: event.target.value },
+                              }))}
+                            />
+                            <button
+                              className="button secondary"
+                              type="button"
+                              disabled={actionState.pending === `${campaign.id}:test-send` || !readinessByCampaign[campaign.id]?.ready}
+                              onClick={() => void runCampaignAction(campaign.id, "test-send")}
+                            >
+                              {actionState.pending === `${campaign.id}:test-send` ? "Sending Test..." : "Send Test"}
+                            </button>
+                            <button
+                              className="button primary"
+                              type="button"
+                              disabled={actionState.pending === `${campaign.id}:send` || !readinessByCampaign[campaign.id]?.ready}
+                              onClick={() => void runCampaignAction(campaign.id, "send")}
+                            >
+                              {actionState.pending === `${campaign.id}:send` ? "Sending..." : "Send Now"}
+                            </button>
+                            {pendingCount > 0 ? (
+                              <button
+                                className="button secondary"
+                                type="button"
+                                disabled={actionState.pending === `${campaign.id}:dispatch`}
+                                onClick={() => void runCampaignAction(campaign.id, "dispatch")}
+                              >
+                                {actionState.pending === `${campaign.id}:dispatch` ? "Dispatching..." : "Dispatch Pending"}
+                              </button>
+                            ) : null}
                             <button
                               className="button secondary"
                               type="button"
