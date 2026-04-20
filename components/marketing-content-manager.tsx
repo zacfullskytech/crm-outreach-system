@@ -245,7 +245,23 @@ export function MarketingContentManager({ initialItems, initialSegments, isAdmin
                           <span className="help">Edit or delete</span>
                         </div>
                       </summary>
-                      <div className="content-item-body">
+                      <div className="content-item-body inline-grid">
+                        {item.imageUrl ? (
+                          <div className="card subtle-card">
+                            <div className="card-header dashboard-panel-header">
+                              <div>
+                                <h4>Image Preview</h4>
+                                <p className="help">Preview the asset before editing or reusing it.</p>
+                              </div>
+                              <a className="button secondary" href={item.imageUrl} target="_blank" rel="noreferrer">Open Image</a>
+                            </div>
+                            <img
+                              src={item.imageUrl}
+                              alt={item.title}
+                              style={{ width: "100%", maxHeight: "420px", objectFit: "contain", borderRadius: "16px", background: "#f5f5f5" }}
+                            />
+                          </div>
+                        ) : null}
                         <MarketingContentForm content={item} onSaved={upsertItem} onDeleted={removeItem} />
                       </div>
                     </details>

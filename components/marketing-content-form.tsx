@@ -377,6 +377,22 @@ export function MarketingContentForm({
         <label htmlFor={`content-image-url-${content?.id || "new"}`}>Image URL / data URL</label>
         <textarea id={`content-image-url-${content?.id || "new"}`} value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="Generated image reference or stored asset URL." />
       </div>
+      {imageUrl ? (
+        <div className="card subtle-card">
+          <div className="card-header dashboard-panel-header">
+            <div>
+              <h4>Current Image</h4>
+              <p className="help">This is the image that will be associated with the marketing asset.</p>
+            </div>
+            <a className="button secondary" href={imageUrl} target="_blank" rel="noreferrer">Open Image</a>
+          </div>
+          <img
+            src={imageUrl}
+            alt={title || "Marketing asset preview"}
+            style={{ width: "100%", maxHeight: "420px", objectFit: "contain", borderRadius: "16px", background: "#f5f5f5" }}
+          />
+        </div>
+      ) : null}
       <div className="field">
         <label htmlFor={`content-cta-${content?.id || "new"}`}>Call to action</label>
         <input id={`content-cta-${content?.id || "new"}`} value={callToAction} onChange={(event) => setCallToAction(event.target.value)} placeholder="Book a connectivity review" />
