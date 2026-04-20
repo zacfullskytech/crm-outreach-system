@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ProspectForm } from "@/components/prospect-form";
 import { AppShell } from "@/components/app-shell";
-import type { Prospect, ProspectCandidate, ProspectSearchJob } from "@prisma/client";
+import type { Prospect, ProspectAutomation, ProspectCandidate, ProspectSearchJob } from "@prisma/client";
 
 type CandidateEvidence = { kind?: string; value?: unknown; note?: string };
 
@@ -14,6 +14,8 @@ type SearchJob = ProspectSearchJob & {
     prospects: number;
   };
 };
+
+type Automation = ProspectAutomation;
 
 function readJobSummary(value: unknown) {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
@@ -54,16 +56,19 @@ export function ProspectsPageClient({
   initialProspects,
   initialJobs,
   initialCandidates,
+  initialAutomations,
   isAdmin,
 }: {
   initialProspects: Prospect[];
   initialJobs: SearchJob[];
   initialCandidates: ProspectCandidate[];
+  initialAutomations: Automation[];
   isAdmin: boolean;
 }) {
   const [prospects, setProspects] = useState(initialProspects);
   const [jobs, setJobs] = useState(initialJobs);
   const [candidates, setCandidates] = useState(initialCandidates);
+  const [automations, setAutomations] = useState(initialAutomations);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [candidateFilter, setCandidateFilter] = useState("ALL");
@@ -79,7 +84,9 @@ export function ProspectsPageClient({
   const [selectedProspectIds, setSelectedProspectIds] = useState<string[]>([]);
   const [pendingBulkProspects, setPendingBulkProspects] = useState(false);
   const [isJobFormOpen, setIsJobFormOpen] = useState(false);
+  const [isAutomationFormOpen, setIsAutomationFormOpen] = useState(false);
   const [isJobsOpen, setIsJobsOpen] = useState(false);
+  const [isAutomationsOpen, setIsAutomationsOpen] = useState(true);
   const [isQueueOpen, setIsQueueOpen] = useState(true);
   const [isManualOpen, setIsManualOpen] = useState(false);
   const [isAcceptedOpen, setIsAcceptedOpen] = useState(true);
@@ -169,6 +176,70 @@ export function ProspectsPageClient({
     );
     event.currentTarget.reset();
     setPendingJob(false);
+  }
+
+  async function createAutomation(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPendingJob(true);
+    setJobMessage(null);
+
+    const form = new FormData(event.currentTarget);
+    const payload = {
+      name: String(form.get("name") || "").trim(),
+      industry: String(form.get("industry") || "").trim() || null,
+      geography: splitCsv(String(form.get("geography") || "")),
+      includeKeywords: splitCsv(String(form.get("includeKeywords") || "")),
+      excludeKeywords: splitCsv(String(form.get("excludeKeywords") || "")),
+      companyTypes: splitCsv(String(form.get("companyTypes") || "")),
+      notes: String(form.get("notes") || "").trim() || null,
+      realDataOnly: form.get("realDataOnly") === "on",
+      requireEmail: form.get("requireEmail") === "on",
+      preferBusinessEmail: form.get("preferBusinessEmail") !== "off",
+      minimumScore: String(form.get("minimumScore") || "").trim() ? Number(form.get("minimumScore")) : null,
+      maxResultsPerRun: String(form.get("maxResultsPerRun") || "").trim() ? Number(form.get("maxResultsPerRun")) : 30,
+      scheduleType: String(form.get("scheduleType") || "weekdays"),
+      scheduleHourLocal: Number(form.get("scheduleHourLocal") || 5),
+      scheduleMinuteLocal: Number(form.get("scheduleMinuteLocal") || 30),
+      timezone: String(form.get("timezone") || "UTC").trim() || "UTC",
+      isActive: true,
+    };
+
+    const response = await fetch("/api/prospecting/automations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setJobMessage(body.error || "Failed to create automation.");
+      setPendingJob(false);
+      return;
+    }
+
+    setAutomations((current) => [body.data as Automation, ...current]);
+    setJobMessage("Automation saved. It will run on schedule and have results waiting in the morning.");
+    event.currentTarget.reset();
+    setPendingJob(false);
+  }
+
+  async function runAutomation(automation: Automation) {
+    setPendingRerunJobId(automation.id);
+    setJobMessage(null);
+
+    const response = await fetch(`/api/prospecting/automations/${automation.id}`, {
+      method: "POST",
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setJobMessage(body.error || "Failed to run automation.");
+      setPendingRerunJobId(null);
+      return;
+    }
+
+    setJobMessage(`Automation ran and queued ${body.data?.candidateCount ?? 0} candidates.`);
+    setPendingRerunJobId(null);
   }
 
   async function rerunJob(job: SearchJob) {
@@ -399,6 +470,137 @@ export function ProspectsPageClient({
               <div className="stat-desc">Records flagged as possible duplicates, existing contacts, or existing companies.</div>
             </div>
           </article>
+        </section>
+
+        <section className="card form-section collapsible-card">
+          <div className="card-header collapsible-header">
+            <div>
+              <h3>Prospecting Automations</h3>
+              <p className="help">Save your target criteria once and let the system run them before the workday starts.</p>
+            </div>
+            <button className="button secondary" type="button" onClick={() => setIsAutomationFormOpen((value) => !value)}>
+              {isAutomationFormOpen ? "Collapse" : "Expand"}
+            </button>
+          </div>
+          {isAutomationFormOpen ? <form onSubmit={createAutomation} className="inline-grid">
+            <div className="form-grid">
+              <div className="field">
+                <label htmlFor="prospecting-automation-name">Automation name</label>
+                <input id="prospecting-automation-name" name="name" placeholder="Weekday DFW veterinary search" required />
+              </div>
+              <div className="field">
+                <label htmlFor="prospecting-automation-industry">Industry</label>
+                <input id="prospecting-automation-industry" name="industry" placeholder="Veterinary" />
+              </div>
+              <div className="field prospecting-span-2">
+                <label htmlFor="prospecting-automation-geography">Geography</label>
+                <input id="prospecting-automation-geography" name="geography" placeholder="Dallas, TX, Fort Worth, TX, Plano, TX" required />
+              </div>
+              <div className="field">
+                <label htmlFor="prospecting-automation-keywords">Include keywords</label>
+                <input id="prospecting-automation-keywords" name="includeKeywords" placeholder="animal hospital, veterinarian, clinic" />
+              </div>
+              <div className="field">
+                <label htmlFor="prospecting-automation-exclude">Exclude keywords</label>
+                <input id="prospecting-automation-exclude" name="excludeKeywords" placeholder="emergency, specialty, 24-hour" />
+              </div>
+              <div className="field prospecting-span-2">
+                <label htmlFor="prospecting-automation-company-types">Company types</label>
+                <input id="prospecting-automation-company-types" name="companyTypes" placeholder="Independent Practice, Clinic" />
+              </div>
+              <div className="field">
+                <label htmlFor="prospecting-automation-min-score">Minimum score</label>
+                <input id="prospecting-automation-min-score" name="minimumScore" type="number" min="0" placeholder="35" />
+              </div>
+              <div className="field">
+                <label htmlFor="prospecting-automation-max-results">Max results per run</label>
+                <input id="prospecting-automation-max-results" name="maxResultsPerRun" type="number" min="1" max="100" defaultValue="30" />
+              </div>
+              <div className="field">
+                <label htmlFor="prospecting-automation-schedule-type">Schedule</label>
+                <select id="prospecting-automation-schedule-type" name="scheduleType" defaultValue="weekdays">
+                  <option value="weekdays">Weekdays</option>
+                  <option value="daily">Daily</option>
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="prospecting-automation-hour">Run hour</label>
+                <input id="prospecting-automation-hour" name="scheduleHourLocal" type="number" min="0" max="23" defaultValue="5" />
+              </div>
+              <div className="field">
+                <label htmlFor="prospecting-automation-minute">Run minute</label>
+                <input id="prospecting-automation-minute" name="scheduleMinuteLocal" type="number" min="0" max="59" defaultValue="30" />
+              </div>
+              <div className="field">
+                <label htmlFor="prospecting-automation-timezone">Timezone</label>
+                <input id="prospecting-automation-timezone" name="timezone" defaultValue="UTC" />
+              </div>
+            </div>
+            <div className="field">
+              <label htmlFor="prospecting-automation-notes">Notes</label>
+              <textarea id="prospecting-automation-notes" name="notes" placeholder="Look for owner-led clinics and prioritize business email discovery." />
+            </div>
+            <div className="form-grid">
+              <label className="checkbox-label">
+                <input type="checkbox" name="realDataOnly" />
+                <span>Real data only</span>
+              </label>
+              <label className="checkbox-label">
+                <input type="checkbox" name="requireEmail" />
+                <span>Require email</span>
+              </label>
+              <label className="checkbox-label">
+                <input type="checkbox" name="preferBusinessEmail" defaultChecked />
+                <span>Prefer business email</span>
+              </label>
+            </div>
+            <div className="actions">
+              <button className="button primary" type="submit" disabled={pendingJob}>
+                {pendingJob ? "Saving..." : "Save Automation"}
+              </button>
+              {jobMessage ? <span className="help">{jobMessage}</span> : null}
+            </div>
+          </form> : null}
+        </section>
+
+        <section className="card collapsible-card">
+          <div className="card-header collapsible-header">
+            <div>
+              <h3>Automation Profiles</h3>
+              <p className="help">These run on schedule and should have results waiting by morning.</p>
+            </div>
+            <button className="button secondary" type="button" onClick={() => setIsAutomationsOpen((value) => !value)}>
+              {isAutomationsOpen ? "Collapse" : "Expand"}
+            </button>
+          </div>
+          {isAutomationsOpen ? automations.length === 0 ? (
+            <div className="empty-state"><p>No automations yet.</p></div>
+          ) : (
+            <div className="prospecting-list">
+              {automations.map((automation) => (
+                <div key={automation.id} className="prospecting-list-item">
+                  <div className="record-summary-main">
+                    <div className="record-summary-topline">
+                      <strong>{automation.name}</strong>
+                      <span className={`badge ${automation.isActive ? "badge-green" : "badge-yellow"}`}>{automation.isActive ? "ACTIVE" : "PAUSED"}</span>
+                    </div>
+                    <p className="help">{automation.industry || "General search"} · {automation.scheduleType} at {String(automation.scheduleHourLocal).padStart(2, "0")}:{String(automation.scheduleMinuteLocal).padStart(2, "0")} {automation.timezone}</p>
+                    <div className="record-meta-row">
+                      <span>next run {automation.nextRunAt ? new Date(automation.nextRunAt).toLocaleString() : "not scheduled"}</span>
+                      <span>last run {automation.lastRunAt ? new Date(automation.lastRunAt).toLocaleString() : "never"}</span>
+                    </div>
+                  </div>
+                  <div className="prospecting-metrics">
+                    <span>{automation.maxResultsPerRun || 30} max results</span>
+                    <span>{automation.requireEmail ? "email required" : "email preferred"}</span>
+                    <button className="button secondary" type="button" disabled={pendingRerunJobId === automation.id} onClick={() => void runAutomation(automation)}>
+                      {pendingRerunJobId === automation.id ? "Running..." : "Run Now"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </section>
 
         <section className="card form-section collapsible-card">

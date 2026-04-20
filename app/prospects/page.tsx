@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function ProspectsPage() {
   const { appUser } = await requireAuth();
 
-  const [prospects, jobs, candidates] = await Promise.all([
+  const [prospects, jobs, candidates, automations] = await Promise.all([
     prisma.prospect.findMany({
       orderBy: [{ score: "desc" }, { createdAt: "desc" }],
       take: 200,
@@ -23,6 +23,10 @@ export default async function ProspectsPage() {
       orderBy: [{ score: "desc" }, { createdAt: "desc" }],
       take: 200,
     }),
+    prisma.prospectAutomation.findMany({
+      orderBy: [{ createdAt: "desc" }],
+      take: 25,
+    }),
   ]);
 
   return (
@@ -30,6 +34,7 @@ export default async function ProspectsPage() {
       initialProspects={prospects}
       initialJobs={jobs}
       initialCandidates={candidates}
+      initialAutomations={automations}
       isAdmin={appUser.role === "admin"}
     />
   );

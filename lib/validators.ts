@@ -128,6 +128,27 @@ export const prospectSearchJobSchema = z.object({
   notes: z.string().trim().min(1).optional().nullable(),
   realDataOnly: z.boolean().optional().default(false),
   rerunJobId: z.string().cuid().optional().nullable(),
+  automationId: z.string().cuid().optional().nullable(),
+});
+
+export const prospectAutomationSchema = z.object({
+  name: z.string().trim().min(1),
+  industry: z.string().trim().min(1).optional().nullable(),
+  geography: z.array(z.string().trim().min(1)).min(1),
+  includeKeywords: z.array(z.string().trim().min(1)).optional().default([]),
+  excludeKeywords: z.array(z.string().trim().min(1)).optional().default([]),
+  companyTypes: z.array(z.string().trim().min(1)).optional().default([]),
+  notes: z.string().trim().min(1).optional().nullable(),
+  realDataOnly: z.boolean().optional().default(false),
+  requireEmail: z.boolean().optional().default(false),
+  preferBusinessEmail: z.boolean().optional().default(true),
+  minimumScore: z.number().int().min(0).optional().nullable(),
+  maxResultsPerRun: z.number().int().min(1).max(100).optional().default(30),
+  scheduleType: z.enum(["daily", "weekdays"]).optional().default("weekdays"),
+  scheduleHourLocal: z.number().int().min(0).max(23).optional().default(5),
+  scheduleMinuteLocal: z.number().int().min(0).max(59).optional().default(30),
+  timezone: z.string().trim().min(1).optional().default("UTC"),
+  isActive: z.boolean().optional().default(true),
 });
 
 export const prospectCandidateReviewSchema = z.object({

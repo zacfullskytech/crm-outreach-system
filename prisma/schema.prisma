@@ -344,6 +344,7 @@ model ProspectSearchJob {
   companyTypesJson  Json?
   notes             String?
   realDataOnly      Boolean                 @default(false)
+  automationId      String?
   lastRunAt         DateTime?
   lastDiscoveryMode String?
   status            ProspectSearchJobStatus @default(DRAFT)
@@ -352,11 +353,45 @@ model ProspectSearchJob {
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
 
+  automation ProspectAutomation? @relation(fields: [automationId], references: [id], onDelete: SetNull)
   candidates ProspectCandidate[]
   prospects  Prospect[]
 
   @@index([status])
   @@index([industry])
+  @@index([automationId])
+}
+
+model ProspectAutomation {
+  id                   String   @id @default(cuid())
+  name                 String
+  industry             String?
+  geographyJson        Json?
+  includeKeywordsJson  Json?
+  excludeKeywordsJson  Json?
+  companyTypesJson     Json?
+  notes                String?
+  realDataOnly         Boolean  @default(false)
+  requireEmail         Boolean  @default(false)
+  preferBusinessEmail  Boolean  @default(true)
+  minimumScore         Int?
+  maxResultsPerRun     Int?     @default(30)
+  scheduleType         String   @default("weekdays")
+  scheduleHourLocal    Int      @default(5)
+  scheduleMinuteLocal  Int      @default(30)
+  timezone             String   @default("UTC")
+  isActive             Boolean  @default(true)
+  lastRunAt            DateTime?
+  nextRunAt            DateTime?
+  lastResultSummaryJson Json?
+  createdById          String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  jobs ProspectSearchJob[]
+
+  @@index([isActive])
+  @@index([nextRunAt])
 }
 
 model ProspectCandidate {
