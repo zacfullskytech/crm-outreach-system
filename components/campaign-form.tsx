@@ -31,6 +31,7 @@ type CampaignDraftSeed = {
 
 type PreviewState = {
   count: number;
+  eligibleCount: number;
   sample: Array<{
     id: string;
     fullName: string | null;
@@ -85,7 +86,7 @@ export function CampaignForm({
       return;
     }
 
-    setPreview({ count: body.count, sample: body.sample });
+    setPreview({ count: body.count, eligibleCount: body.eligibleCount ?? body.count, sample: body.sample });
     setPending(false);
   }
 
@@ -370,9 +371,10 @@ export function CampaignForm({
           <div className="record-summary-main">
             <div className="record-summary-topline">
               <h3>Audience Preview</h3>
-              <span className="badge badge-blue">{preview.count} matches</span>
+              <span className="badge badge-blue">{preview.count} total</span>
+              <span className={`badge ${preview.eligibleCount > 0 ? "badge-green" : "badge-red"}`}>{preview.eligibleCount} eligible</span>
             </div>
-            <p>{preview.count} matching contacts with current filters.</p>
+            <p>{preview.count} matching contacts, with {preview.eligibleCount} currently eligible to send after status and suppression checks.</p>
           </div>
           <table className="table">
             <thead>

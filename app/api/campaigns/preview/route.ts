@@ -22,15 +22,26 @@ export async function GET(request: NextRequest) {
 
   const where = buildWhereFromSegment(segment.filterJson as never);
 
-  const [count, sample] = await Promise.all([
-    prisma.contact.count({ where: where as never }),
-    prisma.contact.findMany({
-      where: where as never,
-      include: { company: true },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-    }),
-  ]);
+  const baseContacts = await prisma.contact.findMany({
+    where: where as never,
+    include: { company: true },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  });
 
-  return NextResponse.json({ count, sample });
+  const suppressedEmails = new Set(
+    (await prisma.suppression.findMany({ select: { email: true } })).map((entry) => entry.email),
+  );
+
+  const eligible = baseContacts.filter((contact) =>
+    Boolean(contact.email) &&
+    !suppressedEmails.has(contact.email!) &&
+    !["UNSUBSCRIBED", "BOUNCED", "INVALID", "DO_NOT_CONTACT"].includes(contact.status),
+  );
+
+  return NextResponse.json({
+    count: baseContacts.length,
+    eligibleCount: eligible.length,
+    sample: eligible.slice(0, 10),
+  });
 }
