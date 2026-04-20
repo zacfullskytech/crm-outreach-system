@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 
-export function ProspectForm() {
+export function ProspectForm({ onSaved }: { onSaved?: (prospect: Record<string, unknown>) => void }) {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -35,15 +35,17 @@ export function ProspectForm() {
       body: JSON.stringify(payload),
     });
 
+    const body = await response.json().catch(() => ({}));
+
     if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
       setMessage(body.error || "Failed to create prospect.");
       setPending(false);
       return;
     }
 
     event.currentTarget.reset();
-    setMessage("Prospect created. Refresh to see the new record.");
+    onSaved?.(body.data);
+    setMessage("Prospect created.");
     setPending(false);
   }
 

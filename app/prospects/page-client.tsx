@@ -76,8 +76,8 @@ export function ProspectsPageClient({
   const [pendingProspectId, setPendingProspectId] = useState<string | null>(null);
   const [pendingQueueClear, setPendingQueueClear] = useState(false);
   const [pendingJobClearId, setPendingJobClearId] = useState<string | null>(null);
-  const [isJobFormOpen, setIsJobFormOpen] = useState(true);
-  const [isJobsOpen, setIsJobsOpen] = useState(true);
+  const [isJobFormOpen, setIsJobFormOpen] = useState(false);
+  const [isJobsOpen, setIsJobsOpen] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(true);
   const [isManualOpen, setIsManualOpen] = useState(false);
   const [isAcceptedOpen, setIsAcceptedOpen] = useState(true);
@@ -377,8 +377,8 @@ export function ProspectsPageClient({
         <section className="card form-section collapsible-card">
           <div className="card-header collapsible-header">
             <div>
-              <h3>Create Prospecting Job</h3>
-              <p className="help">Phase 1 runs public web discovery first, falls back to seeded placeholders only when discovery is empty unless you enable real-data-only mode, and immediately cross-checks current CRM records.</p>
+              <h3>New Search Job</h3>
+              <p className="help">Launch a fresh discovery run only when you need more leads. Existing jobs and the review queue stay below.</p>
             </div>
             <button className="button secondary" type="button" onClick={() => setIsJobFormOpen((value) => !value)}>
               {isJobFormOpen ? "Collapse" : "Expand"}
@@ -494,7 +494,7 @@ export function ProspectsPageClient({
             <div className="card-header collapsible-header">
               <div>
                 <h3>Discovery Queue</h3>
-                <p className="help">Review discovered candidates before they enter accepted prospects.</p>
+                <p className="help">Approve, reject, or clear discovered candidates before they become working prospects.</p>
               </div>
               <div className="actions">
                 <select className="filter-select" value={candidateFilter} onChange={(event) => setCandidateFilter(event.target.value)}>
@@ -505,10 +505,10 @@ export function ProspectsPageClient({
                   <option value="REJECTED">Rejected</option>
                 </select>
                 <button className="button secondary" type="button" disabled={pendingQueueClear} onClick={() => void clearDiscoveryQueue(true)}>
-                  Clear Reviewed
+                  Clear Reviewed Queue
                 </button>
                 <button className="button secondary" type="button" disabled={pendingQueueClear} onClick={() => void clearDiscoveryQueue(false)}>
-                  Clear All
+                  Clear Entire Queue
                 </button>
                 <button className="button secondary" type="button" onClick={() => setIsQueueOpen((value) => !value)}>
                   {isQueueOpen ? "Collapse" : "Expand"}
@@ -608,13 +608,13 @@ export function ProspectsPageClient({
           <div className="card-header collapsible-header">
             <div>
               <h3>Manual Prospect Entry</h3>
-              <p className="help">Manual adds still run through the same match protection layer.</p>
+              <p className="help">Use this only for direct adds. Manual entries still go through the same match protection.</p>
             </div>
             <button className="button secondary" type="button" onClick={() => setIsManualOpen((value) => !value)}>
               {isManualOpen ? "Collapse" : "Expand"}
             </button>
           </div>
-          {isManualOpen ? <ProspectForm /> : null}
+          {isManualOpen ? <ProspectForm onSaved={(prospect) => setProspects((current) => [prospect as Prospect, ...current])} /> : null}
         </section>
 
         <section className="card collapsible-card">
@@ -741,7 +741,7 @@ export function ProspectsPageClient({
             </>
           ) : null}
           {filteredProspects.length > 0 && (
-            <p className="results-count">{filteredProspects.length} prospect{filteredProspects.length !== 1 ? "s" : ""}</p>
+            <p className="results-count">{filteredProspects.length} prospect{filteredProspects.length !== 1 ? "s" : ""} in view</p>
           )}
         </section>
       </div>
