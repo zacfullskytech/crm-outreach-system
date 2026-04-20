@@ -1,17 +1,13 @@
 # USER.md - About Your Human
 
-_Learn about the person you're helping. Update this as you go._
-
-- **Name:**
-- **What to call them:**
-- **Pronouns:** _(optional)_
-- **Timezone:**
-- **Notes:**
+- **Name:** unknown
+- **What to call them:** not established
+- **Pronouns:** unknown
+- **Timezone:** UTC context confirmed in OpenClaw session metadata
+- **Notes:** prefers direct status over hand-wavy summaries; currently using this workspace to manage and ship a CRM app
 
 ## Context
 
-_(What do they care about? What projects are they working on? What annoys them? What makes them laugh? Build this over time.)_
-
----
-
-The more you know, the better you can help. But remember — you're learning about a person, not building a dossier. Respect the difference.
+- Primary active repo in this workspace is the CRM outreach system deployed on Azure Container Apps.
+- Recent work has focused on prospecting quality, campaign scheduling diagnostics, and mobile UI polish.
+- Identity/bootstrap questions were skipped initially, so this file starts minimal and should be refined through actual use rather than invented biography.
