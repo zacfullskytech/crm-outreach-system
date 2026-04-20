@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/supabase/auth";
 import { marketingContentSchema } from "@/lib/validators";
 import { normalizeCustomFields } from "@/lib/custom-fields";
+import { getBlobNameFromUrl, getMarketingAssetAppUrl } from "@/lib/file-storage";
 
 export async function GET(request: NextRequest) {
   await requireAuth();
@@ -50,6 +51,9 @@ export async function POST(request: NextRequest) {
     const payload = await request.json();
     const parsed = marketingContentSchema.parse(payload);
 
+    const fileBlobName = parsed.fileUrl ? getBlobNameFromUrl(parsed.fileUrl) : null;
+    const imageBlobName = parsed.imageUrl ? getBlobNameFromUrl(parsed.imageUrl) : null;
+
     const item = await prisma.marketingContent.create({
       data: {
         title: parsed.title,
@@ -64,9 +68,9 @@ export async function POST(request: NextRequest) {
         tone: parsed.tone ?? null,
         lifecycleStage: parsed.lifecycleStage ?? null,
         fileName: parsed.fileName ?? null,
-        fileUrl: parsed.fileUrl ?? null,
+        fileUrl: fileBlobName ? getMarketingAssetAppUrl(fileBlobName) : parsed.fileUrl ?? null,
         imagePrompt: parsed.imagePrompt ?? null,
-        imageUrl: parsed.imageUrl ?? null,
+        imageUrl: imageBlobName ? getMarketingAssetAppUrl(imageBlobName) : parsed.imageUrl ?? null,
         callToAction: parsed.callToAction ?? null,
         bodyText: parsed.bodyText ?? null,
         bodyHtml: parsed.bodyHtml ?? null,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendEmail, renderTemplate } from "@/lib/email";
+import { getBlobNameFromUrl, getMarketingAssetAppUrl } from "@/lib/file-storage";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -26,13 +27,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     industry: "Veterinary",
   };
 
+  const html = renderTemplate(campaign.templateHtml, mergeData).replace(/https:\/\/[^\s"')]+/g, (value) => {
+    const blobName = getBlobNameFromUrl(value);
+    return blobName ? getMarketingAssetAppUrl(blobName) : value;
+  });
+
   const result = await sendEmail({
     to: testEmail,
     from: campaign.fromEmail,
     fromName: campaign.fromName || undefined,
     replyTo: campaign.replyTo || undefined,
     subject: `[TEST] ${renderTemplate(campaign.subject, mergeData)}`,
-    html: renderTemplate(campaign.templateHtml, mergeData),
+    html,
     text: campaign.templateText ? renderTemplate(campaign.templateText, mergeData) : undefined,
   });
 

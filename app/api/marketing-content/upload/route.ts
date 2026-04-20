@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       data: {
         fileName: uploaded.fileName,
-        fileUrl: uploaded.signedUrl,
+        fileUrl: uploaded.appUrl,
         blobUrl: uploaded.blobUrl,
         blobName: uploaded.blobName,
         contentType: file.type || "application/octet-stream",

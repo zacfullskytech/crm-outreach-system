@@ -2,11 +2,19 @@ import { Campaign, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { buildWhereFromSegment } from "@/lib/filters";
 import { renderTemplate, sendEmail } from "@/lib/email";
+import { getBlobNameFromUrl, getMarketingAssetAppUrl } from "@/lib/file-storage";
 
 const BATCH_SIZE = 20;
 const BATCH_DELAY_MS = 1500;
 
 type SnapshotData = Record<string, string | null | undefined>;
+
+function rewriteMarketingAssetUrls(html: string) {
+  return html.replace(/https:\/\/[^\s"')]+/g, (value) => {
+    const blobName = getBlobNameFromUrl(value);
+    return blobName ? getMarketingAssetAppUrl(blobName) : value;
+  });
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -183,7 +191,7 @@ export async function deliverCampaignRecipients(campaignId: string) {
       batch.map(async (recipient) => {
         const mergeData = (recipient.snapshotDataJson as SnapshotData) || {};
         const unsub = `${appUrl}/unsubscribe?email=${encodeURIComponent(recipient.email)}&token=placeholder&campaign=${campaignId}`;
-        const htmlWithUnsub = renderTemplate(campaign.templateHtml, mergeData) +
+        const htmlWithUnsub = rewriteMarketingAssetUrls(renderTemplate(campaign.templateHtml, mergeData)) +
           `<p style="font-size:11px;color:#999;margin-top:32px;">To unsubscribe, <a href="${unsub}">click here</a>.</p>`;
         const textWithUnsub = renderTemplate(campaign.templateText || "", mergeData) +
           `\n\nTo unsubscribe, visit: ${unsub}`;

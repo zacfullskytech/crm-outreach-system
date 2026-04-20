@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/supabase/auth";
 import { generateMarketingAsset, generateMarketingImage } from "@/lib/openai";
-import { getMarketingImageSignedUrl, saveGeneratedMarketingImage } from "@/lib/file-storage";
+import { saveGeneratedMarketingImage } from "@/lib/file-storage";
 import { normalizeCustomFields } from "@/lib/custom-fields";
 import { prisma } from "@/lib/db";
 import { describeSegmentIntent } from "@/lib/segment-intent";
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
             title: typeof payload.title === "string" ? payload.title : "marketing-asset",
             base64: await generateMarketingImage(imagePrompt),
           });
-          return getMarketingImageSignedUrl(saved.blobName);
+          return saved.appUrl;
         })()
       : null;
 

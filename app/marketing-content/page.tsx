@@ -1,6 +1,5 @@
 import { requireAuth } from "@/lib/supabase/auth";
 import { prisma } from "@/lib/db";
-import { getBlobNameFromUrl, getMarketingImageSignedUrl } from "@/lib/file-storage";
 import { MarketingContentManager } from "@/components/marketing-content-manager";
 
 export const dynamic = "force-dynamic";
@@ -36,23 +35,7 @@ export default async function MarketingContentPage() {
     }),
   ]);
 
-  const resolvedItems = items.map((item) => {
-    if (!item.imageUrl) {
-      return item;
-    }
-
-    const blobName = getBlobNameFromUrl(item.imageUrl);
-    if (!blobName) {
-      return item;
-    }
-
-    return {
-      ...item,
-      imageUrl: getMarketingImageSignedUrl(blobName),
-      tagsJson: normalizeJsonStringArray(item.tagsJson),
-      taxonomyJson: normalizeJsonStringArray(item.taxonomyJson),
-    };
-  }).map((item) => ({
+  const resolvedItems = items.map((item) => ({
     ...item,
     tagsJson: normalizeJsonStringArray(item.tagsJson),
     taxonomyJson: normalizeJsonStringArray(item.taxonomyJson),

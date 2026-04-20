@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/supabase/auth";
 import { marketingContentSchema } from "@/lib/validators";
 import { normalizeCustomFields } from "@/lib/custom-fields";
+import { getBlobNameFromUrl, getMarketingAssetAppUrl } from "@/lib/file-storage";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await requireAuth();
@@ -12,6 +13,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { id } = await params;
     const payload = await request.json();
     const parsed = marketingContentSchema.partial({ title: true }).parse(payload);
+
+    const fileBlobName = parsed.fileUrl ? getBlobNameFromUrl(parsed.fileUrl) : null;
+    const imageBlobName = parsed.imageUrl ? getBlobNameFromUrl(parsed.imageUrl) : null;
 
     const item = await prisma.marketingContent.update({
       where: { id },
@@ -28,9 +32,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         tone: parsed.tone,
         lifecycleStage: parsed.lifecycleStage,
         fileName: parsed.fileName,
-        fileUrl: parsed.fileUrl,
+        fileUrl: parsed.fileUrl === undefined ? undefined : fileBlobName ? getMarketingAssetAppUrl(fileBlobName) : parsed.fileUrl,
         imagePrompt: parsed.imagePrompt,
-        imageUrl: parsed.imageUrl,
+        imageUrl: parsed.imageUrl === undefined ? undefined : imageBlobName ? getMarketingAssetAppUrl(imageBlobName) : parsed.imageUrl,
         callToAction: parsed.callToAction,
         bodyText: parsed.bodyText,
         bodyHtml: parsed.bodyHtml,
