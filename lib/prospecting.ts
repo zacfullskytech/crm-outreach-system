@@ -6,6 +6,9 @@ import { searchWeb } from "@/lib/search-provider";
 
 const SEARCH_USER_AGENT = "Mozilla/5.0 (compatible; FullSkyProspectingBot/1.0)";
 const FALLBACK_BUSINESS_TERMS = ["company", "business", "services", "office", "clinic"];
+const CONTACT_SEARCH_TERMS = ["email", "contact", "owner", "team", "staff", "doctor", "veterinarian"];
+const SUPPORTING_PAGE_PATHS = ["/contact", "/contact-us", "/about", "/team", "/our-team", "/staff", "/meet-the-team", "/veterinarians", "/doctors"];
+const ROLE_EMAIL_PREFIXES = ["info", "contact", "hello", "office", "appointments", "frontdesk", "support", "manager", "owner", "doctor", "dr"];
 const LOCATION_SPLIT_REGEX = /\s*,\s*/;
 const AGGREGATOR_DOMAINS = [
   "yelp.com",
@@ -47,6 +50,12 @@ type DiscoveryCandidate = {
   source?: string | null;
   sourceUrl?: string | null;
   evidenceJson?: Prisma.InputJsonValue;
+};
+
+type ScoredEmail = {
+  email: string;
+  score: number;
+  source: string;
 };
 
 export type DiscoveryRunResult = {
@@ -179,7 +188,43 @@ export function scoreProspectCandidate(input: ProspectLike) {
 }
 
 function extractEmails(text: string) {
-  return Array.from(new Set(text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [])).slice(0, 3);
+  return Array.from(new Set(text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [])).slice(0, 8);
+}
+
+function scoreEmails(text: string, websiteDomain?: string | null, contactName?: string | null) {
+  const emails = extractEmails(text);
+  const contactTokens = (contactName || "")
+    .toLowerCase()
+    .split(/\s+/)
+    .map((token) => token.replace(/[^a-z]/g, ""))
+    .filter(Boolean);
+
+  const scored = emails.map((email) => {
+    const lower = email.toLowerCase();
+    const localPart = lower.split("@")[0] || "";
+    const domain = lower.split("@")[1] || "";
+    let score = 0;
+
+    if (websiteDomain && domain === websiteDomain) {
+      score += 8;
+    }
+    if (ROLE_EMAIL_PREFIXES.some((prefix) => localPart.includes(prefix))) {
+      score += 4;
+    }
+    if (contactTokens.some((token) => token.length >= 3 && localPart.includes(token))) {
+      score += 5;
+    }
+    if (/contact|email|appointment|schedule|doctor|dr\.?|vet|team|staff/i.test(text.slice(Math.max(0, text.toLowerCase().indexOf(lower) - 120), text.toLowerCase().indexOf(lower) + 120))) {
+      score += 3;
+    }
+    if (/gmail\.com|yahoo\.com|hotmail\.com|outlook\.com|aol\.com/i.test(domain)) {
+      score -= 2;
+    }
+
+    return { email, score, source: domain === websiteDomain ? "domain-match" : "page" } satisfies ScoredEmail;
+  }).sort((a, b) => b.score - a.score);
+
+  return scored;
 }
 
 function normalizePhone(value: string) {
@@ -384,23 +429,28 @@ function buildSearchQueries(params: {
   const companyTypes = (params.companyTypes || []).filter(Boolean);
   const industry = params.industry?.trim() || null;
   const baseTerms = Array.from(new Set([industry, ...includeKeywords, ...companyTypes].filter((value): value is string => Boolean(value))));
-  const searchTerms = baseTerms.length > 0 ? baseTerms : FALLBACK_BUSINESS_TERMS;
+  const primaryTerms = baseTerms.length > 0 ? baseTerms : FALLBACK_BUSINESS_TERMS;
   const queries = new Set<string>();
 
   for (const location of locations) {
-    queries.add(`${industry || searchTerms[0] || "business"} ${location}`.trim());
-    queries.add(`${searchTerms[0] || "business"} in ${location}`.trim());
-    queries.add(`${searchTerms[0] || "business"} near ${location}`.trim());
+    const base = `${industry || primaryTerms[0] || "business"} ${location}`.trim();
+    queries.add(base);
+    queries.add(`${primaryTerms[0] || "business"} in ${location}`.trim());
+    queries.add(`${primaryTerms[0] || "business"} near ${location}`.trim());
 
-    for (const term of searchTerms.slice(0, 6)) {
+    for (const term of primaryTerms.slice(0, 4)) {
       queries.add(`${term} ${location}`.trim());
+      queries.add(`${term} ${location} ${CONTACT_SEARCH_TERMS[0]}`.trim());
+      queries.add(`${term} ${location} ${CONTACT_SEARCH_TERMS[1]}`.trim());
+      queries.add(`${term} ${location} ${CONTACT_SEARCH_TERMS[3]}`.trim());
       if (industry && term.toLowerCase() !== industry.toLowerCase()) {
         queries.add(`${industry} ${term} ${location}`.trim());
+        queries.add(`${industry} ${term} ${location} email`.trim());
       }
     }
   }
 
-  return Array.from(queries).slice(0, 18);
+  return Array.from(queries).slice(0, 24);
 }
 
 async function fetchPageText(url: string) {
@@ -435,8 +485,7 @@ async function fetchSupportingPageText(url: string) {
     return { supportingUrl: null, text: "" };
   }
 
-  const paths = ["/contact", "/about", "/team", "/our-team", "/staff"];
-  for (const path of paths) {
+  for (const path of SUPPORTING_PAGE_PATHS) {
     const supportingUrl = `https://${normalizedDomain}${path}`;
     const text = await fetchPageText(supportingUrl);
     if (text) {
@@ -501,8 +550,10 @@ export async function discoverProspectCandidates(params: {
         continue;
       }
 
-      const emails = extractEmails(combinedText);
       const websiteDomain = normalizeWebsite(url);
+      const contactName = extractContactName(combinedText);
+      const scoredEmails = scoreEmails(combinedText, websiteDomain, contactName);
+      const emails = scoredEmails.map((entry) => entry.email).slice(0, 3);
       const phones = extractPhones(combinedText, websiteDomain);
       const matchedLocation = parsedLocations.find((location) => {
         if (!location.city) {
@@ -516,7 +567,6 @@ export async function discoverProspectCandidates(params: {
 
       const website = websiteDomain ? `https://${websiteDomain}` : url;
       const companyName = extractCompanyName(rawTitle, url);
-      const contactName = extractContactName(combinedText);
       const businessType = detectBusinessType(`${supporting.text.slice(0, 1600)} ${bodyText.slice(0, 800)}`, rawTitle);
       const confidenceSignals = [websiteDomain, emails[0], phones[0], contactName, businessType].filter(Boolean).length;
 
@@ -540,6 +590,7 @@ export async function discoverProspectCandidates(params: {
           { kind: "search_query", value: query },
           { kind: "title", value: rawTitle },
           { kind: "emails", value: emails },
+          { kind: "scored_emails", value: scoredEmails.map((entry) => `${entry.email}:${entry.score}:${entry.source}`) },
           { kind: "phones", value: phones },
           { kind: "supporting_url", value: supporting.supportingUrl },
           { kind: "contact_name", value: contactName },
