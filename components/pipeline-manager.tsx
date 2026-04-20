@@ -106,7 +106,8 @@ export function PipelineManager({
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("ALL");
   const [viewFilter, setViewFilter] = useState("ALL");
-  const [isCreateOpen, setIsCreateOpen] = useState(true);
+  const [isCreateOpen, setIsCreateOpen] = useState(Boolean(initialDraft));
+  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
   const [isListOpen, setIsListOpen] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -315,6 +316,7 @@ export function PipelineManager({
       return next.sort((left, right) => left.name.localeCompare(right.name));
     });
     hydrateTemplateSeed(null);
+    setIsTemplatesOpen(false);
     setMessage(templateSeed.id ? "Template updated." : "Template created.");
     setPending(false);
   }
@@ -336,6 +338,25 @@ export function PipelineManager({
       hydrateTemplateSeed(null);
     }
     setMessage("Template archived.");
+    setPending(false);
+  }
+
+  async function deleteOpportunity(opportunity: OpportunityRecord) {
+    if (!window.confirm(`Delete ${opportunity.name}?`)) return;
+
+    setPending(true);
+    setMessage(null);
+
+    const response = await fetch(`/api/opportunities/${opportunity.id}`, { method: "DELETE" });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(body.error || "Failed to delete opportunity.");
+      setPending(false);
+      return;
+    }
+
+    setOpportunities((current) => current.filter((entry) => entry.id !== opportunity.id));
+    setMessage("Opportunity deleted.");
     setPending(false);
   }
 
@@ -382,6 +403,7 @@ export function PipelineManager({
     setMessage("Opportunity created.");
     event.currentTarget.reset();
     setCreateDraft(null);
+    setIsCreateOpen(false);
     setPending(false);
   }
 
@@ -405,8 +427,8 @@ export function PipelineManager({
         <section className="card form-section collapsible-card">
           <div className="card-header collapsible-header">
             <div>
-              <h3>Create Opportunity</h3>
-              <p className="help">Start from a sale template whenever the workflow is repeatable.</p>
+              <h3>New Opportunity</h3>
+              <p className="help">Create a new pipeline record only when you need one. Existing opportunities stay below for review and cleanup.</p>
             </div>
             <button className="button secondary" type="button" onClick={() => setIsCreateOpen((value) => !value)}>{isCreateOpen ? "Collapse" : "Expand"}</button>
           </div>
@@ -437,42 +459,47 @@ export function PipelineManager({
           <div className="card-header collapsible-header">
             <div>
               <h3>Template Builder</h3>
-              <p className="help">Draft repeatable sale or upsell templates so common work can be launched consistently.</p>
+              <p className="help">Keep repeatable sales or upsell templates here, but collapse this section when you are just managing live pipeline.</p>
             </div>
+            <button className="button secondary" type="button" onClick={() => setIsTemplatesOpen((value) => !value)}>{isTemplatesOpen ? "Collapse" : "Expand"}</button>
           </div>
-          <form onSubmit={createTemplate} className="inline-grid">
-            <div className="form-grid">
-              <div className="field"><label htmlFor="template-name">Template name</label><input id="template-name" value={templateSeed.name} onChange={(event) => setTemplateSeed((current) => ({ ...current, name: event.target.value }))} placeholder="Firewall Upsell" /></div>
-              <div className="field"><label htmlFor="template-type">Opportunity type</label><select id="template-type" value={templateSeed.opportunityType} onChange={(event) => setTemplateSeed((current) => ({ ...current, opportunityType: event.target.value }))}>{opportunityTypes.map((type) => <option key={type} value={type}>{type}</option>)}</select></div>
-              <div className="field"><label htmlFor="template-service">Service line</label><input id="template-service" value={templateSeed.serviceLine} onChange={(event) => setTemplateSeed((current) => ({ ...current, serviceLine: event.target.value }))} placeholder="Firewall" /></div>
-            </div>
-            <div className="field"><label htmlFor="template-description">Description</label><textarea id="template-description" value={templateSeed.description} onChange={(event) => setTemplateSeed((current) => ({ ...current, description: event.target.value }))} placeholder="When to use this template and what it covers." /></div>
-            <div className="field"><label htmlFor="template-checklist">Checklist items</label><textarea id="template-checklist" value={templateSeed.checklistText} onChange={(event) => setTemplateSeed((current) => ({ ...current, checklistText: event.target.value }))} placeholder="One item per line" /></div>
-            <div className="field"><label htmlFor="template-tasks">Task titles</label><textarea id="template-tasks" value={templateSeed.tasksText} onChange={(event) => setTemplateSeed((current) => ({ ...current, tasksText: event.target.value }))} placeholder="One task per line" /></div>
-            <div className="actions"><button className="button secondary" type="submit" disabled={pending}>{pending ? "Saving..." : templateSeed.id ? "Update Template" : "Save Template"}</button><button className="button secondary" type="button" disabled={pending} onClick={() => hydrateTemplateSeed(null)}>Clear</button></div>
-          </form>
-          <div className="inline-grid">
-            {templates.map((template) => (
-              <div key={template.id} className="dashboard-list-row">
-                <div className="record-summary-main">
-                  <div className="record-summary-topline">
-                    <strong>{template.name}</strong>
-                    <span className="badge badge-blue">{template.opportunityType}</span>
-                  </div>
-                  <div className="record-meta-row">
-                    <span>{template.serviceLine || "No service line"}</span>
-                    <span>{readChecklist(template.checklistJson).length} checklist items</span>
-                    <span>{readTaskTemplates(template.taskTemplateJson).length} task templates</span>
-                  </div>
-                  {template.description ? <p className="help">{template.description}</p> : null}
+          {isTemplatesOpen ? (
+            <div className="inline-grid">
+              <form onSubmit={createTemplate} className="inline-grid">
+                <div className="form-grid">
+                  <div className="field"><label htmlFor="template-name">Template name</label><input id="template-name" value={templateSeed.name} onChange={(event) => setTemplateSeed((current) => ({ ...current, name: event.target.value }))} placeholder="Firewall Upsell" /></div>
+                  <div className="field"><label htmlFor="template-type">Opportunity type</label><select id="template-type" value={templateSeed.opportunityType} onChange={(event) => setTemplateSeed((current) => ({ ...current, opportunityType: event.target.value }))}>{opportunityTypes.map((type) => <option key={type} value={type}>{type}</option>)}</select></div>
+                  <div className="field"><label htmlFor="template-service">Service line</label><input id="template-service" value={templateSeed.serviceLine} onChange={(event) => setTemplateSeed((current) => ({ ...current, serviceLine: event.target.value }))} placeholder="Firewall" /></div>
                 </div>
-                <div className="actions action-bar-tight">
-                  <button className="button secondary" type="button" disabled={pending} onClick={() => hydrateTemplateSeed(template)}>Edit</button>
-                  <button className="button secondary" type="button" disabled={pending} onClick={() => void archiveTemplate(template.id)}>Archive</button>
-                </div>
+                <div className="field"><label htmlFor="template-description">Description</label><textarea id="template-description" value={templateSeed.description} onChange={(event) => setTemplateSeed((current) => ({ ...current, description: event.target.value }))} placeholder="When to use this template and what it covers." /></div>
+                <div className="field"><label htmlFor="template-checklist">Checklist items</label><textarea id="template-checklist" value={templateSeed.checklistText} onChange={(event) => setTemplateSeed((current) => ({ ...current, checklistText: event.target.value }))} placeholder="One item per line" /></div>
+                <div className="field"><label htmlFor="template-tasks">Task titles</label><textarea id="template-tasks" value={templateSeed.tasksText} onChange={(event) => setTemplateSeed((current) => ({ ...current, tasksText: event.target.value }))} placeholder="One task per line" /></div>
+                <div className="actions"><button className="button secondary" type="submit" disabled={pending}>{pending ? "Saving..." : templateSeed.id ? "Update Template" : "Save Template"}</button><button className="button secondary" type="button" disabled={pending} onClick={() => hydrateTemplateSeed(null)}>Clear</button></div>
+              </form>
+              <div className="inline-grid">
+                {templates.map((template) => (
+                  <div key={template.id} className="dashboard-list-row">
+                    <div className="record-summary-main">
+                      <div className="record-summary-topline">
+                        <strong>{template.name}</strong>
+                        <span className="badge badge-blue">{template.opportunityType}</span>
+                      </div>
+                      <div className="record-meta-row">
+                        <span>{template.serviceLine || "No service line"}</span>
+                        <span>{readChecklist(template.checklistJson).length} checklist items</span>
+                        <span>{readTaskTemplates(template.taskTemplateJson).length} task templates</span>
+                      </div>
+                      {template.description ? <p className="help">{template.description}</p> : null}
+                    </div>
+                    <div className="actions action-bar-tight">
+                      <button className="button secondary" type="button" disabled={pending} onClick={() => hydrateTemplateSeed(template)}>Edit</button>
+                      <button className="button secondary" type="button" disabled={pending} onClick={() => void archiveTemplate(template.id)}>Archive</button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ) : null}
         </section>
 
         <section className="card collapsible-card">
@@ -481,7 +508,10 @@ export function PipelineManager({
               <h3>Pipeline Records</h3>
               <p className="help">{filtered.length} opportunity{filtered.length === 1 ? "" : "ies"} in view.</p>
             </div>
-            <button className="button secondary" type="button" onClick={() => setIsListOpen((value) => !value)}>{isListOpen ? "Collapse" : "Expand"}</button>
+            <div className="actions">
+              {message ? <span className="help">{message}</span> : null}
+              <button className="button secondary" type="button" onClick={() => setIsListOpen((value) => !value)}>{isListOpen ? "Collapse" : "Expand"}</button>
+            </div>
           </div>
           {isListOpen ? (
             <>
@@ -515,6 +545,7 @@ export function PipelineManager({
                           <div className="content-item-summary-right">
                             <span className="badge badge-blue">{opportunity.status}</span>
                             {opportunity.deliveryStatus ? <span className="badge badge-yellow">{opportunity.deliveryStatus}</span> : null}
+                            <span className="help">Edit or delete</span>
                           </div>
                         </summary>
                         <div className="content-item-body inline-grid">
@@ -543,6 +574,7 @@ export function PipelineManager({
                           <div className="card"><h4>Checklist</h4>{checklist.length === 0 ? <p>No checklist items.</p> : <div className="inline-grid">{checklist.map((item) => <div key={item.key} className="dashboard-list-row"><div className="record-summary-main"><div className="record-summary-topline"><strong>{item.label}</strong><span className={`badge ${item.done ? "badge-green" : "badge-yellow"}`}>{item.done ? "Done" : "Open"}</span></div><div className="actions checklist-toggle-row"><label className="help" htmlFor={`checklist-done-${opportunity.id}-${item.key}`}>Mark complete</label><input id={`checklist-done-${opportunity.id}-${item.key}`} type="checkbox" checked={Boolean(item.done)} disabled={pending} onChange={() => void updateOpportunity(opportunity, { checklistJson: checklist.map((entry) => entry.key === item.key ? { ...entry, done: !entry.done } : entry) })} /></div><div className="field"><label htmlFor={`checklist-note-${opportunity.id}-${item.key}`}>Checklist notes</label><textarea id={`checklist-note-${opportunity.id}-${item.key}`} defaultValue={item.notes || ""} placeholder="Add context, instructions, or completion notes for this checklist item." onBlur={(event) => { const next = event.target.value.trim() || null; if (next !== (item.notes || null)) { void updateOpportunity(opportunity, { checklistJson: checklist.map((entry) => entry.key === item.key ? { ...entry, notes: next } : entry) }); } }} /></div></div></div>)}</div>}</div>
                           <div className="card"><div className="card-header dashboard-panel-header"><div><h4>Tasks</h4></div><button className="button secondary" type="button" disabled={pending} onClick={() => void addTask(opportunity)}>Add Task</button></div><div className="form-grid"><div className="field"><label htmlFor={`task-new-title-${opportunity.id}`}>Task title</label><input id={`task-new-title-${opportunity.id}`} value={getTaskComposer(opportunity.id).title} onChange={(event) => setTaskComposer(opportunity.id, { title: event.target.value })} placeholder="Schedule kickoff call" /></div><div className="field"><label htmlFor={`task-new-assignee-${opportunity.id}`}>Assignee</label><select id={`task-new-assignee-${opportunity.id}`} value={getTaskComposer(opportunity.id).assigneeUserId} onChange={(event) => setTaskComposer(opportunity.id, { assigneeUserId: event.target.value })}><option value="">Unassigned</option>{initialUsers.map((user) => <option key={user.id} value={user.id}>{user.name || user.email}</option>)}</select></div><div className="field"><label htmlFor={`task-new-due-${opportunity.id}`}>Due date</label><input id={`task-new-due-${opportunity.id}`} type="date" value={getTaskComposer(opportunity.id).dueDate} onChange={(event) => setTaskComposer(opportunity.id, { dueDate: event.target.value })} /></div></div><div className="field"><label htmlFor={`task-new-description-${opportunity.id}`}>Description</label><textarea id={`task-new-description-${opportunity.id}`} value={getTaskComposer(opportunity.id).description} onChange={(event) => setTaskComposer(opportunity.id, { description: event.target.value })} placeholder="Optional task details or handoff notes." /></div>{opportunity.tasks.length === 0 ? <p>No tasks yet.</p> : <div className="inline-grid">{opportunity.tasks.map((task) => <div key={task.id} className="dashboard-list-row"><div className="record-summary-main"><div className="record-summary-topline"><strong>{task.title}</strong><select value={task.status} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { tasks: opportunity.tasks.map((entry) => entry.id === task.id ? { ...entry, status: event.target.value } : entry) })}>{taskStatuses.map((status) => <option key={status} value={status}>{status}</option>)}</select></div><div className="field"><label htmlFor={`task-assignee-${opportunity.id}-${task.id}`}>Assignee</label><select id={`task-assignee-${opportunity.id}-${task.id}`} value={task.assignee?.id || ""} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { tasks: opportunity.tasks.map((entry) => entry.id === task.id ? { ...entry, assignee: mapUserById(event.target.value) } : entry) })}><option value="">Unassigned</option>{initialUsers.map((user) => <option key={user.id} value={user.id}>{user.name || user.email}</option>)}</select></div><div className="field"><label htmlFor={`task-due-${opportunity.id}-${task.id}`}>Due date</label><input id={`task-due-${opportunity.id}-${task.id}`} type="date" value={task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : ""} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { tasks: opportunity.tasks.map((entry) => entry.id === task.id ? { ...entry, dueDate: event.target.value || null } : entry) })} /></div>{task.description ? <p className="help">{task.description}</p> : null}</div></div>)}</div>}</div>
                           <div className="card"><h4>Notes</h4><div className="field"><label htmlFor={`pipeline-notes-${opportunity.id}`}>Opportunity notes</label><textarea id={`pipeline-notes-${opportunity.id}`} defaultValue={opportunity.notes || ""} placeholder="Deal notes, implementation details, blockers, next-step context..." onBlur={(event) => { if ((event.target.value || "") !== (opportunity.notes || "")) { void updateOpportunity(opportunity, { notes: event.target.value.trim() || null }); } }} /></div></div>
+                          <div className="actions"><button className="button secondary" type="button" disabled={pending} onClick={() => void deleteOpportunity(opportunity)}>Delete Opportunity</button></div>
                         </div>
                       </details>
                     );

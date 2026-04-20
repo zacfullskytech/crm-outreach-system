@@ -24,8 +24,9 @@ export function ContactManager({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [contactView, setContactView] = useState("ALL");
-  const [isCreateOpen, setIsCreateOpen] = useState(true);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isListOpen, setIsListOpen] = useState(true);
+  const [listMessage, setListMessage] = useState<string | null>(null);
 
   const linkedContacts = contacts.filter((contact) => contact.company?.id).length;
   const reachableContacts = contacts.filter((contact) => contact.email || contact.phone).length;
@@ -38,10 +39,12 @@ export function ContactManager({
       const merged = existing ? { ...existing, ...contact } : (contact as ContactWithCompany);
       return [merged, ...current.filter((entry) => entry.id !== contact.id)];
     });
+    setListMessage("Contact saved.");
   }
 
   function removeContact(id: string) {
     setContacts((current) => current.filter((entry) => entry.id !== id));
+    setListMessage("Contact deleted.");
   }
 
   const filtered = useMemo(() => {
@@ -117,8 +120,8 @@ export function ContactManager({
         <section className="card form-section collapsible-card">
           <div className="card-header collapsible-header">
             <div>
-              <h3>Add Contact</h3>
-              <p className="help">Manually add new people and keep them linked to the right company.</p>
+              <h3>New Contact</h3>
+              <p className="help">Create a contact only when you need one. Existing records stay below for cleanup and review.</p>
             </div>
             <button className="button secondary" type="button" onClick={() => setIsCreateOpen((value) => !value)}>
               {isCreateOpen ? "Collapse" : "Expand"}
@@ -133,9 +136,12 @@ export function ContactManager({
               <h3>All Contacts</h3>
               <p className="help">{filtered.length} contact{filtered.length === 1 ? "" : "s"} in view.</p>
             </div>
-            <button className="button secondary" type="button" onClick={() => setIsListOpen((value) => !value)}>
-              {isListOpen ? "Collapse" : "Expand"}
-            </button>
+            <div className="actions">
+              {listMessage ? <span className="help">{listMessage}</span> : null}
+              <button className="button secondary" type="button" onClick={() => setIsListOpen((value) => !value)}>
+                {isListOpen ? "Collapse" : "Expand"}
+              </button>
+            </div>
           </div>
           {isListOpen ? (
             <>
@@ -191,7 +197,7 @@ export function ContactManager({
                           </div>
                         </div>
                         <div className="content-item-summary-right">
-                          <span className="help">Edit</span>
+                          <span className="help">Edit or delete</span>
                         </div>
                       </summary>
                       <div className="content-item-body">

@@ -29,8 +29,9 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [serviceGapFilter, setServiceGapFilter] = useState("ALL");
-  const [isCreateOpen, setIsCreateOpen] = useState(true);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isListOpen, setIsListOpen] = useState(true);
+  const [listMessage, setListMessage] = useState<string | null>(null);
 
   const activeCompanies = companies.filter((company) => company.status !== "INACTIVE").length;
   const clientCompanies = companies.filter((company) => company.status === "CLIENT").length;
@@ -45,10 +46,12 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
       const merged = existing ? { ...existing, ...company } : (company as CompanyWithContacts);
       return [merged, ...current.filter((entry) => entry.id !== company.id)];
     });
+    setListMessage("Company saved.");
   }
 
   function removeCompany(id: string) {
     setCompanies((current) => current.filter((entry) => entry.id !== id));
+    setListMessage("Company deleted.");
   }
 
   const filtered = companies.filter((c) => {
@@ -142,8 +145,8 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
         <section className="card form-section collapsible-card">
           <div className="card-header collapsible-header">
             <div>
-              <h3>Add Company</h3>
-              <p className="help">Manually create and classify client and prospect accounts.</p>
+              <h3>New Company</h3>
+              <p className="help">Create a company only when you need one. Existing accounts stay below for cleanup and review.</p>
             </div>
             <button className="button secondary" type="button" onClick={() => setIsCreateOpen((value) => !value)}>
               {isCreateOpen ? "Collapse" : "Expand"}
@@ -158,9 +161,12 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
               <h3>All Companies</h3>
               <p className="help">{filtered.length} compan{filtered.length === 1 ? "y" : "ies"} in view.</p>
             </div>
-            <button className="button secondary" type="button" onClick={() => setIsListOpen((value) => !value)}>
-              {isListOpen ? "Collapse" : "Expand"}
-            </button>
+            <div className="actions">
+              {listMessage ? <span className="help">{listMessage}</span> : null}
+              <button className="button secondary" type="button" onClick={() => setIsListOpen((value) => !value)}>
+                {isListOpen ? "Collapse" : "Expand"}
+              </button>
+            </div>
           </div>
           {isListOpen ? (
             <>
@@ -228,7 +234,7 @@ export function CompanyManager({ initialCompanies, isAdmin }: { initialCompanies
                           </div>
                           <div className="content-item-summary-right">
                             <span className="badge badge-blue">{services.length} service{services.length === 1 ? "" : "s"}</span>
-                            <span className="help">Edit</span>
+                            <span className="help">Edit or delete</span>
                           </div>
                         </summary>
                         <div className="content-item-body inline-grid">
