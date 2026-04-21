@@ -57,8 +57,8 @@ export function CampaignForm({
   showAiAssist?: boolean;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
-  const sendableSegments = segments.filter((segment) => segment.entityType === "contact");
-  const unavailableSegments = segments.filter((segment) => segment.entityType !== "contact");
+  const sendableSegments = segments.filter((segment) => segment.entityType === "contact" || segment.entityType === "company");
+  const unavailableSegments = segments.filter((segment) => segment.entityType !== "contact" && segment.entityType !== "company");
   const [selectedSegmentId, setSelectedSegmentId] = useState(sendableSegments[0]?.id || "");
   const [selectedMarketingContentId, setSelectedMarketingContentId] = useState("");
   const [preview, setPreview] = useState<PreviewState>(null);
@@ -208,7 +208,7 @@ export function CampaignForm({
             {selectedSegment ? <span className="badge badge-blue">{selectedSegment.name}</span> : null}
           </div>
           <div className="record-meta-row">
-            <span>{selectedSegment ? "Contact segment selected" : "No segment selected"}</span>
+            <span>{selectedSegment ? `${selectedSegment.entityType} segment selected` : "No segment selected"}</span>
             <span>{selectedMarketingContent ? `Using library asset: ${selectedMarketingContent.title}` : "No library asset applied"}</span>
             <span>{defaults.fromEmail || "No default sender configured"}</span>
             <span>{libraryEmailAssets} reusable email assets in library</span>
@@ -248,8 +248,8 @@ export function CampaignForm({
         <div className="inline-grid">
           <div className="dashboard-list-row">
             <div className="record-summary-main">
-              <strong>Use contact segments only</strong>
-              <p className="help">Campaign sending still targets contacts, not companies or prospects directly.</p>
+              <strong>Use contact or company segments</strong>
+              <p className="help">Campaign sending now supports direct company-email sends and standard contact audiences. Prospect segments are still excluded.</p>
             </div>
           </div>
           <div className="dashboard-list-row">
@@ -297,7 +297,7 @@ export function CampaignForm({
           <select id="campaign-segment" value={selectedSegmentId} onChange={(event) => setSelectedSegmentId(event.target.value)}>
             <option value="">No segment selected</option>
             {sendableSegments.length > 0 ? (
-              <optgroup label="Sendable contact segments">
+              <optgroup label="Sendable contact and company segments">
                 {sendableSegments.map((segment) => (
                   <option key={segment.id} value={segment.id}>
                     {segment.name}
@@ -315,7 +315,7 @@ export function CampaignForm({
               </optgroup>
             ) : null}
           </select>
-          <p className="help">Campaign sending currently supports contact segments only.</p>
+          <p className="help">Campaign sending supports contact and company segments. Prospect segments are not sendable.</p>
         </div>
         <div className="field">
           <label htmlFor="campaign-status">Status</label>
