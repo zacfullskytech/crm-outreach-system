@@ -22,12 +22,16 @@ type MarketingContentOption = {
 function statusBadgeClass(status: string) {
   switch (status) {
     case "SENT":
+    case "DELIVERED":
+    case "OPENED":
+    case "CLICKED":
       return "badge badge-green";
     case "SCHEDULED":
-      return "badge badge-blue";
     case "SENDING":
       return "badge badge-blue";
     case "FAILED":
+    case "BOUNCED":
+    case "UNSUBSCRIBED":
       return "badge badge-red";
     default:
       return "badge";
@@ -314,8 +318,21 @@ export function CampaignsPageClient({
                 <div className="inline-grid">
                   {filtered.map((campaign) => {
                     const sentCount = campaign.recipients.filter((recipient) => recipient.status === "SENT").length;
+                    const deliveredCount = campaign.recipients.filter((recipient) => recipient.status === "DELIVERED").length;
+                    const openedCount = campaign.recipients.filter((recipient) => recipient.status === "OPENED").length;
+                    const clickedCount = campaign.recipients.filter((recipient) => recipient.status === "CLICKED").length;
+                    const bouncedCount = campaign.recipients.filter((recipient) => recipient.status === "BOUNCED").length;
+                    const unsubscribedCount = campaign.recipients.filter((recipient) => recipient.status === "UNSUBSCRIBED").length;
                     const failedCount = campaign.recipients.filter((recipient) => recipient.status === "FAILED").length;
                     const pendingCount = campaign.recipients.filter((recipient) => recipient.status === "PENDING").length;
+                    const failedRecipients = campaign.recipients.filter((recipient) => recipient.status === "FAILED" || recipient.status === "BOUNCED" || recipient.status === "UNSUBSCRIBED");
+                    const recentRecipients = [...campaign.recipients]
+                      .sort((a, b) => {
+                        const aTime = new Date(a.clickedAt || a.openedAt || a.bouncedAt || a.sentAt || 0).getTime();
+                        const bTime = new Date(b.clickedAt || b.openedAt || b.bouncedAt || b.sentAt || 0).getTime();
+                        return bTime - aTime;
+                      })
+                      .slice(0, 8);
 
                     return (
                       <details key={campaign.id} className="card content-item" open={false}>
@@ -334,7 +351,12 @@ export function CampaignsPageClient({
                           </div>
                           <div className="content-item-summary-right">
                             <span className="badge badge-blue">{sentCount} sent</span>
+                            {deliveredCount > 0 ? <span className="badge badge-green">{deliveredCount} delivered</span> : null}
+                            {openedCount > 0 ? <span className="badge badge-green">{openedCount} opened</span> : null}
+                            {clickedCount > 0 ? <span className="badge badge-green">{clickedCount} clicked</span> : null}
                             {failedCount > 0 ? <span className="badge badge-red">{failedCount} failed</span> : null}
+                            {bouncedCount > 0 ? <span className="badge badge-red">{bouncedCount} bounced</span> : null}
+                            {unsubscribedCount > 0 ? <span className="badge badge-red">{unsubscribedCount} unsubscribed</span> : null}
                             {pendingCount > 0 ? <span className="badge badge-yellow">{pendingCount} pending</span> : null}
                             <span className={`badge ${readinessByCampaign[campaign.id]?.ready ? "badge-green" : "badge-yellow"}`}>{readinessByCampaign[campaign.id]?.ready ? "Ready" : "Needs setup"}</span>
                             <span className="help">Operate</span>
@@ -353,7 +375,7 @@ export function CampaignsPageClient({
                               <p>Created: {new Date(campaign.createdAt).toLocaleString()}</p>
                               <p>Scheduled: {campaign.scheduledAt ? new Date(campaign.scheduledAt).toLocaleString() : "Not scheduled"}</p>
                               <p>Sent: {campaign.sentAt ? new Date(campaign.sentAt).toLocaleString() : "Not sent"}</p>
-                              <p>Delivery summary: {sentCount} sent · {failedCount} failed · {pendingCount} pending</p>
+                              <p>Delivery summary: {sentCount} sent · {deliveredCount} delivered · {openedCount} opened · {clickedCount} clicked · {failedCount} failed · {bouncedCount} bounced · {unsubscribedCount} unsubscribed · {pendingCount} pending</p>
                               <p>{campaign.status === "SCHEDULED" ? "Scheduled campaigns will wait for the scheduler unless you send now manually." : "Manual send is available below."}</p>
                             </div>
                           </div>
@@ -374,6 +396,55 @@ export function CampaignsPageClient({
                               ) : (
                                 <p className="help">Sender, subject, body, and segment are in place.</p>
                               )}
+                            </div>
+                          </div>
+                          <div className="card subtle-card">
+                            <div className="record-summary-main">
+                              <div className="record-summary-topline">
+                                <h4>Delivery Feedback</h4>
+                                <span className={`badge ${failedRecipients.length > 0 ? "badge-red" : "badge-green"}`}>{failedRecipients.length > 0 ? "Attention needed" : "Healthy send"}</span>
+                              </div>
+                              <div className="record-meta-row">
+                                <span>{campaign.recipients.length} total recipients</span>
+                                <span>{sentCount + deliveredCount + openedCount + clickedCount} with outbound activity</span>
+                                <span>{failedRecipients.length} problematic recipients</span>
+                              </div>
+                              {failedRecipients.length > 0 ? (
+                                <div className="inline-grid" style={{ marginTop: 12 }}>
+                                  {failedRecipients.slice(0, 8).map((recipient) => (
+                                    <div key={recipient.id} className="dashboard-list-row">
+                                      <div className="record-summary-main">
+                                        <div className="record-summary-topline">
+                                          <strong>{recipient.email}</strong>
+                                          <span className={statusBadgeClass(recipient.status)}>{recipient.status}</span>
+                                        </div>
+                                        <p className="help">{recipient.errorMessage || (recipient.status === "BOUNCED" ? "Mailbox bounced." : recipient.status === "UNSUBSCRIBED" ? "Recipient unsubscribed." : "Send failed.")}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="help">No failed, bounced, or unsubscribed recipients recorded for this campaign.</p>
+                              )}
+                              {recentRecipients.length > 0 ? (
+                                <div className="inline-grid" style={{ marginTop: 12 }}>
+                                  {recentRecipients.map((recipient) => (
+                                    <div key={`${recipient.id}-recent`} className="dashboard-list-row">
+                                      <div className="record-summary-main">
+                                        <div className="record-summary-topline">
+                                          <strong>{recipient.email}</strong>
+                                          <span className={statusBadgeClass(recipient.status)}>{recipient.status}</span>
+                                        </div>
+                                        <div className="record-meta-row">
+                                          <span>{recipient.sentAt ? `Sent ${new Date(recipient.sentAt).toLocaleString()}` : "Not sent yet"}</span>
+                                          <span>{recipient.openedAt ? `Opened ${new Date(recipient.openedAt).toLocaleString()}` : "Not opened"}</span>
+                                          <span>{recipient.clickedAt ? `Clicked ${new Date(recipient.clickedAt).toLocaleString()}` : recipient.bouncedAt ? `Bounced ${new Date(recipient.bouncedAt).toLocaleString()}` : "No follow-up event"}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : null}
                             </div>
                           </div>
                           <div className="actions">
