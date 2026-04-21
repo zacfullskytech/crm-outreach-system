@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { CustomFieldsEditor } from "@/components/custom-fields-editor";
+import { plainTextToEmailHtml } from "@/lib/email";
 import type { MarketingContent, Segment } from "@prisma/client";
 
 type GeneratedAsset = {
@@ -270,7 +271,10 @@ export function MarketingAiStudio({
                 onClick={() => onUseCampaignDraft({
                   name: result.headline || "AI Campaign Draft",
                   subject: result.callToAction || result.headline || "AI Campaign Draft",
-                  templateHtml: [result.imageUrl ? `<p><img src="${result.imageUrl}" alt="${result.headline || "Generated campaign image"}" style="max-width:100%;height:auto;border-radius:12px;" /></p>` : "", result.bodyText ? `<p>${result.bodyText.replace(/\n/g, "</p><p>")}</p>` : ""]
+                  templateHtml: [
+                    result.imageUrl ? `<p><img src="${result.imageUrl}" alt="${result.headline || "Generated campaign image"}" style="max-width:100%;height:auto;border-radius:12px;" /></p>` : "",
+                    result.bodyText ? plainTextToEmailHtml(result.bodyText) : "",
+                  ]
                     .filter(Boolean)
                     .join("\n\n"),
                   templateText: [result.bodyText || "", result.imageUrl ? `Image: ${result.imageUrl}` : ""].filter(Boolean).join("\n\n"),

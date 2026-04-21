@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { MarketingAiStudio } from "@/components/marketing-ai-studio";
+import { plainTextToEmailHtml } from "@/lib/email";
 
 type SegmentOption = {
   id: string;
@@ -110,7 +111,7 @@ export function CampaignForm({
       const imageBlock = content.imageUrl
         ? `<p><img src="${content.imageUrl}" alt="${content.title}" style="max-width:100%;height:auto;border-radius:12px;" /></p>`
         : "";
-      const htmlBody = content.bodyHtml?.trim() || (content.bodyText?.trim() ? `<p>${content.bodyText.replace(/\n/g, "</p><p>")}</p>` : "");
+      const htmlBody = content.bodyHtml?.trim() || (content.bodyText?.trim() ? plainTextToEmailHtml(content.bodyText) : "");
       htmlInput.value = [imageBlock, htmlBody].filter(Boolean).join("\n\n");
     }
 
