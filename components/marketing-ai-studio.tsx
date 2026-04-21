@@ -272,8 +272,8 @@ export function MarketingAiStudio({
                   name: result.headline || "AI Campaign Draft",
                   subject: result.callToAction || result.headline || "AI Campaign Draft",
                   templateHtml: [
-                    result.imageUrl ? `<p><img src="${result.imageUrl}" alt="${result.headline || "Generated campaign image"}" style="max-width:100%;height:auto;border-radius:12px;" /></p>` : "",
                     result.bodyText ? plainTextToEmailHtml(result.bodyText) : "",
+                    result.imageUrl ? `<p><img src="${result.imageUrl}" alt="${result.headline || "Generated campaign image"}" style="max-width:100%;height:auto;border-radius:12px;" /></p>` : "",
                   ]
                     .filter(Boolean)
                     .join("\n\n"),
