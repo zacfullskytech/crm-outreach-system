@@ -36,6 +36,10 @@ function readEvidence(value: unknown) {
   return value.filter((item): item is CandidateEvidence => Boolean(item) && typeof item === "object");
 }
 
+function csvFromJsonArray(value: unknown) {
+  return Array.isArray(value) ? value.map((entry) => String(entry)).join(", ") : "";
+}
+
 function renderEvidenceValue(value: unknown) {
   if (Array.isArray(value)) {
     return value.filter(Boolean).join(", ");
@@ -83,6 +87,8 @@ export function ProspectsPageClient({
   const [pendingJobClearId, setPendingJobClearId] = useState<string | null>(null);
   const [selectedProspectIds, setSelectedProspectIds] = useState<string[]>([]);
   const [pendingBulkProspects, setPendingBulkProspects] = useState(false);
+  const [editingAutomationId, setEditingAutomationId] = useState<string | null>(null);
+  const [pendingAutomationId, setPendingAutomationId] = useState<string | null>(null);
   const [isJobFormOpen, setIsJobFormOpen] = useState(false);
   const [isAutomationFormOpen, setIsAutomationFormOpen] = useState(false);
   const [isJobsOpen, setIsJobsOpen] = useState(false);
@@ -221,6 +227,69 @@ export function ProspectsPageClient({
     setJobMessage("Automation saved. It will run on schedule and have results waiting in the morning.");
     event.currentTarget.reset();
     setPendingJob(false);
+  }
+
+  async function updateAutomation(event: React.FormEvent<HTMLFormElement>, automation: Automation, patch?: Partial<{ isActive: boolean }>) {
+    event.preventDefault();
+    setPendingAutomationId(automation.id);
+    setJobMessage(null);
+
+    const form = new FormData(event.currentTarget);
+    const payload = {
+      name: String(form.get("name") || "").trim(),
+      industry: String(form.get("industry") || "").trim() || null,
+      geography: splitCsv(String(form.get("geography") || "")),
+      includeKeywords: splitCsv(String(form.get("includeKeywords") || "")),
+      excludeKeywords: splitCsv(String(form.get("excludeKeywords") || "")),
+      companyTypes: splitCsv(String(form.get("companyTypes") || "")),
+      notes: String(form.get("notes") || "").trim() || null,
+      realDataOnly: form.get("realDataOnly") === "on",
+      requireEmail: form.get("requireEmail") === "on",
+      preferBusinessEmail: form.get("preferBusinessEmail") === "on",
+      minimumScore: String(form.get("minimumScore") || "").trim() ? Number(form.get("minimumScore")) : null,
+      maxResultsPerRun: String(form.get("maxResultsPerRun") || "").trim() ? Number(form.get("maxResultsPerRun")) : 30,
+      scheduleType: String(form.get("scheduleType") || "weekdays"),
+      scheduleHourLocal: Number(form.get("scheduleHourLocal") || 5),
+      scheduleMinuteLocal: Number(form.get("scheduleMinuteLocal") || 30),
+      timezone: String(form.get("timezone") || "UTC").trim() || "UTC",
+      isActive: patch?.isActive ?? form.get("isActive") === "on",
+    };
+
+    const response = await fetch(`/api/prospecting/automations/${automation.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setJobMessage(body.error || "Failed to update automation.");
+      setPendingAutomationId(null);
+      return;
+    }
+
+    setAutomations((current) => current.map((entry) => entry.id === automation.id ? body.data as Automation : entry));
+    setEditingAutomationId(null);
+    setJobMessage("Automation updated.");
+    setPendingAutomationId(null);
+  }
+
+  async function deleteAutomation(automation: Automation) {
+    if (!window.confirm(`Delete automation ${automation.name}?`)) return;
+    setPendingAutomationId(automation.id);
+    setJobMessage(null);
+
+    const response = await fetch(`/api/prospecting/automations/${automation.id}`, { method: "DELETE" });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setJobMessage(body.error || "Failed to delete automation.");
+      setPendingAutomationId(null);
+      return;
+    }
+
+    setAutomations((current) => current.filter((entry) => entry.id !== automation.id));
+    setJobMessage("Automation deleted.");
+    setPendingAutomationId(null);
   }
 
   async function runAutomation(automation: Automation) {
@@ -578,26 +647,49 @@ export function ProspectsPageClient({
           ) : (
             <div className="prospecting-list">
               {automations.map((automation) => (
-                <div key={automation.id} className="prospecting-list-item">
+                <details key={automation.id} className="prospecting-list-item" open={editingAutomationId === automation.id}>
+                  <summary className="record-summary-topline" onClick={() => setEditingAutomationId((current) => current === automation.id ? null : automation.id)}>
+                    <strong>{automation.name}</strong>
+                    <span className={`badge ${automation.isActive ? "badge-green" : "badge-yellow"}`}>{automation.isActive ? "ACTIVE" : "PAUSED"}</span>
+                  </summary>
                   <div className="record-summary-main">
-                    <div className="record-summary-topline">
-                      <strong>{automation.name}</strong>
-                      <span className={`badge ${automation.isActive ? "badge-green" : "badge-yellow"}`}>{automation.isActive ? "ACTIVE" : "PAUSED"}</span>
-                    </div>
                     <p className="help">{automation.industry || "General search"} · {automation.scheduleType} at {String(automation.scheduleHourLocal).padStart(2, "0")}:{String(automation.scheduleMinuteLocal).padStart(2, "0")} {automation.timezone}</p>
                     <div className="record-meta-row">
                       <span>next run {automation.nextRunAt ? new Date(automation.nextRunAt).toLocaleString() : "not scheduled"}</span>
                       <span>last run {automation.lastRunAt ? new Date(automation.lastRunAt).toLocaleString() : "never"}</span>
+                      <span>{automation.maxResultsPerRun || 30} max results</span>
+                      <span>{automation.requireEmail ? "email required" : "email preferred"}</span>
                     </div>
                   </div>
-                  <div className="prospecting-metrics">
-                    <span>{automation.maxResultsPerRun || 30} max results</span>
-                    <span>{automation.requireEmail ? "email required" : "email preferred"}</span>
-                    <button className="button secondary" type="button" disabled={pendingRerunJobId === automation.id} onClick={() => void runAutomation(automation)}>
-                      {pendingRerunJobId === automation.id ? "Running..." : "Run Now"}
-                    </button>
-                  </div>
-                </div>
+                  <form className="inline-grid" onSubmit={(event) => void updateAutomation(event, automation)}>
+                    <div className="form-grid">
+                      <div className="field"><label htmlFor={`automation-name-${automation.id}`}>Automation name</label><input id={`automation-name-${automation.id}`} name="name" defaultValue={automation.name} required /></div>
+                      <div className="field"><label htmlFor={`automation-industry-${automation.id}`}>Industry</label><input id={`automation-industry-${automation.id}`} name="industry" defaultValue={automation.industry || ""} /></div>
+                      <div className="field prospecting-span-2"><label htmlFor={`automation-geography-${automation.id}`}>Geography</label><input id={`automation-geography-${automation.id}`} name="geography" defaultValue={csvFromJsonArray(automation.geographyJson)} required /></div>
+                      <div className="field"><label htmlFor={`automation-include-${automation.id}`}>Include keywords</label><input id={`automation-include-${automation.id}`} name="includeKeywords" defaultValue={csvFromJsonArray(automation.includeKeywordsJson)} /></div>
+                      <div className="field"><label htmlFor={`automation-exclude-${automation.id}`}>Exclude keywords</label><input id={`automation-exclude-${automation.id}`} name="excludeKeywords" defaultValue={csvFromJsonArray(automation.excludeKeywordsJson)} /></div>
+                      <div className="field prospecting-span-2"><label htmlFor={`automation-types-${automation.id}`}>Company types</label><input id={`automation-types-${automation.id}`} name="companyTypes" defaultValue={csvFromJsonArray(automation.companyTypesJson)} /></div>
+                      <div className="field"><label htmlFor={`automation-min-score-${automation.id}`}>Minimum score</label><input id={`automation-min-score-${automation.id}`} name="minimumScore" type="number" min="0" defaultValue={automation.minimumScore ?? ""} /></div>
+                      <div className="field"><label htmlFor={`automation-max-results-${automation.id}`}>Max results</label><input id={`automation-max-results-${automation.id}`} name="maxResultsPerRun" type="number" min="1" max="100" defaultValue={automation.maxResultsPerRun ?? 30} /></div>
+                      <div className="field"><label htmlFor={`automation-schedule-type-${automation.id}`}>Schedule</label><select id={`automation-schedule-type-${automation.id}`} name="scheduleType" defaultValue={automation.scheduleType}><option value="weekdays">Weekdays</option><option value="daily">Daily</option></select></div>
+                      <div className="field"><label htmlFor={`automation-hour-${automation.id}`}>Run hour</label><input id={`automation-hour-${automation.id}`} name="scheduleHourLocal" type="number" min="0" max="23" defaultValue={automation.scheduleHourLocal} /></div>
+                      <div className="field"><label htmlFor={`automation-minute-${automation.id}`}>Run minute</label><input id={`automation-minute-${automation.id}`} name="scheduleMinuteLocal" type="number" min="0" max="59" defaultValue={automation.scheduleMinuteLocal} /></div>
+                      <div className="field"><label htmlFor={`automation-timezone-${automation.id}`}>Timezone</label><input id={`automation-timezone-${automation.id}`} name="timezone" defaultValue={automation.timezone} /></div>
+                    </div>
+                    <div className="field"><label htmlFor={`automation-notes-${automation.id}`}>Notes</label><textarea id={`automation-notes-${automation.id}`} name="notes" defaultValue={automation.notes || ""} /></div>
+                    <div className="form-grid">
+                      <label className="checkbox-label"><input type="checkbox" name="realDataOnly" defaultChecked={automation.realDataOnly} /><span>Real data only</span></label>
+                      <label className="checkbox-label"><input type="checkbox" name="requireEmail" defaultChecked={automation.requireEmail} /><span>Require email</span></label>
+                      <label className="checkbox-label"><input type="checkbox" name="preferBusinessEmail" defaultChecked={automation.preferBusinessEmail} /><span>Prefer business email</span></label>
+                      <label className="checkbox-label"><input type="checkbox" name="isActive" defaultChecked={automation.isActive} /><span>Active</span></label>
+                    </div>
+                    <div className="actions">
+                      <button className="button primary" type="submit" disabled={pendingAutomationId === automation.id}>{pendingAutomationId === automation.id ? "Saving..." : "Save Changes"}</button>
+                      <button className="button secondary" type="button" disabled={pendingRerunJobId === automation.id} onClick={() => void runAutomation(automation)}>{pendingRerunJobId === automation.id ? "Running..." : "Run Now"}</button>
+                      <button className="button secondary" type="button" disabled={pendingAutomationId === automation.id} onClick={() => void deleteAutomation(automation)}>Delete</button>
+                    </div>
+                  </form>
+                </details>
               ))}
             </div>
           ) : null}
