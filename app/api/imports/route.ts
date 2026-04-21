@@ -29,6 +29,14 @@ export async function POST(request: NextRequest) {
       filename,
       rowCount: rows.length,
       status: "UPLOADED",
+      rows: {
+        createMany: {
+          data: rows.map((row) => ({
+            rawJson: row,
+            status: "PENDING",
+          })),
+        },
+      },
     },
   });
 

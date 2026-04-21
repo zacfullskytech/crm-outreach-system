@@ -9,23 +9,39 @@ function pick(row: Record<string, string>, mapping: Record<string, string>, key:
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const payload = await request.json();
-  const rows = Array.isArray(payload.rows) ? (payload.rows as Record<string, string>[]) : [];
+  await request.json().catch(() => ({}));
 
-  if (rows.length === 0) {
-    return NextResponse.json({ error: "rows are required for execution" }, { status: 400 });
-  }
+  const job = await prisma.importJob.findUnique({
+    where: { id },
+    include: { rows: true },
+  });
 
-  const job = await prisma.importJob.findUnique({ where: { id } });
   if (!job || !job.mappingJson || typeof job.mappingJson !== "object") {
     return NextResponse.json({ error: "Import job mapping not found" }, { status: 404 });
+  }
+
+  if (job.rows.length === 0) {
+    return NextResponse.json({ error: "No import rows found for this job" }, { status: 400 });
   }
 
   const mapping = job.mappingJson as Record<string, string>;
   let createdCompanies = 0;
   let createdContacts = 0;
+  let processedRows = 0;
 
-  for (const row of rows) {
+  for (const importRow of job.rows) {
+    const row = importRow.rawJson && typeof importRow.rawJson === "object"
+      ? importRow.rawJson as Record<string, string>
+      : null;
+
+    if (!row) {
+      await prisma.importRow.update({
+        where: { id: importRow.id },
+        data: { status: "FAILED", errorMessage: "Invalid row payload" },
+      });
+      continue;
+    }
+
     const companyName = pick(row, mapping, "company_name");
     const email = normalizeEmail(pick(row, mapping, "email"));
     const website = pick(row, mapping, "website");
@@ -67,6 +83,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (email) {
       const existingContact = await prisma.contact.findUnique({ where: { email } });
       if (existingContact) {
+        await prisma.importRow.update({
+          where: { id: importRow.id },
+          data: { status: "SKIPPED", errorMessage: "Contact already exists" },
+        });
+        processedRows += 1;
         continue;
       }
     }
@@ -84,13 +105,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         status: email ? "ACTIVE" : "DO_NOT_CONTACT",
       },
     });
-    createdContacts += 1;
 
-    await prisma.importRow.create({
+    createdContacts += 1;
+    processedRows += 1;
+
+    await prisma.importRow.update({
+      where: { id: importRow.id },
       data: {
-        importJobId: id,
-        rawJson: row,
         status: "IMPORTED",
+        errorMessage: null,
       },
     });
   }
@@ -104,7 +127,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     data: {
       createdCompanies,
       createdContacts,
-      processedRows: rows.length,
+      processedRows,
     },
   });
 }
