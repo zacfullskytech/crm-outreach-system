@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       data: {
         ...parsed,
         state: parsed.state?.toUpperCase() || null,
+        country: parsed.country || "US",
         score,
         matchStatus: parsed.matchStatus || match.status,
         matchReason: parsed.matchReason || match.reason,

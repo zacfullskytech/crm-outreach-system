@@ -34,6 +34,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         ? { status: parsed.matchStatus, reason: parsed.matchReason ?? updated.matchReason ?? null }
         : await findProspectMatch(updated);
       const score = scoreProspectCandidate(updated);
+      const extraction = updated.extractionJson && typeof updated.extractionJson === "object"
+        ? updated.extractionJson as Record<string, unknown>
+        : {};
+
       const prospect = await prisma.prospect.create({
         data: {
           companyName: updated.companyName,
@@ -43,9 +47,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           website: updated.website,
           industry: updated.industry,
           businessType: updated.businessType,
+          addressLine1: typeof extraction.addressLine1 === "string" ? extraction.addressLine1 : null,
           city: updated.city,
           state: updated.state,
           postalCode: updated.postalCode,
+          country: typeof extraction.country === "string" ? extraction.country : "US",
           source: updated.source,
           sourceUrl: updated.sourceUrl,
           notes: updated.notes,

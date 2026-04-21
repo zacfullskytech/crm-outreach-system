@@ -45,8 +45,11 @@ type DiscoveryCandidate = {
   website?: string | null;
   industry?: string | null;
   businessType?: string | null;
+  addressLine1?: string | null;
   city?: string | null;
   state?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
   source?: string | null;
   sourceUrl?: string | null;
   evidenceJson?: Prisma.InputJsonValue;
@@ -78,8 +81,11 @@ type ProspectLike = {
   website?: string | null;
   industry?: string | null;
   businessType?: string | null;
+  addressLine1?: string | null;
   city?: string | null;
   state?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
   contactName?: string | null;
 };
 
@@ -256,6 +262,16 @@ function extractPhones(text: string, websiteDomain?: string | null) {
   }).sort((a, b) => b.score - a.score);
 
   return scored.map((entry) => entry.phone).slice(0, 2);
+}
+
+function extractStreetAddress(text: string) {
+  const match = text.match(/\b\d{1,6}\s+[A-Za-z0-9.'#-]+(?:\s+[A-Za-z0-9.'#-]+){0,5}\s(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Circle|Cir|Way|Parkway|Pkwy|Place|Pl|Trail|Trl|Highway|Hwy)\b(?:,?\s+(?:Suite|Ste|Unit|#)\s*[A-Za-z0-9-]+)?/i);
+  return match?.[0]?.replace(/\s+/g, " ").trim() || null;
+}
+
+function extractPostalCode(text: string) {
+  const match = text.match(/\b\d{5}(?:-\d{4})?\b/);
+  return match?.[0] || null;
 }
 
 function detectBusinessType(text: string, title?: string | null) {
@@ -568,7 +584,9 @@ export async function discoverProspectCandidates(params: {
       const website = websiteDomain ? `https://${websiteDomain}` : url;
       const companyName = extractCompanyName(rawTitle, url);
       const businessType = detectBusinessType(`${supporting.text.slice(0, 1600)} ${bodyText.slice(0, 800)}`, rawTitle);
-      const confidenceSignals = [websiteDomain, emails[0], phones[0], contactName, businessType].filter(Boolean).length;
+      const addressLine1 = extractStreetAddress(combinedText);
+      const postalCode = extractPostalCode(combinedText);
+      const confidenceSignals = [websiteDomain, emails[0], phones[0], contactName, businessType, addressLine1].filter(Boolean).length;
 
       if (companyName === "Unknown prospect") {
         continue;
@@ -582,8 +600,11 @@ export async function discoverProspectCandidates(params: {
         website,
         industry: params.industry || params.includeKeywords?.[0] || null,
         businessType,
+        addressLine1,
         city: matchedLocation.city,
         state: matchedLocation.state,
+        postalCode,
+        country: "US",
         source: "Web discovery",
         sourceUrl: url,
         evidenceJson: [
@@ -647,8 +668,11 @@ export function buildSeedCandidates(params: {
       website: `https://${slug}.example.com`,
       industry: params.industry || keyword,
       businessType: companyType,
+      addressLine1: null,
       city: location.split(",")[0]?.trim() || location,
       state: location.split(",")[1]?.trim()?.slice(0, 2).toUpperCase() || null,
+      postalCode: null,
+      country: "US",
       source: "AI prospecting seed",
       sourceUrl: `https://search.example.com/${slug}`,
       evidenceJson: [{ kind: "seed", note: `Seeded candidate for ${keyword} in ${location}.` }],

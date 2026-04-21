@@ -20,9 +20,12 @@ export function ProspectForm({ onSaved }: { onSaved?: (prospect: Record<string, 
       website: String(form.get("website") || "") || null,
       industry: String(form.get("industry") || "") || null,
       businessType: String(form.get("businessType") || "") || null,
+      addressLine1: String(form.get("addressLine1") || "") || null,
+      addressLine2: String(form.get("addressLine2") || "") || null,
       city: String(form.get("city") || "") || null,
       state: String(form.get("state") || "") || null,
       postalCode: String(form.get("postalCode") || "") || null,
+      country: String(form.get("country") || "") || null,
       source: String(form.get("source") || "") || null,
       sourceUrl: String(form.get("sourceUrl") || "") || null,
       notes: String(form.get("notes") || "") || null,
@@ -81,6 +84,14 @@ export function ProspectForm({ onSaved }: { onSaved?: (prospect: Record<string, 
           <input id="prospect-business-type" name="businessType" placeholder="Independent Clinic" />
         </div>
         <div className="field">
+          <label htmlFor="prospect-address-line-1">Address line 1</label>
+          <input id="prospect-address-line-1" name="addressLine1" placeholder="123 Main St" />
+        </div>
+        <div className="field">
+          <label htmlFor="prospect-address-line-2">Address line 2</label>
+          <input id="prospect-address-line-2" name="addressLine2" placeholder="Suite 200" />
+        </div>
+        <div className="field">
           <label htmlFor="prospect-city">City</label>
           <input id="prospect-city" name="city" placeholder="Fort Worth" />
         </div>
@@ -91,6 +102,10 @@ export function ProspectForm({ onSaved }: { onSaved?: (prospect: Record<string, 
         <div className="field">
           <label htmlFor="prospect-postal-code">Postal code</label>
           <input id="prospect-postal-code" name="postalCode" placeholder="76102" />
+        </div>
+        <div className="field">
+          <label htmlFor="prospect-country">Country</label>
+          <input id="prospect-country" name="country" placeholder="US" defaultValue="US" />
         </div>
         <div className="field">
           <label htmlFor="prospect-source">Source</label>

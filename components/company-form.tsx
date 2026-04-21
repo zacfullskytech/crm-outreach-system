@@ -75,9 +75,12 @@ export function CompanyForm({
       website: String(form.get("website") || "") || null,
       phone: String(form.get("phone") || "") || null,
       email: String(form.get("email") || "") || null,
+      addressLine1: String(form.get("addressLine1") || "") || null,
+      addressLine2: String(form.get("addressLine2") || "") || null,
       city: String(form.get("city") || "") || null,
       state: String(form.get("state") || "") || null,
       postalCode: String(form.get("postalCode") || "") || null,
+      country: String(form.get("country") || "") || null,
       source: String(form.get("source") || "") || null,
       notes: String(form.get("notes") || "") || null,
       status: String(form.get("status") || "LEAD"),
@@ -176,6 +179,14 @@ export function CompanyForm({
           <input id={`company-email-${company?.id || "new"}`} name="email" type="email" placeholder="info@clinic.example" defaultValue={company?.email || ""} />
         </div>
         <div className="field">
+          <label htmlFor={`company-address-line-1-${company?.id || "new"}`}>Address line 1</label>
+          <input id={`company-address-line-1-${company?.id || "new"}`} name="addressLine1" placeholder="123 Main St" defaultValue={company?.addressLine1 || ""} />
+        </div>
+        <div className="field">
+          <label htmlFor={`company-address-line-2-${company?.id || "new"}`}>Address line 2</label>
+          <input id={`company-address-line-2-${company?.id || "new"}`} name="addressLine2" placeholder="Suite 200" defaultValue={company?.addressLine2 || ""} />
+        </div>
+        <div className="field">
           <label htmlFor={`company-city-${company?.id || "new"}`}>City</label>
           <input id={`company-city-${company?.id || "new"}`} name="city" placeholder="Dallas" defaultValue={company?.city || ""} />
         </div>
@@ -186,6 +197,10 @@ export function CompanyForm({
         <div className="field">
           <label htmlFor={`company-postal-code-${company?.id || "new"}`}>Postal code</label>
           <input id={`company-postal-code-${company?.id || "new"}`} name="postalCode" placeholder="75201" defaultValue={company?.postalCode || ""} />
+        </div>
+        <div className="field">
+          <label htmlFor={`company-country-${company?.id || "new"}`}>Country</label>
+          <input id={`company-country-${company?.id || "new"}`} name="country" placeholder="US" defaultValue={company?.country || "US"} />
         </div>
         <div className="field">
           <label htmlFor={`company-source-${company?.id || "new"}`}>Source</label>
