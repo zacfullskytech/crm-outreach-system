@@ -1189,6 +1189,36 @@ main {
   background: linear-gradient(180deg, rgba(222, 235, 255, 0.36) 0%, rgba(255, 255, 255, 0.92) 100%);
 }
 
+.checkbox-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.checkbox-chip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--blue-deep);
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.checkbox-chip input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  flex: 0 0 auto;
+}
+
+.checkbox-chip span {
+  display: block;
+}
+
 /* Prospecting */
 .kicker {
   display: inline-flex;
