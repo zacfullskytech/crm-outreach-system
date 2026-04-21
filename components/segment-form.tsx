@@ -288,7 +288,9 @@ export function SegmentForm({
         </div>
         <div className="inline-grid">
           {rules.map((rule, index) => {
-            const isServiceField = rule.field === "services" || rule.field === "company.services";
+            const selectedField = visibleFieldOptions.find((option) => option.value === rule.field);
+            const isServiceField = selectedField?.valueType === "service";
+            const isSelectableValueField = selectedField?.valueType === "enum" || selectedField?.valueType === "boolean";
             return (
               <div key={`${rule.field}-${index}`} className="form-grid segment-rule-row">
                 <div className="field">
@@ -321,6 +323,20 @@ export function SegmentForm({
                       {serviceOptions.map((service) => (
                         <option key={service} value={service}>
                           {service}
+                        </option>
+                      ))}
+                    </select>
+                  ) : isSelectableValueField ? (
+                    <select
+                      id={`value-${index}`}
+                      value={rule.value}
+                      onChange={(event) => updateRule(index, { value: event.target.value })}
+                      disabled={rule.comparator === "is_empty" || rule.comparator === "is_not_empty"}
+                    >
+                      <option value="">Select value</option>
+                      {(selectedField?.valueOptions || []).map((option) => (
+                        <option key={option} value={option}>
+                          {option}
                         </option>
                       ))}
                     </select>

@@ -2,6 +2,8 @@ type SegmentFieldOption = {
   value: string;
   label: string;
   entityType: "contact" | "company" | "prospect";
+  valueType?: "text" | "service" | "enum" | "boolean";
+  valueOptions?: string[];
 };
 
 const baseFieldOptions: SegmentFieldOption[] = [
@@ -9,23 +11,24 @@ const baseFieldOptions: SegmentFieldOption[] = [
   { value: "company.state", label: "Company state", entityType: "contact" },
   { value: "company.city", label: "Company city", entityType: "contact" },
   { value: "company.businessType", label: "Company business type", entityType: "contact" },
-  { value: "company.services", label: "Company services", entityType: "contact" },
-  { value: "status", label: "Contact status", entityType: "contact" },
+  { value: "company.services", label: "Company services", entityType: "contact", valueType: "service" },
+  { value: "status", label: "Contact status", entityType: "contact", valueType: "enum", valueOptions: ["ACTIVE", "UNSUBSCRIBED", "BOUNCED", "INVALID", "DO_NOT_CONTACT"] },
   { value: "email", label: "Contact email", entityType: "contact" },
   { value: "fullName", label: "Contact full name", entityType: "contact" },
   { value: "industry", label: "Company industry", entityType: "company" },
   { value: "state", label: "Company state", entityType: "company" },
   { value: "city", label: "Company city", entityType: "company" },
   { value: "businessType", label: "Company business type", entityType: "company" },
-  { value: "services", label: "Company services", entityType: "company" },
-  { value: "status", label: "Company status", entityType: "company" },
+  { value: "services", label: "Company services", entityType: "company", valueType: "service" },
+  { value: "status", label: "Company status", entityType: "company", valueType: "enum", valueOptions: ["CLIENT", "LEAD", "PROSPECT", "INACTIVE"] },
   { value: "name", label: "Company name", entityType: "company" },
   { value: "email", label: "Company email", entityType: "company" },
+  { value: "customFields.also_send_company_contacts", label: "Also send to linked contacts", entityType: "company", valueType: "boolean", valueOptions: ["true", "false"] },
   { value: "industry", label: "Prospect industry", entityType: "prospect" },
   { value: "state", label: "Prospect state", entityType: "prospect" },
   { value: "city", label: "Prospect city", entityType: "prospect" },
   { value: "businessType", label: "Prospect business type", entityType: "prospect" },
-  { value: "qualificationStatus", label: "Prospect qualification status", entityType: "prospect" },
+  { value: "qualificationStatus", label: "Prospect qualification status", entityType: "prospect", valueType: "enum", valueOptions: ["NEW", "REVIEWING", "QUALIFIED", "REJECTED", "CONVERTED"] },
   { value: "companyName", label: "Prospect company name", entityType: "prospect" },
 ] as const;
 

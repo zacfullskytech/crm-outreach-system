@@ -9,6 +9,8 @@ const BATCH_DELAY_MS = 1500;
 
 type SnapshotData = Record<string, string | null | undefined>;
 
+type RecipientSeed = Prisma.CampaignRecipientCreateManyInput;
+
 function rewriteMarketingAssetUrls(html: string) {
   return html.replace(/https:\/\/[^\s"')]+/g, (value) => {
     const blobName = getBlobNameFromUrl(value);
@@ -18,6 +20,23 @@ function rewriteMarketingAssetUrls(html: string) {
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function readSegmentRules(value: unknown): Array<{ field?: string; comparator?: string; value?: unknown }> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return [];
+  }
+
+  const rules = (value as { rules?: unknown }).rules;
+  return Array.isArray(rules) ? rules.filter((rule): rule is { field?: string; comparator?: string; value?: unknown } => Boolean(rule) && typeof rule === "object") : [];
+}
+
+function segmentAlsoSendsCompanyContacts(filterJson: unknown) {
+  return readSegmentRules(filterJson).some((rule) =>
+    rule.field === "customFields.also_send_company_contacts" &&
+    rule.comparator === "equals" &&
+    String(rule.value).toLowerCase() === "true",
+  );
 }
 
 export async function prepareCampaignRecipients(campaignId: string) {
@@ -37,10 +56,6 @@ export async function prepareCampaignRecipients(campaignId: string) {
   const segment = await prisma.segment.findUnique({ where: { id: campaign.segmentId } });
   if (!segment) {
     throw new Error("Linked segment not found");
-  }
-
-  if (segment.entityType !== "contact") {
-    throw new Error(`Campaign sending only supports contact segments right now. Linked segment type: ${segment.entityType}.`);
   }
 
   const existingRecipients = await prisma.campaignRecipient.findMany({ where: { campaignId } });
@@ -74,44 +89,111 @@ export async function prepareCampaignRecipients(campaignId: string) {
   }
 
   const where = buildWhereFromSegment(segment.filterJson as never);
-
-  const contacts = await prisma.contact.findMany({
-    where: {
-      AND: [
-        where as never,
-        { email: { not: null } },
-        { email: { not: "" } },
-        { status: { notIn: ["UNSUBSCRIBED", "BOUNCED", "INVALID", "DO_NOT_CONTACT"] } },
-      ],
-    },
-    include: { company: true },
-  });
-
   const suppressedEmails = new Set(
     (await prisma.suppression.findMany({ select: { email: true } })).map((s) => s.email),
   );
 
-  const eligible = contacts.filter((contact) => contact.email && !suppressedEmails.has(contact.email));
+  let recipients: RecipientSeed[] = [];
 
-  if (eligible.length === 0) {
-    throw new Error("No eligible recipients after filtering and suppression checks");
+  if (segment.entityType === "company") {
+    const includeContacts = segmentAlsoSendsCompanyContacts(segment.filterJson);
+    const companies = await prisma.company.findMany({
+      where: {
+        AND: [
+          where as never,
+          { email: { not: null } },
+          { email: { not: "" } },
+        ],
+      },
+      include: { contacts: true },
+    });
+
+    const companyRecipients = companies
+      .filter((company) => company.email && !suppressedEmails.has(company.email))
+      .map((company) => ({
+        campaignId,
+        contactId: null,
+        email: company.email!,
+        snapshotDataJson: {
+          contact_name: null,
+          first_name: null,
+          last_name: null,
+          company_name: company.name,
+          city: company.city || null,
+          state: company.state || null,
+          industry: company.industry || null,
+        },
+        status: "PENDING",
+      } satisfies RecipientSeed));
+
+    const contactRecipients = includeContacts
+      ? companies.flatMap((company) =>
+          company.contacts
+            .filter((contact) => contact.email && !suppressedEmails.has(contact.email) && !["UNSUBSCRIBED", "BOUNCED", "INVALID", "DO_NOT_CONTACT"].includes(contact.status))
+            .map((contact) => ({
+              campaignId,
+              contactId: contact.id,
+              email: contact.email!,
+              snapshotDataJson: {
+                contact_name: contact.fullName || [contact.firstName, contact.lastName].filter(Boolean).join(" "),
+                first_name: contact.firstName,
+                last_name: contact.lastName,
+                company_name: company.name,
+                city: company.city || null,
+                state: company.state || null,
+                industry: company.industry || null,
+              },
+              status: "PENDING",
+            } satisfies RecipientSeed)),
+        )
+      : [];
+
+    const deduped = new Map<string, RecipientSeed>();
+    for (const recipient of [...companyRecipients, ...contactRecipients]) {
+      const key = `${recipient.contactId || "company"}:${recipient.email.toLowerCase()}`;
+      if (!deduped.has(key)) {
+        deduped.set(key, recipient);
+      }
+    }
+
+    recipients = Array.from(deduped.values());
+  } else if (segment.entityType === "contact") {
+    const contacts = await prisma.contact.findMany({
+      where: {
+        AND: [
+          where as never,
+          { email: { not: null } },
+          { email: { not: "" } },
+          { status: { notIn: ["UNSUBSCRIBED", "BOUNCED", "INVALID", "DO_NOT_CONTACT"] } },
+        ],
+      },
+      include: { company: true },
+    });
+
+    recipients = contacts
+      .filter((contact) => contact.email && !suppressedEmails.has(contact.email))
+      .map((contact) => ({
+        campaignId,
+        contactId: contact.id,
+        email: contact.email!,
+        snapshotDataJson: {
+          contact_name: contact.fullName || [contact.firstName, contact.lastName].filter(Boolean).join(" "),
+          first_name: contact.firstName,
+          last_name: contact.lastName,
+          company_name: contact.company?.name || null,
+          city: contact.company?.city || null,
+          state: contact.company?.state || null,
+          industry: contact.company?.industry || null,
+        },
+        status: "PENDING",
+      }));
+  } else {
+    throw new Error(`Campaign sending does not support segment type ${segment.entityType}.`);
   }
 
-  const recipients: Prisma.CampaignRecipientCreateManyInput[] = eligible.map((contact) => ({
-    campaignId,
-    contactId: contact.id,
-    email: contact.email!,
-    snapshotDataJson: {
-      contact_name: contact.fullName || [contact.firstName, contact.lastName].filter(Boolean).join(" "),
-      first_name: contact.firstName,
-      last_name: contact.lastName,
-      company_name: contact.company?.name || null,
-      city: contact.company?.city || null,
-      state: contact.company?.state || null,
-      industry: contact.company?.industry || null,
-    },
-    status: "PENDING",
-  }));
+  if (recipients.length === 0) {
+    throw new Error("No eligible recipients after filtering and suppression checks");
+  }
 
   await prisma.campaignRecipient.createMany({ data: recipients });
   await prisma.campaign.update({
