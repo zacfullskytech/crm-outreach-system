@@ -57,6 +57,7 @@ export default async function CampaignsPage() {
         fromName: settings.defaultFromName,
         fromEmail: settings.defaultFromEmail,
         replyTo: settings.defaultReplyTo,
+        senderProfiles: settings.senderProfiles,
       }}
       initialMarketingContent={campaignContentOptions}
       isAdmin={appUser.role === "admin"}

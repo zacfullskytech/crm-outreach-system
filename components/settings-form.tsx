@@ -1,11 +1,12 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import type { GeneralSettings } from "@/lib/settings";
+import type { GeneralSettings, SenderProfile } from "@/lib/settings";
 
 export function SettingsForm({ initial }: { initial: GeneralSettings }) {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [senderProfiles, setSenderProfiles] = useState<SenderProfile[]>(initial.senderProfiles);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -23,6 +24,7 @@ export function SettingsForm({ initial }: { initial: GeneralSettings }) {
         .split(",")
         .map((value) => value.trim())
         .filter(Boolean),
+      senderProfiles,
     };
 
     const response = await fetch("/api/settings", {
@@ -86,6 +88,47 @@ export function SettingsForm({ initial }: { initial: GeneralSettings }) {
         <div className="field">
           <label htmlFor="settings-target-states">Target states</label>
           <input id="settings-target-states" name="targetStates" defaultValue={initial.targetStates.join(", ")} placeholder="TX, OK, NM" />
+        </div>
+      </div>
+      <div className="card subtle-card">
+        <div className="record-summary-main">
+          <div className="record-summary-topline">
+            <h3>Sender Profiles</h3>
+            <button
+              className="button secondary"
+              type="button"
+              onClick={() => setSenderProfiles((current) => [...current, { id: `sender-${Date.now()}`, label: "", fromName: "", fromEmail: "", replyTo: "" }])}
+            >
+              Add Sender
+            </button>
+          </div>
+          <div className="inline-grid">
+            {senderProfiles.map((profile) => (
+              <div key={profile.id} className="card subtle-card">
+                <div className="form-grid">
+                  <div className="field">
+                    <label>Label</label>
+                    <input value={profile.label} onChange={(event) => setSenderProfiles((current) => current.map((entry) => entry.id === profile.id ? { ...entry, label: event.target.value } : entry))} placeholder="Primary domain" />
+                  </div>
+                  <div className="field">
+                    <label>From name</label>
+                    <input value={profile.fromName} onChange={(event) => setSenderProfiles((current) => current.map((entry) => entry.id === profile.id ? { ...entry, fromName: event.target.value } : entry))} placeholder="Field Notes CRM" />
+                  </div>
+                  <div className="field">
+                    <label>From email</label>
+                    <input type="email" value={profile.fromEmail} onChange={(event) => setSenderProfiles((current) => current.map((entry) => entry.id === profile.id ? { ...entry, fromEmail: event.target.value } : entry))} placeholder="campaigns@example.com" />
+                  </div>
+                  <div className="field">
+                    <label>Reply-to</label>
+                    <input type="email" value={profile.replyTo} onChange={(event) => setSenderProfiles((current) => current.map((entry) => entry.id === profile.id ? { ...entry, replyTo: event.target.value } : entry))} placeholder="replies@example.com" />
+                  </div>
+                </div>
+                <div className="actions">
+                  <button className="button secondary" type="button" onClick={() => setSenderProfiles((current) => current.filter((entry) => entry.id !== profile.id))}>Remove</button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
       <div className="actions">

@@ -61,7 +61,7 @@ export function CampaignsPageClient({
 }: {
   initialCampaigns: CampaignWithRecipients[];
   initialSegments: SegmentOption[];
-  initialDefaults: { fromName: string; fromEmail: string; replyTo: string };
+  initialDefaults: { fromName: string; fromEmail: string; replyTo: string; senderProfiles: Array<{ id: string; label: string; fromName: string; fromEmail: string; replyTo: string }> };
   initialMarketingContent: MarketingContentOption[];
   isAdmin: boolean;
 }) {

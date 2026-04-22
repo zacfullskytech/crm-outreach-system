@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { MarketingAiStudio } from "@/components/marketing-ai-studio";
 import { plainTextToEmailHtml } from "@/lib/email";
+import type { SenderProfile } from "@/lib/settings";
 
 type SegmentOption = {
   id: string;
@@ -50,7 +51,7 @@ export function CampaignForm({
   showAiAssist = false,
 }: {
   segments: SegmentOption[];
-  defaults: { fromName: string; fromEmail: string; replyTo: string };
+  defaults: { fromName: string; fromEmail: string; replyTo: string; senderProfiles: SenderProfile[] };
   marketingContent: MarketingContentOption[];
   draftSeed?: CampaignDraftSeed | null;
   onDraftApplied?: () => void;
@@ -64,6 +65,7 @@ export function CampaignForm({
   const [preview, setPreview] = useState<PreviewState>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [selectedSenderProfileId, setSelectedSenderProfileId] = useState(defaults.senderProfiles[0]?.id || "");
 
   const selectedSegment = sendableSegments.find((segment) => segment.id === selectedSegmentId) || null;
   const selectedMarketingContent = marketingContent.find((item) => item.id === selectedMarketingContentId) || null;
@@ -89,6 +91,23 @@ export function CampaignForm({
 
     setPreview({ count: body.count, eligibleCount: body.eligibleCount ?? body.count, sample: body.sample });
     setPending(false);
+  }
+
+  function applySenderProfile(profileId: string) {
+    setSelectedSenderProfileId(profileId);
+
+    const profile = defaults.senderProfiles.find((entry) => entry.id === profileId);
+    if (!profile || !formRef.current) {
+      return;
+    }
+
+    const fromNameInput = formRef.current.elements.namedItem("fromName") as HTMLInputElement | null;
+    const fromEmailInput = formRef.current.elements.namedItem("fromEmail") as HTMLInputElement | null;
+    const replyToInput = formRef.current.elements.namedItem("replyTo") as HTMLInputElement | null;
+
+    if (fromNameInput) fromNameInput.value = profile.fromName;
+    if (fromEmailInput) fromEmailInput.value = profile.fromEmail;
+    if (replyToInput) replyToInput.value = profile.replyTo;
   }
 
   function applyMarketingContent(contentId: string) {
@@ -322,6 +341,15 @@ export function CampaignForm({
           <select id="campaign-status" name="status" defaultValue="DRAFT">
             <option value="DRAFT">DRAFT</option>
             <option value="SCHEDULED">SCHEDULED</option>
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="campaign-sender-profile">Sender profile</label>
+          <select id="campaign-sender-profile" value={selectedSenderProfileId} onChange={(event) => applySenderProfile(event.target.value)}>
+            <option value="">Manual sender</option>
+            {defaults.senderProfiles.map((profile) => (
+              <option key={profile.id} value={profile.id}>{profile.label} · {profile.fromEmail}</option>
+            ))}
           </select>
         </div>
         <div className="field">
