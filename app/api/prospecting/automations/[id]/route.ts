@@ -63,10 +63,22 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
 
   try {
     const { id } = await params;
-    await prisma.prospectAutomation.delete({ where: { id } });
+    const existing = await prisma.prospectAutomation.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) {
+      return NextResponse.json({ error: "Automation not found." }, { status: 404 });
+    }
+
+    await prisma.$transaction([
+      prisma.prospectSearchJob.updateMany({
+        where: { automationId: id },
+        data: { automationId: null },
+      }),
+      prisma.prospectAutomation.delete({ where: { id } }),
+    ]);
+
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "Failed to delete automation." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to delete automation." }, { status: 500 });
   }
 }
 
