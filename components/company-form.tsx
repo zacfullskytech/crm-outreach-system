@@ -19,6 +19,7 @@ const serviceOptions = [
   "Xray Services",
   "Dark Web Monitoring",
   "Pay Roll and HR Services",
+  "Full Rein",
 ] as const;
 
 function readServices(value: unknown) {
