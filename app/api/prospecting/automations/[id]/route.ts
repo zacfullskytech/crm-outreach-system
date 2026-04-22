@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { prisma } from "@/lib/db";
@@ -78,6 +79,16 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2025") {
+        return NextResponse.json({ error: "Automation not found." }, { status: 404 });
+      }
+
+      if (error.code === "P2003") {
+        return NextResponse.json({ error: "Automation could not be deleted because related records still reference it." }, { status: 409 });
+      }
+    }
+
     return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to delete automation." }, { status: 500 });
   }
 }
