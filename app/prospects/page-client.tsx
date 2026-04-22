@@ -275,7 +275,10 @@ export function ProspectsPageClient({
   }
 
   async function deleteAutomation(automation: Automation) {
-    if (!window.confirm(`Delete automation ${automation.name}?`)) return;
+    const confirmed = window.confirm(
+      `Delete automation ${automation.name}? This removes the future schedule but keeps any past prospecting runs and candidates already created.`
+    );
+    if (!confirmed) return;
     setPendingAutomationId(automation.id);
     setJobMessage(null);
 
@@ -288,7 +291,7 @@ export function ProspectsPageClient({
     }
 
     setAutomations((current) => current.filter((entry) => entry.id !== automation.id));
-    setJobMessage("Automation deleted.");
+    setJobMessage("Automation deleted. Past prospecting runs were kept for reference.");
     setPendingAutomationId(null);
   }
 
