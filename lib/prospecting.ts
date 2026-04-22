@@ -7,7 +7,24 @@ import { searchWeb } from "@/lib/search-provider";
 const SEARCH_USER_AGENT = "Mozilla/5.0 (compatible; FullSkyProspectingBot/1.0)";
 const FALLBACK_BUSINESS_TERMS = ["company", "business", "services", "office", "clinic"];
 const CONTACT_SEARCH_TERMS = ["email", "contact", "owner", "team", "staff", "doctor", "veterinarian"];
-const SUPPORTING_PAGE_PATHS = ["/contact", "/contact-us", "/about", "/team", "/our-team", "/staff", "/meet-the-team", "/veterinarians", "/doctors"];
+const SUPPORTING_PAGE_PATHS = [
+  "/contact",
+  "/contact-us",
+  "/about",
+  "/team",
+  "/our-team",
+  "/staff",
+  "/meet-the-team",
+  "/veterinarians",
+  "/doctors",
+  "/providers",
+  "/our-doctors",
+  "/our-veterinarians",
+  "/leadership",
+  "/location",
+  "/locations",
+];
+const STAFF_PAGE_HINTS = ["team", "staff", "doctor", "doctors", "provider", "providers", "veterinarian", "veterinarians", "leadership", "about", "contact"];
 const ROLE_EMAIL_PREFIXES = ["info", "contact", "hello", "office", "appointments", "frontdesk", "support", "manager", "owner", "doctor", "dr"];
 const LOCATION_SPLIT_REGEX = /\s*,\s*/;
 const AGGREGATOR_DOMAINS = [
@@ -194,11 +211,115 @@ export function scoreProspectCandidate(input: ProspectLike) {
 }
 
 function extractEmails(text: string) {
-  return Array.from(new Set(text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [])).slice(0, 8);
+  return Array.from(new Set(text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [])).slice(0, 12);
 }
 
-function scoreEmails(text: string, websiteDomain?: string | null, contactName?: string | null) {
-  const emails = extractEmails(text);
+function extractMailtoEmails(html: string) {
+  const matches = Array.from(html.matchAll(/mailto:([^"'?#\s>]+)/gi));
+  return Array.from(new Set(matches
+    .map((match) => decodeURIComponent(match[1] || "").trim())
+    .filter((value) => /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value))));
+}
+
+function extractJsonLdRecords(html: string) {
+  const blocks = Array.from(html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi));
+  const records: Array<Record<string, unknown>> = [];
+
+  function collect(value: unknown): void {
+    if (!value) return;
+    if (Array.isArray(value)) {
+      value.forEach(collect);
+      return;
+    }
+    if (typeof value === "object") {
+      const record = value as Record<string, unknown>;
+      records.push(record);
+      if (Array.isArray(record["@graph"])) {
+        collect(record["@graph"]);
+      }
+    }
+  }
+
+  for (const block of blocks) {
+    const raw = (block[1] || "").trim();
+    if (!raw) continue;
+    try {
+      collect(JSON.parse(raw));
+    } catch {
+      continue;
+    }
+  }
+
+  return records;
+}
+
+function extractJsonLdEmails(html: string) {
+  return Array.from(new Set(extractJsonLdRecords(html)
+    .flatMap((record) => {
+      const email = record.email;
+      if (typeof email === "string") return [email.replace(/^mailto:/i, "").trim()];
+      if (Array.isArray(email)) return email.map((entry) => String(entry).replace(/^mailto:/i, "").trim());
+      return [];
+    })
+    .filter((value) => /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value))));
+}
+
+function extractJsonLdPhones(html: string) {
+  return Array.from(new Set(extractJsonLdRecords(html)
+    .flatMap((record) => {
+      const telephone = record.telephone;
+      if (typeof telephone === "string") return [telephone.trim()];
+      if (Array.isArray(telephone)) return telephone.map((entry) => String(entry).trim());
+      return [];
+    })
+    .filter(Boolean)
+    .map(normalizePhone)));
+}
+
+function extractInternalStaffLinks(html: string, websiteDomain?: string | null) {
+  if (!websiteDomain) {
+    return [] as string[];
+  }
+
+  const matches = Array.from(html.matchAll(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi));
+  const links = new Set<string>();
+
+  for (const match of matches) {
+    const href = (match[1] || "").trim();
+    const anchorText = (match[2] || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+    if (!href || href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("#")) {
+      continue;
+    }
+
+    let resolved: URL;
+    try {
+      resolved = href.startsWith("http") ? new URL(href) : new URL(href, `https://${websiteDomain}`);
+    } catch {
+      continue;
+    }
+
+    const resolvedDomain = normalizeWebsite(resolved.toString());
+    if (resolvedDomain !== websiteDomain) {
+      continue;
+    }
+
+    const path = resolved.pathname.toLowerCase();
+    const searchable = `${anchorText} ${path}`;
+    if (!STAFF_PAGE_HINTS.some((hint) => searchable.includes(hint))) {
+      continue;
+    }
+
+    links.add(`${resolved.origin}${resolved.pathname}`);
+    if (links.size >= 5) {
+      break;
+    }
+  }
+
+  return Array.from(links);
+}
+
+function scoreEmails(text: string, websiteDomain?: string | null, contactName?: string | null, extraEmails: string[] = []) {
+  const emails = Array.from(new Set([...extractEmails(text), ...extraEmails]));
   const contactTokens = (contactName || "")
     .toLowerCase()
     .split(/\s+/)
@@ -469,7 +590,7 @@ function buildSearchQueries(params: {
   return Array.from(queries).slice(0, 24);
 }
 
-async function fetchPageText(url: string) {
+async function fetchPage(url: string) {
   try {
     const pageResponse = await fetch(url, {
       headers: {
@@ -479,37 +600,48 @@ async function fetchPageText(url: string) {
     });
 
     if (!pageResponse.ok) {
-      return "";
+      return { html: "", text: "" };
     }
 
-    const pageHtml = await pageResponse.text();
-    return pageHtml
+    const html = await pageResponse.text();
+    const text = html
       .replace(/<script[\s\S]*?<\/script>/gi, " ")
       .replace(/<style[\s\S]*?<\/style>/gi, " ")
       .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 6000);
+
+    return { html, text };
   } catch {
-    return "";
+    return { html: "", text: "" };
   }
 }
 
-async function fetchSupportingPageText(url: string) {
+async function fetchSupportingPages(url: string) {
   const normalizedDomain = normalizeWebsite(url);
   if (!normalizedDomain) {
-    return { supportingUrl: null, text: "" };
+    return [] as Array<{ url: string; text: string; html: string }>;
   }
 
-  for (const path of SUPPORTING_PAGE_PATHS) {
-    const supportingUrl = `https://${normalizedDomain}${path}`;
-    const text = await fetchPageText(supportingUrl);
-    if (text) {
-      return { supportingUrl, text };
+  const homepage = await fetchPage(url);
+  const candidates = new Set<string>(SUPPORTING_PAGE_PATHS.map((path) => `https://${normalizedDomain}${path}`));
+  for (const link of extractInternalStaffLinks(homepage.html, normalizedDomain)) {
+    candidates.add(link);
+  }
+
+  const pages: Array<{ url: string; text: string; html: string }> = [];
+  for (const candidateUrl of candidates) {
+    const page = await fetchPage(candidateUrl);
+    if (page.text) {
+      pages.push({ url: candidateUrl, text: page.text, html: page.html });
+    }
+    if (pages.length >= 5) {
+      break;
     }
   }
 
-  return { supportingUrl: null, text: "" };
+  return pages;
 }
 
 export async function discoverProspectCandidates(params: {
@@ -557,9 +689,11 @@ export async function discoverProspectCandidates(params: {
         continue;
       }
 
-      const bodyText = await fetchPageText(url);
-      const supporting = await fetchSupportingPageText(url);
-      const combinedText = `${bodyText} ${supporting.text}`.trim();
+      const page = await fetchPage(url);
+      const bodyText = page.text;
+      const supportingPages = await fetchSupportingPages(url);
+      const supportingText = supportingPages.map((entry) => entry.text).join(" ");
+      const combinedText = `${bodyText} ${supportingText}`.trim();
       const combinedLower = `${lower} ${combinedText.toLowerCase()}`;
 
       if (excludeKeywords.some((keyword) => combinedLower.includes(keyword.toLowerCase()))) {
@@ -567,10 +701,22 @@ export async function discoverProspectCandidates(params: {
       }
 
       const websiteDomain = normalizeWebsite(url);
+      const mailtoEmails = Array.from(new Set([
+        ...extractMailtoEmails(page.html),
+        ...supportingPages.flatMap((entry) => extractMailtoEmails(entry.html)),
+      ]));
+      const jsonLdEmails = Array.from(new Set([
+        ...extractJsonLdEmails(page.html),
+        ...supportingPages.flatMap((entry) => extractJsonLdEmails(entry.html)),
+      ]));
+      const jsonLdPhones = Array.from(new Set([
+        ...extractJsonLdPhones(page.html),
+        ...supportingPages.flatMap((entry) => extractJsonLdPhones(entry.html)),
+      ]));
       const contactName = extractContactName(combinedText);
-      const scoredEmails = scoreEmails(combinedText, websiteDomain, contactName);
-      const emails = scoredEmails.map((entry) => entry.email).slice(0, 3);
-      const phones = extractPhones(combinedText, websiteDomain);
+      const scoredEmails = scoreEmails(combinedText, websiteDomain, contactName, [...mailtoEmails, ...jsonLdEmails]);
+      const emails = scoredEmails.map((entry) => entry.email).slice(0, 5);
+      const phones = Array.from(new Set([...extractPhones(combinedText, websiteDomain), ...jsonLdPhones])).slice(0, 4);
       const matchedLocation = parsedLocations.find((location) => {
         if (!location.city) {
           return false;
@@ -583,7 +729,7 @@ export async function discoverProspectCandidates(params: {
 
       const website = websiteDomain ? `https://${websiteDomain}` : url;
       const companyName = extractCompanyName(rawTitle, url);
-      const businessType = detectBusinessType(`${supporting.text.slice(0, 1600)} ${bodyText.slice(0, 800)}`, rawTitle);
+      const businessType = detectBusinessType(`${supportingText.slice(0, 1600)} ${bodyText.slice(0, 800)}`, rawTitle);
       const addressLine1 = extractStreetAddress(combinedText);
       const postalCode = extractPostalCode(combinedText);
       const confidenceSignals = [websiteDomain, emails[0], phones[0], contactName, businessType, addressLine1].filter(Boolean).length;
@@ -612,8 +758,11 @@ export async function discoverProspectCandidates(params: {
           { kind: "title", value: rawTitle },
           { kind: "emails", value: emails },
           { kind: "scored_emails", value: scoredEmails.map((entry) => `${entry.email}:${entry.score}:${entry.source}`) },
+          { kind: "mailto_emails", value: mailtoEmails },
+          { kind: "jsonld_emails", value: jsonLdEmails },
           { kind: "phones", value: phones },
-          { kind: "supporting_url", value: supporting.supportingUrl },
+          { kind: "jsonld_phones", value: jsonLdPhones },
+          { kind: "supporting_urls", value: supportingPages.map((entry) => entry.url) },
           { kind: "contact_name", value: contactName },
           { kind: "confidence_signals", value: confidenceSignals },
         ],
