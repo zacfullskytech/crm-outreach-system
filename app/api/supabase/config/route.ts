@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerConfig } from "@/lib/supabase/config";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const { url, anonKey } = getSupabaseServerConfig();
