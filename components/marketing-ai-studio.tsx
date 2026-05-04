@@ -30,6 +30,22 @@ type DraftState = {
   taxonomyInput: string;
 };
 
+type GeneratorState = {
+  title: string;
+  contentType: string;
+  audience: string;
+  serviceLine: string;
+  channel: string;
+  industry: string;
+  offerType: string;
+  assetFormat: string;
+  tone: string;
+  lifecycleStage: string;
+  description: string;
+  promptNotes: string;
+  promptTemplateKey: string;
+};
+
 const promptTemplates = [
   { key: "", label: "Auto-select template" },
   { key: "veterinary-phones", label: "Veterinary clinics · Phones" },
@@ -37,6 +53,22 @@ const promptTemplates = [
   { key: "medical-phones", label: "Private medical practices · Phones" },
   { key: "medical-internet", label: "Private medical practices · Internet" },
 ];
+
+const initialGeneratorState: GeneratorState = {
+  title: "",
+  contentType: "Flier",
+  audience: "",
+  serviceLine: "",
+  channel: "",
+  industry: "",
+  offerType: "",
+  assetFormat: "",
+  tone: "",
+  lifecycleStage: "",
+  description: "",
+  promptNotes: "",
+  promptTemplateKey: "",
+};
 
 function toDraftState(asset?: GeneratedAsset | null): DraftState {
   return {
@@ -72,6 +104,7 @@ export function MarketingAiStudio({
   const [message, setMessage] = useState<string | null>(null);
   const [result, setResult] = useState<GeneratedAsset | null>(null);
   const [draft, setDraft] = useState<DraftState>(toDraftState());
+  const [generator, setGenerator] = useState<GeneratorState>(initialGeneratorState);
   const [variables, setVariables] = useState<Array<{ id: string; key: string; value: string }>>([]);
   const [generateImage, setGenerateImage] = useState(true);
   const [selectedSegmentId, setSelectedSegmentId] = useState(segments[0]?.id || "");
@@ -94,6 +127,10 @@ export function MarketingAiStudio({
     setDraft((current) => ({ ...current, [key]: value }));
   }
 
+  function updateGenerator<K extends keyof GeneratorState>(key: K, value: GeneratorState[K]) {
+    setGenerator((current) => ({ ...current, [key]: value }));
+  }
+
   function applyGeneratedResult(asset: GeneratedAsset, nextImageUrl?: string | null) {
     const normalized = { ...asset, imageUrl: nextImageUrl ?? asset.imageUrl ?? null };
     setResult(normalized);
@@ -107,13 +144,23 @@ export function MarketingAiStudio({
     setMessage(null);
 
     const payload = {
-      title: draft.headline || "AI marketing draft",
-      description: draft.subheadline || null,
-      contentType: "Flier",
+      title: draft.headline || generator.title || "AI marketing draft",
+      description: draft.subheadline || generator.description || null,
+      contentType: generator.contentType || "Flier",
+      serviceLine: generator.serviceLine || null,
+      audience: generator.audience || null,
+      channel: generator.channel || null,
+      industry: generator.industry || null,
+      offerType: generator.offerType || null,
+      assetFormat: generator.assetFormat || null,
+      tone: generator.tone || null,
+      lifecycleStage: generator.lifecycleStage || null,
       imagePrompt: draft.imagePrompt || null,
       imageUrl: draft.imageUrl || null,
       callToAction: draft.callToAction || null,
       bodyText: draft.bodyText || null,
+      promptNotes: generator.promptNotes || null,
+      promptTemplateKey: generator.promptTemplateKey || null,
       tags: splitCommaList(draft.tagsInput),
       taxonomy: splitCommaList(draft.taxonomyInput),
       variables: variables.map(({ key, value }) => ({ key, value })),
@@ -150,21 +197,20 @@ export function MarketingAiStudio({
     }
     setMessage(null);
 
-    const form = new FormData(formRef.current);
     const payload = {
-      title: String(form.get("title") || ""),
-      contentType: String(form.get("contentType") || "Flier"),
-      audience: String(form.get("audience") || "") || null,
-      serviceLine: String(form.get("serviceLine") || "") || null,
-      channel: String(form.get("channel") || "") || null,
-      industry: String(form.get("industry") || "") || null,
-      offerType: String(form.get("offerType") || "") || null,
-      assetFormat: String(form.get("assetFormat") || "") || null,
-      tone: String(form.get("tone") || "") || null,
-      lifecycleStage: String(form.get("lifecycleStage") || "") || null,
-      description: String(form.get("description") || "") || null,
-      promptNotes: String(form.get("promptNotes") || "") || null,
-      promptTemplateKey: String(form.get("promptTemplateKey") || "") || null,
+      title: generator.title,
+      contentType: generator.contentType,
+      audience: generator.audience || null,
+      serviceLine: generator.serviceLine || null,
+      channel: generator.channel || null,
+      industry: generator.industry || null,
+      offerType: generator.offerType || null,
+      assetFormat: generator.assetFormat || null,
+      tone: generator.tone || null,
+      lifecycleStage: generator.lifecycleStage || null,
+      description: generator.description || null,
+      promptNotes: generator.promptNotes || null,
+      promptTemplateKey: generator.promptTemplateKey || null,
       segmentId: selectedSegmentId || null,
       generateImage,
       variables: variables.map(({ key, value }) => ({ key, value })),
@@ -218,7 +264,7 @@ export function MarketingAiStudio({
         <div className="form-grid">
           <div className="field">
             <label htmlFor="ai-title">Asset title</label>
-            <input id="ai-title" name="title" placeholder="Veterinary phones & internet flyer" required />
+            <input id="ai-title" name="title" value={generator.title} onChange={(event) => updateGenerator("title", event.target.value)} placeholder="Veterinary phones & internet flyer" required />
           </div>
           <div className="field">
             <label htmlFor="ai-segment">Segment</label>
@@ -231,12 +277,12 @@ export function MarketingAiStudio({
           </div>
           <div className="field">
             <label htmlFor="ai-template">Prompt template</label>
-            <select id="ai-template" name="promptTemplateKey" defaultValue="">
+            <select id="ai-template" name="promptTemplateKey" value={generator.promptTemplateKey} onChange={(event) => updateGenerator("promptTemplateKey", event.target.value)}>
               {promptTemplates.map((template) => <option key={template.key} value={template.key}>{template.label}</option>)}</select>
           </div>
           <div className="field">
             <label htmlFor="ai-content-type">Content type</label>
-            <select id="ai-content-type" name="contentType" defaultValue="Flier">
+            <select id="ai-content-type" name="contentType" value={generator.contentType} onChange={(event) => updateGenerator("contentType", event.target.value)}>
               <option value="Flier">Flier</option>
               <option value="One-pager">One-pager</option>
               <option value="Email copy">Email copy</option>
@@ -246,44 +292,44 @@ export function MarketingAiStudio({
           </div>
           <div className="field">
             <label htmlFor="ai-audience">Audience</label>
-            <input id="ai-audience" name="audience" placeholder="Veterinary clinics" />
+            <input id="ai-audience" name="audience" value={generator.audience} onChange={(event) => updateGenerator("audience", event.target.value)} placeholder="Veterinary clinics" />
           </div>
           <div className="field">
             <label htmlFor="ai-service-line">Service line</label>
-            <input id="ai-service-line" name="serviceLine" placeholder="Phones" />
+            <input id="ai-service-line" name="serviceLine" value={generator.serviceLine} onChange={(event) => updateGenerator("serviceLine", event.target.value)} placeholder="Phones" />
           </div>
           <div className="field">
             <label htmlFor="ai-channel">Channel</label>
-            <input id="ai-channel" name="channel" placeholder="Print" />
+            <input id="ai-channel" name="channel" value={generator.channel} onChange={(event) => updateGenerator("channel", event.target.value)} placeholder="Print" />
           </div>
           <div className="field">
             <label htmlFor="ai-industry">Industry</label>
-            <input id="ai-industry" name="industry" placeholder="Healthcare" />
+            <input id="ai-industry" name="industry" value={generator.industry} onChange={(event) => updateGenerator("industry", event.target.value)} placeholder="Healthcare" />
           </div>
           <div className="field">
             <label htmlFor="ai-offer-type">Offer type</label>
-            <input id="ai-offer-type" name="offerType" placeholder="Bundle offer" />
+            <input id="ai-offer-type" name="offerType" value={generator.offerType} onChange={(event) => updateGenerator("offerType", event.target.value)} placeholder="Bundle offer" />
           </div>
           <div className="field">
             <label htmlFor="ai-asset-format">Asset format</label>
-            <input id="ai-asset-format" name="assetFormat" placeholder="Half-page flyer" />
+            <input id="ai-asset-format" name="assetFormat" value={generator.assetFormat} onChange={(event) => updateGenerator("assetFormat", event.target.value)} placeholder="Half-page flyer" />
           </div>
           <div className="field">
             <label htmlFor="ai-tone">Tone</label>
-            <input id="ai-tone" name="tone" placeholder="Practical and reassuring" />
+            <input id="ai-tone" name="tone" value={generator.tone} onChange={(event) => updateGenerator("tone", event.target.value)} placeholder="Practical and reassuring" />
           </div>
           <div className="field">
             <label htmlFor="ai-lifecycle-stage">Lifecycle stage</label>
-            <input id="ai-lifecycle-stage" name="lifecycleStage" placeholder="Awareness" />
+            <input id="ai-lifecycle-stage" name="lifecycleStage" value={generator.lifecycleStage} onChange={(event) => updateGenerator("lifecycleStage", event.target.value)} placeholder="Awareness" />
           </div>
         </div>
         <div className="field">
           <label htmlFor="ai-description">Description</label>
-          <textarea id="ai-description" name="description" placeholder="What should this piece accomplish?" />
+          <textarea id="ai-description" name="description" value={generator.description} onChange={(event) => updateGenerator("description", event.target.value)} placeholder="What should this piece accomplish?" />
         </div>
         <div className="field">
           <label htmlFor="ai-prompt-notes">Prompt notes</label>
-          <textarea id="ai-prompt-notes" name="promptNotes" placeholder="Tone, positioning, offers, proof points, image direction, etc." />
+          <textarea id="ai-prompt-notes" name="promptNotes" value={generator.promptNotes} onChange={(event) => updateGenerator("promptNotes", event.target.value)} placeholder="Tone, positioning, offers, proof points, image direction, etc." />
         </div>
         <CustomFieldsEditor entity="ai-variable" fields={variables} onChange={setVariables} />
         <div className="actions">
