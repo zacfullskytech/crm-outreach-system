@@ -75,6 +75,7 @@ export function MarketingContentForm({
     if (draftSeed.headline) setTitle(String(draftSeed.headline));
     if (draftSeed.subheadline) setDescription(String(draftSeed.subheadline));
     if (draftSeed.bodyText) setBodyText(String(draftSeed.bodyText));
+    if (draftSeed.bodyHtml) setBodyHtml(String(draftSeed.bodyHtml));
     if (draftSeed.callToAction) setCallToAction(String(draftSeed.callToAction));
     if (draftSeed.imagePrompt) setImagePrompt(String(draftSeed.imagePrompt));
     if (draftSeed.imageUrl) setImageUrl(String(draftSeed.imageUrl));

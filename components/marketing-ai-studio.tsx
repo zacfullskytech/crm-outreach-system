@@ -23,6 +23,7 @@ type DraftState = {
   headline: string;
   subheadline: string;
   bodyText: string;
+  bodyHtml: string;
   callToAction: string;
   imagePrompt: string;
   imageUrl: string;
@@ -70,11 +71,18 @@ const initialGeneratorState: GeneratorState = {
   promptTemplateKey: "",
 };
 
-function toDraftState(asset?: GeneratedAsset | null): DraftState {
+function buildDraftBodyHtml(bodyText: string, contentType: string) {
+  return contentType === "Email copy" && bodyText.trim() ? plainTextToEmailHtml(bodyText) : "";
+}
+
+function toDraftState(asset?: GeneratedAsset | null, contentType = "Flier"): DraftState {
+  const bodyText = asset?.bodyText || "";
+
   return {
     headline: asset?.headline || "",
     subheadline: asset?.subheadline || "",
-    bodyText: asset?.bodyText || "",
+    bodyText,
+    bodyHtml: buildDraftBodyHtml(bodyText, contentType),
     callToAction: asset?.callToAction || "",
     imagePrompt: asset?.imagePrompt || "",
     imageUrl: asset?.imageUrl || "",
@@ -112,10 +120,11 @@ export function MarketingAiStudio({
   const formRef = useRef<HTMLFormElement | null>(null);
   const selectedSegment = segments.find((segment) => segment.id === selectedSegmentId) || null;
 
-  const currentDraft = useMemo<GeneratedAsset>(() => ({
+  const currentDraft = useMemo<GeneratedAsset & { bodyHtml?: string }>(() => ({
     headline: draft.headline || undefined,
     subheadline: draft.subheadline || undefined,
     bodyText: draft.bodyText || undefined,
+    bodyHtml: draft.bodyHtml || undefined,
     callToAction: draft.callToAction || undefined,
     imagePrompt: draft.imagePrompt || undefined,
     imageUrl: draft.imageUrl || null,
@@ -134,7 +143,7 @@ export function MarketingAiStudio({
   function applyGeneratedResult(asset: GeneratedAsset, nextImageUrl?: string | null) {
     const normalized = { ...asset, imageUrl: nextImageUrl ?? asset.imageUrl ?? null };
     setResult(normalized);
-    setDraft(toDraftState(normalized));
+    setDraft(toDraftState(normalized, generator.contentType));
   }
 
   async function saveResultToLibrary() {
@@ -159,6 +168,7 @@ export function MarketingAiStudio({
       imageUrl: draft.imageUrl || null,
       callToAction: draft.callToAction || null,
       bodyText: draft.bodyText || null,
+      bodyHtml: draft.bodyHtml || null,
       promptNotes: generator.promptNotes || null,
       promptTemplateKey: generator.promptTemplateKey || null,
       tags: splitCommaList(draft.tagsInput),
@@ -191,7 +201,7 @@ export function MarketingAiStudio({
     if (mode === "generate") {
       setPending(true);
       setResult(null);
-      setDraft(toDraftState());
+      setDraft(toDraftState(undefined, generator.contentType));
     } else {
       setRevising(true);
     }
@@ -369,7 +379,16 @@ export function MarketingAiStudio({
               </div>
               <div className="field">
                 <label htmlFor="ai-draft-body">Body copy</label>
-                <textarea id="ai-draft-body" value={draft.bodyText} onChange={(event) => updateDraft("bodyText", event.target.value)} placeholder="Body copy" />
+                <textarea
+                  id="ai-draft-body"
+                  value={draft.bodyText}
+                  onChange={(event) => {
+                    const nextBodyText = event.target.value;
+                    updateDraft("bodyText", nextBodyText);
+                    updateDraft("bodyHtml", buildDraftBodyHtml(nextBodyText, generator.contentType));
+                  }}
+                  placeholder="Body copy"
+                />
               </div>
               <div className="field">
                 <label htmlFor="ai-draft-image-prompt">Image prompt</label>
@@ -397,7 +416,14 @@ export function MarketingAiStudio({
                 {revising ? "Revising..." : "Revise Draft"}
               </button>
               {onUseDraft ? (
-                <button className="button secondary" type="button" onClick={() => onUseDraft(currentDraft)}>
+                <button
+                  className="button secondary"
+                  type="button"
+                  onClick={() => onUseDraft({
+                    ...currentDraft,
+                    bodyHtml: draft.bodyHtml || undefined,
+                  })}
+                >
                   Use Draft in Library Form
                 </button>
               ) : null}
