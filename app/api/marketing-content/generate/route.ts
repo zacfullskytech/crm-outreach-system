@@ -31,6 +31,18 @@ export async function POST(request: NextRequest) {
       promptNotes: typeof payload.promptNotes === "string" ? payload.promptNotes : segmentIntent?.promptNotes ?? null,
       promptTemplateKey: typeof payload.promptTemplateKey === "string" ? payload.promptTemplateKey : null,
       variables: normalizeCustomFields(payload.variables),
+      existingDraft: payload.existingDraft && typeof payload.existingDraft === "object"
+        ? {
+            headline: typeof payload.existingDraft.headline === "string" ? payload.existingDraft.headline : null,
+            subheadline: typeof payload.existingDraft.subheadline === "string" ? payload.existingDraft.subheadline : null,
+            bodyText: typeof payload.existingDraft.bodyText === "string" ? payload.existingDraft.bodyText : null,
+            callToAction: typeof payload.existingDraft.callToAction === "string" ? payload.existingDraft.callToAction : null,
+            imagePrompt: typeof payload.existingDraft.imagePrompt === "string" ? payload.existingDraft.imagePrompt : null,
+            tags: Array.isArray(payload.existingDraft.tags) ? payload.existingDraft.tags.map((value: unknown) => String(value)).filter(Boolean) : [],
+            taxonomy: Array.isArray(payload.existingDraft.taxonomy) ? payload.existingDraft.taxonomy.map((value: unknown) => String(value)).filter(Boolean) : [],
+          }
+        : null,
+      revisionNotes: typeof payload.revisionNotes === "string" ? payload.revisionNotes : null,
     });
 
     const imageUrl = payload.generateImage === true && result.imagePrompt

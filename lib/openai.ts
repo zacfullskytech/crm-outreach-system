@@ -15,6 +15,16 @@ type GenerateMarketingAssetInput = {
   promptNotes?: string | null;
   promptTemplateKey?: string | null;
   variables?: Record<string, string>;
+  existingDraft?: {
+    headline?: string | null;
+    subheadline?: string | null;
+    bodyText?: string | null;
+    callToAction?: string | null;
+    imagePrompt?: string | null;
+    tags?: string[];
+    taxonomy?: string[];
+  } | null;
+  revisionNotes?: string | null;
 };
 
 function requireOpenAiKey() {
@@ -49,10 +59,22 @@ function buildPrompt(input: GenerateMarketingAssetInput) {
   const variableLines = Object.entries(input.variables || {})
     .map(([key, value]) => `- ${key}: ${value}`)
     .join("\n");
+  const existingDraft = input.existingDraft;
+  const existingDraftLines = existingDraft
+    ? [
+        `Headline: ${existingDraft.headline || "None"}`,
+        `Subheadline: ${existingDraft.subheadline || "None"}`,
+        `Body text: ${existingDraft.bodyText || "None"}`,
+        `Call to action: ${existingDraft.callToAction || "None"}`,
+        `Image prompt: ${existingDraft.imagePrompt || "None"}`,
+        `Tags: ${existingDraft.tags?.join(", ") || "None"}`,
+        `Taxonomy: ${existingDraft.taxonomy?.join(", ") || "None"}`,
+      ].join("\n")
+    : "";
 
   return [
     "You are a B2B marketing strategist and copywriter.",
-    "Generate structured marketing content for a telecom/IT services company.",
+    existingDraft ? "Revise the existing draft using the new revision instructions while preserving any strong parts that still fit." : "Generate structured marketing content for a telecom/IT services company.",
     `Asset title: ${input.title}`,
     `Content type: ${input.contentType}`,
     `Audience: ${input.audience || "Unspecified"}`,
@@ -67,10 +89,15 @@ function buildPrompt(input: GenerateMarketingAssetInput) {
     `Description/context: ${input.description || "None provided"}`,
     `Prompt notes: ${input.promptNotes || "None provided"}`,
     variableLines ? `Variables:\n${variableLines}` : "Variables: none",
+    existingDraftLines ? `Existing draft:\n${existingDraftLines}` : "",
+    input.revisionNotes ? `Revision instructions:\n${input.revisionNotes}` : "",
     "Return JSON with keys: headline, subheadline, bodyText, callToAction, imagePrompt, tags, taxonomy.",
     "tags must be an array of short strings.",
     "bodyText should be concise but useful for a first draft.",
-  ].join("\n\n");
+    existingDraft ? "Return a full revised draft, not partial diffs or commentary." : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 export async function generateMarketingAsset(input: GenerateMarketingAssetInput) {
