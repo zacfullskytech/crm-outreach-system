@@ -143,6 +143,7 @@ model Company {
   website          String?
   phone            String?
   email            String?
+  emailsJson       Json?
   emailDomain      String?
   addressLine1     String?
   addressLine2     String?

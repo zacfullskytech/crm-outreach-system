@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CompanyForm } from "@/components/company-form";
 import { AppShell } from "@/components/app-shell";
+import { getCompanyEmailList } from "@/lib/company-emails";
 import type { Company } from "@prisma/client";
 
 type CompanyWithContacts = Company & { contacts: { id: string }[] };
@@ -75,20 +76,26 @@ export function CompaniesPageClient({ initialCompanies, isAdmin }: { initialComp
                     <th>Company</th>
                     <th>Industry</th>
                     <th>Location</th>
+                    <th>Emails</th>
                     <th>Contacts</th>
                     <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((company) => (
-                    <tr key={company.id}>
-                      <td className="primary-cell">{company.name}</td>
-                      <td>{company.industry || <span className="muted">—</span>}</td>
-                      <td>{[company.city, company.state].filter(Boolean).join(", ") || <span className="muted">Unknown</span>}</td>
-                      <td>{company.contacts.length}</td>
-                      <td><span className="badge">{company.status}</span></td>
-                    </tr>
-                  ))}
+                  {filtered.map((company) => {
+                    const emails = getCompanyEmailList(company);
+
+                    return (
+                      <tr key={company.id}>
+                        <td className="primary-cell">{company.name}</td>
+                        <td>{company.industry || <span className="muted">—</span>}</td>
+                        <td>{[company.city, company.state].filter(Boolean).join(", ") || <span className="muted">Unknown</span>}</td>
+                        <td>{emails.length ? emails.join(", ") : <span className="muted">No email</span>}</td>
+                        <td>{company.contacts.length}</td>
+                        <td><span className="badge">{company.status}</span></td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

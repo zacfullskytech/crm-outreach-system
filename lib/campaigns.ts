@@ -2,6 +2,7 @@ import { Campaign, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { buildWhereFromSegment } from "@/lib/filters";
 import { renderTemplate, sendEmail } from "@/lib/email";
+import { getCompanyEmailList } from "@/lib/company-emails";
 import { getBlobNameFromUrl, getMarketingAssetAppUrl } from "@/lib/file-storage";
 
 const BATCH_SIZE = 20;
@@ -98,33 +99,29 @@ export async function prepareCampaignRecipients(campaignId: string) {
   if (segment.entityType === "company") {
     const includeContacts = segmentAlsoSendsCompanyContacts(segment.filterJson);
     const companies = await prisma.company.findMany({
-      where: {
-        AND: [
-          where as never,
-          { email: { not: null } },
-          { email: { not: "" } },
-        ],
-      },
+      where: where as never,
       include: { contacts: true },
     });
 
-    const companyRecipients = companies
-      .filter((company) => company.email && !suppressedEmails.has(company.email))
-      .map((company) => ({
-        campaignId,
-        contactId: null,
-        email: company.email!,
-        snapshotDataJson: {
-          contact_name: null,
-          first_name: null,
-          last_name: null,
-          company_name: company.name,
-          city: company.city || null,
-          state: company.state || null,
-          industry: company.industry || null,
-        },
-        status: "PENDING",
-      } satisfies RecipientSeed));
+    const companyRecipients = companies.flatMap((company) =>
+      getCompanyEmailList(company)
+        .filter((email) => !suppressedEmails.has(email))
+        .map((email) => ({
+          campaignId,
+          contactId: null,
+          email,
+          snapshotDataJson: {
+            contact_name: null,
+            first_name: null,
+            last_name: null,
+            company_name: company.name,
+            city: company.city || null,
+            state: company.state || null,
+            industry: company.industry || null,
+          },
+          status: "PENDING",
+        } satisfies RecipientSeed)),
+    );
 
     const contactRecipients = includeContacts
       ? companies.flatMap((company) =>

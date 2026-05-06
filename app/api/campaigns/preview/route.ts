@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { buildWhereFromSegment } from "@/lib/filters";
+import { getCompanyEmailList } from "@/lib/company-emails";
 
 export async function GET(request: NextRequest) {
   const segmentId = request.nextUrl.searchParams.get("segmentId");
@@ -27,7 +28,16 @@ export async function GET(request: NextRequest) {
       take: 200,
     });
 
-    const companyEligible = companies.filter((company) => Boolean(company.email) && !suppressedEmails.has(company.email!));
+    const companyEligible = companies.flatMap((company) =>
+      getCompanyEmailList(company)
+        .filter((email) => !suppressedEmails.has(email))
+        .map((email) => ({
+          id: company.id,
+          fullName: company.name,
+          email,
+          company: { name: company.name },
+        })),
+    );
     const contactEligible = includeContacts
       ? companies.flatMap((company) => company.contacts.filter((contact) => Boolean(contact.email) && !suppressedEmails.has(contact.email!) && !["UNSUBSCRIBED", "BOUNCED", "INVALID", "DO_NOT_CONTACT"].includes(contact.status)))
       : [];
@@ -35,12 +45,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       count: companies.length,
       eligibleCount: companyEligible.length + contactEligible.length,
-      sample: companyEligible.slice(0, 10).map((company) => ({
-        id: company.id,
-        fullName: company.name,
-        email: company.email,
-        company: { name: company.name },
-      })),
+      sample: companyEligible.slice(0, 10),
     });
   }
 

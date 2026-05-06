@@ -1,10 +1,16 @@
 import { prisma } from "@/lib/db";
-import { normalizeEmail, normalizeWebsite, splitName } from "@/lib/utils";
+import { getCompanyEmailList } from "@/lib/company-emails";
+import { normalizeEmail, normalizeEmailList, normalizeWebsite, splitName } from "@/lib/utils";
+import { Prisma } from "@prisma/client";
 import type { Prospect } from "@prisma/client";
 
-export async function upsertCompanyFromProspect(prospect: Prospect) {
+export async function upsertCompanyFromProspect(
+  prospect: Prospect,
+  options?: { discoveredEmails?: Array<string | null | undefined> | null },
+) {
   const normalizedDomain = normalizeWebsite(prospect.website);
   const normalizedEmailValue = normalizeEmail(prospect.email);
+  const prospectEmails = normalizeEmailList([prospect.email, ...(options?.discoveredEmails || [])]);
   const hasNamedContact = Boolean(prospect.contactName && prospect.contactName.trim());
   const shouldUseCompanyEmail = Boolean(normalizedEmailValue && !hasNamedContact);
 
@@ -22,6 +28,9 @@ export async function upsertCompanyFromProspect(prospect: Prospect) {
         where: { name: { equals: prospect.companyName, mode: "insensitive" } },
       });
 
+  const existingEmails = existingCompany ? getCompanyEmailList(existingCompany) : [];
+  const mergedCompanyEmails = normalizeEmailList([...existingEmails, ...prospectEmails]);
+
   const company = existingCompany
     ? await prisma.company.update({
         where: { id: existingCompany.id },
@@ -30,7 +39,8 @@ export async function upsertCompanyFromProspect(prospect: Prospect) {
           businessType: existingCompany.businessType || prospect.businessType,
           website: existingCompany.website || prospect.website,
           emailDomain: existingCompany.emailDomain || normalizedDomain,
-          email: existingCompany.email || (shouldUseCompanyEmail ? normalizedEmailValue : null),
+          email: existingCompany.email || (shouldUseCompanyEmail ? normalizedEmailValue : mergedCompanyEmails[0] || null),
+          emailsJson: mergedCompanyEmails.length ? mergedCompanyEmails : Prisma.JsonNull,
           phone: existingCompany.phone || prospect.phone,
           addressLine1: existingCompany.addressLine1 || prospect.addressLine1,
           city: existingCompany.city || prospect.city,
@@ -52,7 +62,8 @@ export async function upsertCompanyFromProspect(prospect: Prospect) {
           businessType: prospect.businessType,
           website: prospect.website,
           emailDomain: normalizedDomain,
-          email: shouldUseCompanyEmail ? normalizedEmailValue : null,
+          email: shouldUseCompanyEmail ? normalizedEmailValue : prospectEmails[0] || null,
+          emailsJson: prospectEmails.length ? prospectEmails : Prisma.JsonNull,
           phone: prospect.phone,
           addressLine1: prospect.addressLine1,
           city: prospect.city,

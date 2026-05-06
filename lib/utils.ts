@@ -2,6 +2,20 @@ export function normalizeEmail(email?: string | null) {
   return email?.trim().toLowerCase() || null;
 }
 
+export function normalizeEmailList(emails?: Array<string | null | undefined> | null) {
+  if (!emails?.length) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      emails
+        .map((email) => normalizeEmail(email))
+        .filter((email): email is string => Boolean(email)),
+    ),
+  );
+}
+
 export function normalizeWebsite(website?: string | null) {
   if (!website) {
     return null;

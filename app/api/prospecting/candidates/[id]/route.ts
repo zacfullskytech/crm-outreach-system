@@ -38,6 +38,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         ? updated.extractionJson as Record<string, unknown>
         : {};
 
+      const evidence = Array.isArray(updated.evidenceJson) ? updated.evidenceJson : [];
+      const discoveredEmails = evidence.reduce<string[]>((emails, entry) => {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+          return emails;
+        }
+
+        const kind = "kind" in entry ? entry.kind : null;
+        const value = "value" in entry ? entry.value : null;
+        if (kind !== "emails" || !Array.isArray(value)) {
+          return emails;
+        }
+
+        return emails.concat(value.filter((candidate): candidate is string => typeof candidate === "string"));
+      }, []);
+
       const prospect = await prisma.prospect.create({
         data: {
           companyName: updated.companyName,
@@ -64,7 +79,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         },
       });
 
-      const companyResult = await upsertCompanyFromProspect(prospect);
+      const companyResult = await upsertCompanyFromProspect(prospect, { discoveredEmails });
 
       await prisma.prospect.update({
         where: { id: prospect.id },
