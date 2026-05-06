@@ -5,8 +5,9 @@ import { renderTemplate, sendEmail } from "@/lib/email";
 import { getCompanyEmailList } from "@/lib/company-emails";
 import { getBlobNameFromUrl, getMarketingAssetAppUrl } from "@/lib/file-storage";
 
-const BATCH_SIZE = 20;
-const BATCH_DELAY_MS = 1500;
+const BATCH_SIZE = 5;
+const BATCH_DELAY_MS = 1000;
+const RATE_LIMIT_RETRY_LIMIT = 3;
 
 type SnapshotData = Record<string, string | null | undefined>;
 
@@ -21,6 +22,19 @@ function rewriteMarketingAssetUrls(html: string) {
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function sendEmailWithRateLimitRetry(message: Parameters<typeof sendEmail>[0]) {
+  for (let attempt = 0; attempt <= RATE_LIMIT_RETRY_LIMIT; attempt += 1) {
+    const result = await sendEmail(message);
+    if (result.success || result.statusCode !== 429 || attempt === RATE_LIMIT_RETRY_LIMIT) {
+      return result;
+    }
+
+    await sleep(result.retryAfterMs || 1000 * (attempt + 1));
+  }
+
+  return { success: false, error: "Email send retry loop exhausted" };
 }
 
 function readSegmentRules(value: unknown): Array<{ field?: string; comparator?: string; value?: unknown }> {
@@ -266,38 +280,35 @@ export async function deliverCampaignRecipients(campaignId: string) {
   for (let index = 0; index < batches.length; index += 1) {
     const batch = batches[index];
 
-    await Promise.all(
-      batch.map(async (recipient) => {
-        const mergeData = (recipient.snapshotDataJson as SnapshotData) || {};
-        const unsub = `${appUrl}/unsubscribe?email=${encodeURIComponent(recipient.email)}&token=placeholder&campaign=${campaignId}`;
-        const htmlWithUnsub = rewriteMarketingAssetUrls(renderTemplate(campaign.templateHtml, mergeData)) +
-          `<p style="font-size:11px;color:#999;margin-top:32px;">To unsubscribe, <a href="${unsub}">click here</a>.</p>`;
-        const textWithUnsub = renderTemplate(campaign.templateText || "", mergeData) +
-          `\n\nTo unsubscribe, visit: ${unsub}`;
+    for (const recipient of batch) {
+      const mergeData = (recipient.snapshotDataJson as SnapshotData) || {};
+      const unsub = `${appUrl}/unsubscribe?email=${encodeURIComponent(recipient.email)}&token=placeholder&campaign=${campaignId}`;
+      const htmlWithUnsub = rewriteMarketingAssetUrls(renderTemplate(campaign.templateHtml, mergeData)) +
+        `<p style="font-size:11px;color:#999;margin-top:32px;">To unsubscribe, <a href="${unsub}">click here</a>.</p>`;
+      const textWithUnsub = renderTemplate(campaign.templateText || "", mergeData) +
+        `\n\nTo unsubscribe, visit: ${unsub}`;
 
-        const result = await sendEmail({
-          to: recipient.email,
-          from: campaign.fromEmail,
-          fromName: campaign.fromName || undefined,
-          replyTo: campaign.replyTo || undefined,
-          subject: renderTemplate(campaign.subject, mergeData),
-          html: htmlWithUnsub,
-          text: textWithUnsub,
+      const result = await sendEmailWithRateLimitRetry({
+        to: recipient.email,
+        from: campaign.fromEmail,
+        fromName: campaign.fromName || undefined,
+        replyTo: campaign.replyTo || undefined,
+        subject: renderTemplate(campaign.subject, mergeData),
+        html: htmlWithUnsub,
+        text: textWithUnsub,
+      });
+
+      if (result.success) {
+        await prisma.campaignRecipient.update({
+          where: { id: recipient.id },
+          data: {
+            status: "SENT",
+            sentAt: new Date(),
+            providerMessageId: result.messageId || null,
+          },
         });
-
-        if (result.success) {
-          await prisma.campaignRecipient.update({
-            where: { id: recipient.id },
-            data: {
-              status: "SENT",
-              sentAt: new Date(),
-              providerMessageId: result.messageId || null,
-            },
-          });
-          sent += 1;
-          return;
-        }
-
+        sent += 1;
+      } else {
         await prisma.campaignRecipient.update({
           where: { id: recipient.id },
           data: {
@@ -306,10 +317,8 @@ export async function deliverCampaignRecipients(campaignId: string) {
           },
         });
         failed += 1;
-      }),
-    );
+      }
 
-    if (index < batches.length - 1) {
       await sleep(BATCH_DELAY_MS);
     }
   }

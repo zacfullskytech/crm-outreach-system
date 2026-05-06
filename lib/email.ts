@@ -59,6 +59,8 @@ export interface EmailSendResult {
   success: boolean;
   messageId?: string;
   error?: string;
+  retryAfterMs?: number;
+  statusCode?: number;
 }
 
 export async function sendEmail(message: EmailMessage): Promise<EmailSendResult> {
@@ -75,6 +77,25 @@ export async function sendEmail(message: EmailMessage): Promise<EmailSendResult>
   // Dry-run fallback — log to console but don't actually send
   console.log("[email:dry-run]", JSON.stringify(message, null, 2));
   return { success: true, messageId: `dry-run-${Date.now()}` };
+}
+
+function parseRetryAfterMs(response: Response) {
+  const retryAfter = response.headers.get("retry-after");
+  if (!retryAfter) {
+    return undefined;
+  }
+
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return seconds * 1000;
+  }
+
+  const retryAt = new Date(retryAfter).getTime();
+  if (Number.isFinite(retryAt)) {
+    return Math.max(0, retryAt - Date.now());
+  }
+
+  return undefined;
 }
 
 async function sendViaResend(message: EmailMessage): Promise<EmailSendResult> {
@@ -103,10 +124,15 @@ async function sendViaResend(message: EmailMessage): Promise<EmailSendResult> {
     const body = await response.json();
 
     if (!response.ok) {
-      return { success: false, error: body.message || `Resend error ${response.status}` };
+      return {
+        success: false,
+        error: body.message || `Resend error ${response.status}`,
+        retryAfterMs: response.status === 429 ? parseRetryAfterMs(response) : undefined,
+        statusCode: response.status,
+      };
     }
 
-    return { success: true, messageId: body.id };
+    return { success: true, messageId: body.id, statusCode: response.status };
   } catch (error) {
     return { success: false, error: String(error) };
   }
@@ -140,10 +166,15 @@ async function sendViaMailgun(message: EmailMessage): Promise<EmailSendResult> {
     const body = await response.json();
 
     if (!response.ok) {
-      return { success: false, error: body.message || `Mailgun error ${response.status}` };
+      return {
+        success: false,
+        error: body.message || `Mailgun error ${response.status}`,
+        retryAfterMs: response.status === 429 ? parseRetryAfterMs(response) : undefined,
+        statusCode: response.status,
+      };
     }
 
-    return { success: true, messageId: body.id };
+    return { success: true, messageId: body.id, statusCode: response.status };
   } catch (error) {
     return { success: false, error: String(error) };
   }
