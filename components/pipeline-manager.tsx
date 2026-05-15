@@ -39,6 +39,13 @@ type TaskComposer = {
   checklistKey: string;
 };
 
+type TemplateTaskComposer = {
+  title: string;
+  description: string;
+  assigneeUserId: string;
+  checklistKey: string;
+};
+
 type OpportunityRecord = {
   id: string;
   name: string;
@@ -122,8 +129,22 @@ export function PipelineManager({
     opportunityType: "NEW_SALE",
     serviceLine: "",
     checklistText: "",
-    tasksText: "",
   });
+  const [templateTaskComposer, setTemplateTaskComposer] = useState<TemplateTaskComposer>({
+    title: "",
+    description: "",
+    assigneeUserId: "",
+    checklistKey: "",
+  });
+  const [templateTaskDrafts, setTemplateTaskDrafts] = useState<TaskDraft[]>([]);
+  const templateChecklistEntries = useMemo(
+    () => templateSeed.checklistText
+      .split("\n")
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((label, index) => ({ key: slugifyChecklistKey(label, `item-${index + 1}`), label })),
+    [templateSeed.checklistText],
+  );
 
   useEffect(() => {
     if (initialDraft) {
@@ -257,8 +278,9 @@ export function PipelineManager({
         opportunityType: "NEW_SALE",
         serviceLine: "",
         checklistText: "",
-        tasksText: "",
       });
+      setTemplateTaskDrafts([]);
+      setTemplateTaskComposer({ title: "", description: "", assigneeUserId: "", checklistKey: "" });
       return;
     }
 
@@ -269,8 +291,9 @@ export function PipelineManager({
       opportunityType: template.opportunityType,
       serviceLine: template.serviceLine || "",
       checklistText: readChecklist(template.checklistJson).map((item) => item.label).join("\n"),
-      tasksText: readTaskTemplates(template.taskTemplateJson).map((task) => task.title).join("\n"),
     });
+    setTemplateTaskDrafts(readTaskTemplates(template.taskTemplateJson));
+    setTemplateTaskComposer({ title: "", description: "", assigneeUserId: "", checklistKey: "" });
   }
 
   async function createTemplate(event: React.FormEvent<HTMLFormElement>) {
@@ -278,16 +301,17 @@ export function PipelineManager({
     setPending(true);
     setMessage(null);
 
-    const checklist = templateSeed.checklistText
-      .split("\n")
-      .map((entry) => entry.trim())
-      .filter(Boolean)
-      .map((label, index) => ({ key: slugifyChecklistKey(label, `item-${index + 1}`), label, done: false, notes: null }));
-    const taskTemplates = templateSeed.tasksText
-      .split("\n")
-      .map((entry) => entry.trim())
-      .filter(Boolean)
-      .map((title) => ({ title, status: "TODO" }));
+    const checklist = templateChecklistEntries.map((entry) => ({ ...entry, done: false, notes: null }));
+    const validChecklistKeys = new Set(templateChecklistEntries.map((entry) => entry.key));
+    const taskTemplates = templateTaskDrafts
+      .filter((task) => task.title?.trim())
+      .map((task) => ({
+        title: task.title.trim(),
+        description: task.description?.trim() || null,
+        assigneeUserId: task.assigneeUserId || null,
+        checklistKey: task.checklistKey && validChecklistKeys.has(task.checklistKey) ? task.checklistKey : null,
+        status: "TODO",
+      }));
 
     const payload = {
       template: {
@@ -476,7 +500,71 @@ export function PipelineManager({
                 </div>
                 <div className="field"><label htmlFor="template-description">Description</label><textarea id="template-description" value={templateSeed.description} onChange={(event) => setTemplateSeed((current) => ({ ...current, description: event.target.value }))} placeholder="When to use this template and what it covers." /></div>
                 <div className="field"><label htmlFor="template-checklist">Checklist items</label><textarea id="template-checklist" value={templateSeed.checklistText} onChange={(event) => setTemplateSeed((current) => ({ ...current, checklistText: event.target.value }))} placeholder="One item per line" /></div>
-                <div className="field"><label htmlFor="template-tasks">Task titles</label><textarea id="template-tasks" value={templateSeed.tasksText} onChange={(event) => setTemplateSeed((current) => ({ ...current, tasksText: event.target.value }))} placeholder="One task per line" /></div>
+                <div className="card">
+                  <div className="card-header dashboard-panel-header">
+                    <div>
+                      <h4>Task Templates</h4>
+                      <p className="help">Assign each template task to a CRM user and optionally link it to a checklist item.</p>
+                    </div>
+                    <button
+                      className="button secondary"
+                      type="button"
+                      onClick={() => {
+                        if (!templateTaskComposer.title.trim()) {
+                          setMessage("Template task title is required.");
+                          return;
+                        }
+                        setTemplateTaskDrafts((current) => ([
+                          ...current,
+                          {
+                            title: templateTaskComposer.title.trim(),
+                            description: templateTaskComposer.description.trim() || null,
+                            assigneeUserId: templateTaskComposer.assigneeUserId || null,
+                            checklistKey: templateTaskComposer.checklistKey || null,
+                            status: "TODO",
+                          },
+                        ]));
+                        setTemplateTaskComposer({ title: "", description: "", assigneeUserId: "", checklistKey: "" });
+                        setMessage(null);
+                      }}
+                    >
+                      Add Template Task
+                    </button>
+                  </div>
+                  <div className="form-grid">
+                    <div className="field"><label htmlFor="template-task-title">Task title</label><input id="template-task-title" value={templateTaskComposer.title} onChange={(event) => setTemplateTaskComposer((current) => ({ ...current, title: event.target.value }))} placeholder="Prepare implementation handoff" /></div>
+                    <div className="field"><label htmlFor="template-task-assignee">Assign to user</label><select id="template-task-assignee" value={templateTaskComposer.assigneeUserId} onChange={(event) => setTemplateTaskComposer((current) => ({ ...current, assigneeUserId: event.target.value }))}><option value="">Unassigned</option>{initialUsers.map((user) => <option key={user.id} value={user.id}>{user.name || user.email}</option>)}</select></div>
+                    <div className="field"><label htmlFor="template-task-checklist">Linked checklist item</label><select id="template-task-checklist" value={templateTaskComposer.checklistKey} onChange={(event) => setTemplateTaskComposer((current) => ({ ...current, checklistKey: event.target.value }))}><option value="">No checklist link</option>{templateChecklistEntries.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select></div>
+                  </div>
+                  <div className="field"><label htmlFor="template-task-description">Description</label><textarea id="template-task-description" value={templateTaskComposer.description} onChange={(event) => setTemplateTaskComposer((current) => ({ ...current, description: event.target.value }))} placeholder="Optional instructions for the assigned user." /></div>
+                  {templateTaskDrafts.length === 0 ? <p className="help">No template tasks yet.</p> : (
+                    <div className="inline-grid">
+                      {templateTaskDrafts.map((task, index) => {
+                        const assignee = task.assigneeUserId ? mapUserById(task.assigneeUserId) : null;
+                        const checklistLabel = task.checklistKey
+                          ? templateChecklistEntries.find((item) => item.key === task.checklistKey)?.label || task.checklistKey
+                          : null;
+                        return (
+                          <div key={`template-task-${index}`} className="dashboard-list-row">
+                            <div className="record-summary-main">
+                              <div className="record-summary-topline">
+                                <strong>{task.title}</strong>
+                                {assignee ? <span className="badge badge-blue">{assignee.name || assignee.email}</span> : <span className="badge badge-yellow">Unassigned</span>}
+                              </div>
+                              <div className="record-meta-row">
+                                <span>{checklistLabel || "No checklist link"}</span>
+                              </div>
+                              {task.description ? <p className="help">{task.description}</p> : null}
+                            </div>
+                            <div className="actions action-bar-tight">
+                              <button className="button secondary" type="button" onClick={() => setTemplateTaskDrafts((current) => current.filter((_, taskIndex) => taskIndex !== index))}>Remove</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
                 <div className="actions"><button className="button secondary" type="submit" disabled={pending}>{pending ? "Saving..." : templateSeed.id ? "Update Template" : "Save Template"}</button><button className="button secondary" type="button" disabled={pending} onClick={() => hydrateTemplateSeed(null)}>Clear</button></div>
               </form>
               <div className="inline-grid">
@@ -492,6 +580,23 @@ export function PipelineManager({
                         <span>{readChecklist(template.checklistJson).length} checklist items</span>
                         <span>{readTaskTemplates(template.taskTemplateJson).length} task templates</span>
                       </div>
+                      {readTaskTemplates(template.taskTemplateJson).length > 0 ? (
+                        <div className="record-meta-row">
+                          {readTaskTemplates(template.taskTemplateJson).slice(0, 3).map((task, index) => {
+                            const assignee = task.assigneeUserId ? mapUserById(task.assigneeUserId) : null;
+                            const checklistLabel = task.checklistKey
+                              ? readChecklist(template.checklistJson).find((item) => item.key === task.checklistKey)?.label || task.checklistKey
+                              : null;
+                            return (
+                              <span key={`${template.id}-task-preview-${index}`}>
+                                {task.title}
+                                {assignee ? ` → ${assignee.name || assignee.email}` : ""}
+                                {checklistLabel ? ` (${checklistLabel})` : ""}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : null}
                       {template.description ? <p className="help">{template.description}</p> : null}
                     </div>
                     <div className="actions action-bar-tight">
