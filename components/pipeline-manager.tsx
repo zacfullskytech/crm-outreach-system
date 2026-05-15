@@ -70,6 +70,12 @@ type OpportunityRecord = {
 type ChecklistEntry = { key: string; label: string; done?: boolean; notes?: string | null };
 type TaskDraft = { title: string; description?: string | null; assigneeUserId?: string | null; dueDate?: string | null; status?: string; checklistKey?: string | null };
 
+type ChecklistAssignmentSummary = {
+  count: number;
+  label: string;
+  userId: string | null;
+};
+
 function readChecklist(value: unknown) {
   if (!Array.isArray(value)) return [] as ChecklistEntry[];
   return value.filter((item): item is ChecklistEntry => Boolean(item) && typeof item === "object");
@@ -78,6 +84,29 @@ function readChecklist(value: unknown) {
 function readTaskTemplates(value: unknown) {
   if (!Array.isArray(value)) return [] as TaskDraft[];
   return value.filter((item): item is TaskDraft => Boolean(item) && typeof item === "object");
+}
+
+function summarizeChecklistAssignment(tasks: OpportunityTaskRecord[], users: SimpleUser[]): ChecklistAssignmentSummary {
+  if (tasks.length === 0) {
+    return { count: 0, label: "No linked task", userId: null };
+  }
+
+  const assigned = tasks.filter((task) => task.assignee?.id);
+  if (assigned.length === 0) {
+    return { count: tasks.length, label: tasks.length === 1 ? "Unassigned task" : `${tasks.length} unassigned tasks`, userId: null };
+  }
+
+  const uniqueUserIds = Array.from(new Set(assigned.map((task) => task.assignee?.id).filter(Boolean))) as string[];
+  if (uniqueUserIds.length === 1) {
+    const user = users.find((entry) => entry.id === uniqueUserIds[0]);
+    return {
+      count: tasks.length,
+      label: user?.name || user?.email || "Assigned user",
+      userId: uniqueUserIds[0],
+    };
+  }
+
+  return { count: tasks.length, label: `${uniqueUserIds.length} assignees`, userId: null };
 }
 
 const opportunityTypes = ["NEW_SALE", "UPSELL", "RENEWAL"] as const;
@@ -634,8 +663,9 @@ export function PipelineManager({
                   {filtered.map((opportunity) => {
                     const checklist = readChecklist(opportunity.checklistJson);
                     const completedChecklist = checklist.filter((item) => item.done).length;
+                    const openTasks = opportunity.tasks.filter((task) => task.status !== "DONE").length;
                     return (
-                      <details key={opportunity.id} className="card content-item" open={false}>
+                      <details key={opportunity.id} className="card content-item pipeline-opportunity-card" open={false}>
                         <summary className="card-header content-item-summary">
                           <div className="record-summary-main">
                             <div className="record-summary-topline">
@@ -646,173 +676,260 @@ export function PipelineManager({
                             <div className="record-meta-row">
                               <span>{opportunity.owner?.name || opportunity.owner?.email || "Unassigned owner"}</span>
                               <span>{opportunity.valueEstimate ? `$${opportunity.valueEstimate.toLocaleString()}` : "No value estimate"}</span>
-                              <span>{opportunity.tasks.length} task{opportunity.tasks.length === 1 ? "" : "s"}</span>
+                              <span>{openTasks} open task{openTasks === 1 ? "" : "s"}</span>
                               <span>{checklist.length > 0 ? `${completedChecklist}/${checklist.length} checklist complete` : "No checklist"}</span>
                             </div>
                           </div>
                           <div className="content-item-summary-right">
                             <span className="badge badge-blue">{opportunity.status}</span>
                             {opportunity.deliveryStatus ? <span className="badge badge-yellow">{opportunity.deliveryStatus}</span> : null}
-                            <span className="help">Edit or delete</span>
+                            <span className="help">Open details</span>
                           </div>
                         </summary>
-                        <div className="content-item-body inline-grid">
-                          <div className="grid">
-                            <div className="card">
-                              <h4>Account</h4>
-                              <p>{opportunity.company.name}</p>
-                              <p>{opportunity.contact?.fullName || opportunity.contact?.email || "No linked contact"}</p>
-                              <div className="field"><label htmlFor={`pipeline-stage-${opportunity.id}`}>Stage</label><select id={`pipeline-stage-${opportunity.id}`} value={opportunity.stage} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { stage: event.target.value })}>{opportunityStages.map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select></div>
-                              <div className="field"><label htmlFor={`pipeline-status-${opportunity.id}`}>Status</label><select id={`pipeline-status-${opportunity.id}`} value={opportunity.status} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { status: event.target.value, deliveryStatus: event.target.value === "WON" ? opportunity.deliveryStatus ?? "NOT_STARTED" : null })}>{opportunityStatuses.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
-                              <div className="field"><label htmlFor={`pipeline-owner-${opportunity.id}`}>Owner</label><select id={`pipeline-owner-${opportunity.id}`} value={opportunity.owner?.id || ""} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { owner: mapUserById(event.target.value) as OpportunityRecord["owner"] })}><option value="">Unassigned</option>{initialUsers.map((user) => <option key={user.id} value={user.id}>{user.name || user.email}</option>)}</select></div>
-                            </div>
-                            <div className="card">
-                              <h4>Revenue</h4>
-                              <div className="form-grid">
-                                <div className="field"><label htmlFor={`pipeline-value-${opportunity.id}`}>Value estimate</label><input id={`pipeline-value-${opportunity.id}`} type="number" defaultValue={opportunity.valueEstimate ?? ""} onBlur={(event) => { const raw = event.target.value.trim(); const next = raw ? Number(raw) : null; if (next !== opportunity.valueEstimate) { void updateOpportunity(opportunity, { valueEstimate: next }); } }} /></div>
-                                <div className="field"><label htmlFor={`pipeline-mrr-${opportunity.id}`}>Monthly value</label><input id={`pipeline-mrr-${opportunity.id}`} type="number" defaultValue={opportunity.monthlyValue ?? ""} onBlur={(event) => { const raw = event.target.value.trim(); const next = raw ? Number(raw) : null; if (next !== opportunity.monthlyValue) { void updateOpportunity(opportunity, { monthlyValue: next }); } }} /></div>
-                                <div className="field"><label htmlFor={`pipeline-onetime-${opportunity.id}`}>One-time value</label><input id={`pipeline-onetime-${opportunity.id}`} type="number" defaultValue={opportunity.oneTimeValue ?? ""} onBlur={(event) => { const raw = event.target.value.trim(); const next = raw ? Number(raw) : null; if (next !== opportunity.oneTimeValue) { void updateOpportunity(opportunity, { oneTimeValue: next }); } }} /></div>
-                                <div className="field"><label htmlFor={`pipeline-close-${opportunity.id}`}>Target close</label><input id={`pipeline-close-${opportunity.id}`} type="date" defaultValue={opportunity.targetCloseDate ? new Date(opportunity.targetCloseDate).toISOString().slice(0, 10) : ""} onBlur={(event) => { const next = event.target.value || null; const current = opportunity.targetCloseDate ? new Date(opportunity.targetCloseDate).toISOString().slice(0, 10) : null; if (next !== current) { void updateOpportunity(opportunity, { targetCloseDate: next }); } }} /></div>
+                        <div className="content-item-body inline-grid pipeline-opportunity-body">
+                          <div className="pipeline-overview-grid">
+                            <div className="dashboard-list-row pipeline-overview-card">
+                              <div className="record-summary-main">
+                                <div className="record-summary-topline"><strong>Account</strong></div>
+                                <div className="record-meta-stack">
+                                  <span>{opportunity.company.name}</span>
+                                  <span>{opportunity.contact?.fullName || opportunity.contact?.email || "No linked contact"}</span>
+                                  <span>{opportunity.template?.name || "No template"}</span>
+                                </div>
                               </div>
-                              {opportunity.status === "WON" ? (
-                                <div className="field"><label htmlFor={`pipeline-delivery-${opportunity.id}`}>Delivery status</label><select id={`pipeline-delivery-${opportunity.id}`} value={opportunity.deliveryStatus || "NOT_STARTED"} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { deliveryStatus: event.target.value })}>{deliveryStatuses.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
-                              ) : null}
+                            </div>
+                            <div className="dashboard-list-row pipeline-overview-card">
+                              <div className="record-summary-main">
+                                <div className="record-summary-topline"><strong>Ownership</strong></div>
+                                <div className="record-meta-stack">
+                                  <span>Owner: {opportunity.owner?.name || opportunity.owner?.email || "Unassigned"}</span>
+                                  <span>Status: {opportunity.status}</span>
+                                  <span>Stage: {opportunity.stage}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="dashboard-list-row pipeline-overview-card">
+                              <div className="record-summary-main">
+                                <div className="record-summary-topline"><strong>Revenue</strong></div>
+                                <div className="record-meta-stack">
+                                  <span>Estimate: {opportunity.valueEstimate ? `$${opportunity.valueEstimate.toLocaleString()}` : "Not set"}</span>
+                                  <span>MRR: {opportunity.monthlyValue ? `$${opportunity.monthlyValue.toLocaleString()}` : "Not set"}</span>
+                                  <span>One-time: {opportunity.oneTimeValue ? `$${opportunity.oneTimeValue.toLocaleString()}` : "Not set"}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="dashboard-list-row pipeline-overview-card">
+                              <div className="record-summary-main">
+                                <div className="record-summary-topline"><strong>Progress</strong></div>
+                                <div className="record-meta-stack">
+                                  <span>{checklist.length > 0 ? `${completedChecklist}/${checklist.length} checklist complete` : "No checklist"}</span>
+                                  <span>{openTasks} open task{openTasks === 1 ? "" : "s"}</span>
+                                  <span>{opportunity.targetCloseDate ? `Close target: ${new Date(opportunity.targetCloseDate).toISOString().slice(0, 10)}` : "No close target"}</span>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                          <div className="card">
-                            <h4>Checklist</h4>
-                            {checklist.length === 0 ? <p>No checklist items.</p> : (
-                              <div className="inline-grid">
-                                {checklist.map((item) => {
-                                  const linkedTasks = opportunity.tasks.filter((task) => task.checklistKey === item.key);
-                                  return (
-                                    <div key={item.key} className="dashboard-list-row">
+
+                          <details className="card pipeline-section-card" open>
+                            <summary className="card-header content-item-summary pipeline-section-summary">
+                              <div className="record-summary-main">
+                                <div className="record-summary-topline"><h4>Quick Edit</h4></div>
+                                <p className="help">Core status, owner, and money fields.</p>
+                              </div>
+                            </summary>
+                            <div className="content-item-body inline-grid">
+                              <div className="grid">
+                                <div className="card">
+                                  <h4>Account & status</h4>
+                                  <div className="field"><label htmlFor={`pipeline-stage-${opportunity.id}`}>Stage</label><select id={`pipeline-stage-${opportunity.id}`} value={opportunity.stage} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { stage: event.target.value })}>{opportunityStages.map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select></div>
+                                  <div className="field"><label htmlFor={`pipeline-status-${opportunity.id}`}>Status</label><select id={`pipeline-status-${opportunity.id}`} value={opportunity.status} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { status: event.target.value, deliveryStatus: event.target.value === "WON" ? opportunity.deliveryStatus ?? "NOT_STARTED" : null })}>{opportunityStatuses.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
+                                  <div className="field"><label htmlFor={`pipeline-owner-${opportunity.id}`}>Owner</label><select id={`pipeline-owner-${opportunity.id}`} value={opportunity.owner?.id || ""} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { owner: mapUserById(event.target.value) as OpportunityRecord["owner"] })}><option value="">Unassigned</option>{initialUsers.map((user) => <option key={user.id} value={user.id}>{user.name || user.email}</option>)}</select></div>
+                                  {opportunity.status === "WON" ? (
+                                    <div className="field"><label htmlFor={`pipeline-delivery-${opportunity.id}`}>Delivery status</label><select id={`pipeline-delivery-${opportunity.id}`} value={opportunity.deliveryStatus || "NOT_STARTED"} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { deliveryStatus: event.target.value })}>{deliveryStatuses.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
+                                  ) : null}
+                                </div>
+                                <div className="card">
+                                  <h4>Revenue</h4>
+                                  <div className="form-grid">
+                                    <div className="field"><label htmlFor={`pipeline-value-${opportunity.id}`}>Value estimate</label><input id={`pipeline-value-${opportunity.id}`} type="number" defaultValue={opportunity.valueEstimate ?? ""} onBlur={(event) => { const raw = event.target.value.trim(); const next = raw ? Number(raw) : null; if (next !== opportunity.valueEstimate) { void updateOpportunity(opportunity, { valueEstimate: next }); } }} /></div>
+                                    <div className="field"><label htmlFor={`pipeline-mrr-${opportunity.id}`}>Monthly value</label><input id={`pipeline-mrr-${opportunity.id}`} type="number" defaultValue={opportunity.monthlyValue ?? ""} onBlur={(event) => { const raw = event.target.value.trim(); const next = raw ? Number(raw) : null; if (next !== opportunity.monthlyValue) { void updateOpportunity(opportunity, { monthlyValue: next }); } }} /></div>
+                                    <div className="field"><label htmlFor={`pipeline-onetime-${opportunity.id}`}>One-time value</label><input id={`pipeline-onetime-${opportunity.id}`} type="number" defaultValue={opportunity.oneTimeValue ?? ""} onBlur={(event) => { const raw = event.target.value.trim(); const next = raw ? Number(raw) : null; if (next !== opportunity.oneTimeValue) { void updateOpportunity(opportunity, { oneTimeValue: next }); } }} /></div>
+                                    <div className="field"><label htmlFor={`pipeline-close-${opportunity.id}`}>Target close</label><input id={`pipeline-close-${opportunity.id}`} type="date" defaultValue={opportunity.targetCloseDate ? new Date(opportunity.targetCloseDate).toISOString().slice(0, 10) : ""} onBlur={(event) => { const next = event.target.value || null; const current = opportunity.targetCloseDate ? new Date(opportunity.targetCloseDate).toISOString().slice(0, 10) : null; if (next !== current) { void updateOpportunity(opportunity, { targetCloseDate: next }); } }} /></div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </details>
+
+                          <details className="card pipeline-section-card">
+                            <summary className="card-header content-item-summary pipeline-section-summary">
+                              <div className="record-summary-main">
+                                <div className="record-summary-topline"><h4>Checklist</h4></div>
+                                <p className="help">{checklist.length > 0 ? `${completedChecklist}/${checklist.length} completed` : "No checklist items"}</p>
+                              </div>
+                            </summary>
+                            <div className="content-item-body inline-grid">
+                              {checklist.length === 0 ? <p>No checklist items.</p> : (
+                                <div className="inline-grid">
+                                  {checklist.map((item) => {
+                                    const linkedTasks = opportunity.tasks.filter((task) => task.checklistKey === item.key);
+                                    const assignment = summarizeChecklistAssignment(linkedTasks, initialUsers);
+                                    return (
+                                      <div key={item.key} className="dashboard-list-row pipeline-checklist-row">
+                                        <div className="record-summary-main">
+                                          <div className="record-summary-topline">
+                                            <strong>{item.label}</strong>
+                                            <span className={`badge ${item.done ? "badge-green" : "badge-yellow"}`}>{item.done ? "Done" : "Open"}</span>
+                                            <span className="badge badge-blue">{assignment.label}</span>
+                                          </div>
+                                          <div className="actions checklist-toggle-row">
+                                            <label className="help" htmlFor={`checklist-done-${opportunity.id}-${item.key}`}>Mark complete</label>
+                                            <input
+                                              id={`checklist-done-${opportunity.id}-${item.key}`}
+                                              type="checkbox"
+                                              checked={Boolean(item.done)}
+                                              disabled={pending}
+                                              onChange={() => void updateOpportunity(opportunity, {
+                                                checklistJson: checklist.map((entry) => entry.key === item.key ? { ...entry, done: !entry.done } : entry),
+                                              })}
+                                            />
+                                          </div>
+                                          <div className="field">
+                                            <label htmlFor={`checklist-assignee-${opportunity.id}-${item.key}`}>Assigned user</label>
+                                            <select
+                                              id={`checklist-assignee-${opportunity.id}-${item.key}`}
+                                              value={assignment.userId || ""}
+                                              disabled={pending || linkedTasks.length === 0}
+                                              onChange={(event) => void updateOpportunity(opportunity, {
+                                                tasks: opportunity.tasks.map((entry) => entry.checklistKey === item.key ? { ...entry, assignee: mapUserById(event.target.value) } : entry),
+                                              })}
+                                            >
+                                              <option value="">{linkedTasks.length === 0 ? "No linked task" : "Unassigned"}</option>
+                                              {initialUsers.map((user) => <option key={user.id} value={user.id}>{user.name || user.email}</option>)}
+                                            </select>
+                                            <p className="help">
+                                              {linkedTasks.length === 0
+                                                ? "Create or use a linked task template for this checklist item to assign it."
+                                                : `${linkedTasks.length} linked task${linkedTasks.length === 1 ? "" : "s"}. Changing this updates all linked task assignees.`}
+                                            </p>
+                                          </div>
+                                          <div className="field">
+                                            <label htmlFor={`checklist-note-${opportunity.id}-${item.key}`}>Checklist notes</label>
+                                            <textarea
+                                              id={`checklist-note-${opportunity.id}-${item.key}`}
+                                              defaultValue={item.notes || ""}
+                                              placeholder="Add context, instructions, or completion notes for this checklist item."
+                                              onBlur={(event) => {
+                                                const next = event.target.value.trim() || null;
+                                                if (next !== (item.notes || null)) {
+                                                  void updateOpportunity(opportunity, {
+                                                    checklistJson: checklist.map((entry) => entry.key === item.key ? { ...entry, notes: next } : entry),
+                                                  });
+                                                }
+                                              }}
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </details>
+
+                          <details className="card pipeline-section-card">
+                            <summary className="card-header content-item-summary pipeline-section-summary">
+                              <div className="record-summary-main">
+                                <div className="record-summary-topline"><h4>Tasks</h4></div>
+                                <p className="help">{opportunity.tasks.length} total · {openTasks} open</p>
+                              </div>
+                            </summary>
+                            <div className="content-item-body inline-grid">
+                              <div className="card">
+                                <div className="card-header dashboard-panel-header">
+                                  <div><h4>Add Task</h4></div>
+                                  <button className="button secondary" type="button" disabled={pending} onClick={() => void addTask(opportunity)}>Add Task</button>
+                                </div>
+                                <div className="form-grid">
+                                  <div className="field">
+                                    <label htmlFor={`task-new-title-${opportunity.id}`}>Task title</label>
+                                    <input id={`task-new-title-${opportunity.id}`} value={getTaskComposer(opportunity.id).title} onChange={(event) => setTaskComposer(opportunity.id, { title: event.target.value })} placeholder="Schedule kickoff call" />
+                                  </div>
+                                  <div className="field">
+                                    <label htmlFor={`task-new-assignee-${opportunity.id}`}>Assignee</label>
+                                    <select id={`task-new-assignee-${opportunity.id}`} value={getTaskComposer(opportunity.id).assigneeUserId} onChange={(event) => setTaskComposer(opportunity.id, { assigneeUserId: event.target.value })}>
+                                      <option value="">Unassigned</option>
+                                      {initialUsers.map((user) => <option key={user.id} value={user.id}>{user.name || user.email}</option>)}
+                                    </select>
+                                  </div>
+                                  <div className="field">
+                                    <label htmlFor={`task-new-due-${opportunity.id}`}>Due date</label>
+                                    <input id={`task-new-due-${opportunity.id}`} type="date" value={getTaskComposer(opportunity.id).dueDate} onChange={(event) => setTaskComposer(opportunity.id, { dueDate: event.target.value })} />
+                                  </div>
+                                  <div className="field">
+                                    <label htmlFor={`task-new-checklist-${opportunity.id}`}>Linked checklist item</label>
+                                    <select id={`task-new-checklist-${opportunity.id}`} value={getTaskComposer(opportunity.id).checklistKey} onChange={(event) => setTaskComposer(opportunity.id, { checklistKey: event.target.value })}>
+                                      <option value="">No checklist link</option>
+                                      {checklist.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
+                                    </select>
+                                  </div>
+                                </div>
+                                <div className="field">
+                                  <label htmlFor={`task-new-description-${opportunity.id}`}>Description</label>
+                                  <textarea id={`task-new-description-${opportunity.id}`} value={getTaskComposer(opportunity.id).description} onChange={(event) => setTaskComposer(opportunity.id, { description: event.target.value })} placeholder="Optional task details or handoff notes." />
+                                </div>
+                              </div>
+                              {opportunity.tasks.length === 0 ? <p>No tasks yet.</p> : (
+                                <div className="inline-grid">
+                                  {opportunity.tasks.map((task) => (
+                                    <div key={task.id} className="dashboard-list-row pipeline-task-row">
                                       <div className="record-summary-main">
                                         <div className="record-summary-topline">
-                                          <strong>{item.label}</strong>
-                                          <span className={`badge ${item.done ? "badge-green" : "badge-yellow"}`}>{item.done ? "Done" : "Open"}</span>
-                                        </div>
-                                        <div className="actions checklist-toggle-row">
-                                          <label className="help" htmlFor={`checklist-done-${opportunity.id}-${item.key}`}>Mark complete</label>
-                                          <input
-                                            id={`checklist-done-${opportunity.id}-${item.key}`}
-                                            type="checkbox"
-                                            checked={Boolean(item.done)}
-                                            disabled={pending}
-                                            onChange={() => void updateOpportunity(opportunity, {
-                                              checklistJson: checklist.map((entry) => entry.key === item.key ? { ...entry, done: !entry.done } : entry),
-                                            })}
-                                          />
-                                        </div>
-                                        <div className="field">
-                                          <label htmlFor={`checklist-note-${opportunity.id}-${item.key}`}>Checklist notes</label>
-                                          <textarea
-                                            id={`checklist-note-${opportunity.id}-${item.key}`}
-                                            defaultValue={item.notes || ""}
-                                            placeholder="Add context, instructions, or completion notes for this checklist item."
-                                            onBlur={(event) => {
-                                              const next = event.target.value.trim() || null;
-                                              if (next !== (item.notes || null)) {
-                                                void updateOpportunity(opportunity, {
-                                                  checklistJson: checklist.map((entry) => entry.key === item.key ? { ...entry, notes: next } : entry),
-                                                });
-                                              }
-                                            }}
-                                          />
-                                        </div>
-                                        <div className="field">
-                                          <label htmlFor={`checklist-assignee-${opportunity.id}-${item.key}`}>Assigned user</label>
-                                          <select
-                                            id={`checklist-assignee-${opportunity.id}-${item.key}`}
-                                            value={linkedTasks[0]?.assignee?.id || ""}
-                                            disabled={pending || linkedTasks.length === 0}
-                                            onChange={(event) => void updateOpportunity(opportunity, {
-                                              tasks: opportunity.tasks.map((entry) => entry.checklistKey === item.key ? { ...entry, assignee: mapUserById(event.target.value) } : entry),
-                                            })}
-                                          >
-                                            <option value="">{linkedTasks.length === 0 ? "No linked task" : "Unassigned"}</option>
-                                            {initialUsers.map((user) => <option key={user.id} value={user.id}>{user.name || user.email}</option>)}
+                                          <strong>{task.title}</strong>
+                                          <select value={task.status} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { tasks: opportunity.tasks.map((entry) => entry.id === task.id ? { ...entry, status: event.target.value } : entry) })}>
+                                            {taskStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
                                           </select>
-                                          <p className="help">
-                                            {linkedTasks.length === 0
-                                              ? "Create or use a linked task template for this checklist item to assign it."
-                                              : `${linkedTasks.length} linked task${linkedTasks.length === 1 ? "" : "s"} will follow this assignee.`}
-                                          </p>
                                         </div>
+                                        <div className="record-meta-row">
+                                          <span>{task.checklistKey ? `Checklist: ${checklist.find((item) => item.key === task.checklistKey)?.label || task.checklistKey}` : "No checklist link"}</span>
+                                          <span>{task.assignee?.name || task.assignee?.email || "Unassigned"}</span>
+                                          <span>{task.dueDate ? `Due ${new Date(task.dueDate).toISOString().slice(0, 10)}` : "No due date"}</span>
+                                        </div>
+                                        <div className="pipeline-task-edit-grid">
+                                          <div className="field">
+                                            <label htmlFor={`task-assignee-${opportunity.id}-${task.id}`}>Assignee</label>
+                                            <select id={`task-assignee-${opportunity.id}-${task.id}`} value={task.assignee?.id || ""} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { tasks: opportunity.tasks.map((entry) => entry.id === task.id ? { ...entry, assignee: mapUserById(event.target.value) } : entry) })}>
+                                              <option value="">Unassigned</option>
+                                              {initialUsers.map((user) => <option key={user.id} value={user.id}>{user.name || user.email}</option>)}
+                                            </select>
+                                          </div>
+                                          <div className="field">
+                                            <label htmlFor={`task-due-${opportunity.id}-${task.id}`}>Due date</label>
+                                            <input id={`task-due-${opportunity.id}-${task.id}`} type="date" value={task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : ""} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { tasks: opportunity.tasks.map((entry) => entry.id === task.id ? { ...entry, dueDate: event.target.value || null } : entry) })} />
+                                          </div>
+                                        </div>
+                                        {task.description ? <p className="help">{task.description}</p> : null}
                                       </div>
                                     </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                          <div className="card">
-                            <div className="card-header dashboard-panel-header">
-                              <div><h4>Tasks</h4></div>
-                              <button className="button secondary" type="button" disabled={pending} onClick={() => void addTask(opportunity)}>Add Task</button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                            <div className="form-grid">
-                              <div className="field">
-                                <label htmlFor={`task-new-title-${opportunity.id}`}>Task title</label>
-                                <input id={`task-new-title-${opportunity.id}`} value={getTaskComposer(opportunity.id).title} onChange={(event) => setTaskComposer(opportunity.id, { title: event.target.value })} placeholder="Schedule kickoff call" />
+                          </details>
+
+                          <details className="card pipeline-section-card">
+                            <summary className="card-header content-item-summary pipeline-section-summary">
+                              <div className="record-summary-main">
+                                <div className="record-summary-topline"><h4>Notes & actions</h4></div>
+                                <p className="help">Opportunity notes and delete action.</p>
                               </div>
-                              <div className="field">
-                                <label htmlFor={`task-new-assignee-${opportunity.id}`}>Assignee</label>
-                                <select id={`task-new-assignee-${opportunity.id}`} value={getTaskComposer(opportunity.id).assigneeUserId} onChange={(event) => setTaskComposer(opportunity.id, { assigneeUserId: event.target.value })}>
-                                  <option value="">Unassigned</option>
-                                  {initialUsers.map((user) => <option key={user.id} value={user.id}>{user.name || user.email}</option>)}
-                                </select>
-                              </div>
-                              <div className="field">
-                                <label htmlFor={`task-new-due-${opportunity.id}`}>Due date</label>
-                                <input id={`task-new-due-${opportunity.id}`} type="date" value={getTaskComposer(opportunity.id).dueDate} onChange={(event) => setTaskComposer(opportunity.id, { dueDate: event.target.value })} />
-                              </div>
-                              <div className="field">
-                                <label htmlFor={`task-new-checklist-${opportunity.id}`}>Linked checklist item</label>
-                                <select id={`task-new-checklist-${opportunity.id}`} value={getTaskComposer(opportunity.id).checklistKey} onChange={(event) => setTaskComposer(opportunity.id, { checklistKey: event.target.value })}>
-                                  <option value="">No checklist link</option>
-                                  {checklist.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
-                                </select>
-                              </div>
+                            </summary>
+                            <div className="content-item-body inline-grid">
+                              <div className="card"><div className="field"><label htmlFor={`pipeline-notes-${opportunity.id}`}>Opportunity notes</label><textarea id={`pipeline-notes-${opportunity.id}`} defaultValue={opportunity.notes || ""} placeholder="Deal notes, implementation details, blockers, next-step context..." onBlur={(event) => { if ((event.target.value || "") !== (opportunity.notes || "")) { void updateOpportunity(opportunity, { notes: event.target.value.trim() || null }); } }} /></div></div>
+                              <div className="actions"><button className="button secondary" type="button" disabled={pending} onClick={() => void deleteOpportunity(opportunity)}>Delete Opportunity</button></div>
                             </div>
-                            <div className="field">
-                              <label htmlFor={`task-new-description-${opportunity.id}`}>Description</label>
-                              <textarea id={`task-new-description-${opportunity.id}`} value={getTaskComposer(opportunity.id).description} onChange={(event) => setTaskComposer(opportunity.id, { description: event.target.value })} placeholder="Optional task details or handoff notes." />
-                            </div>
-                            {opportunity.tasks.length === 0 ? <p>No tasks yet.</p> : (
-                              <div className="inline-grid">
-                                {opportunity.tasks.map((task) => (
-                                  <div key={task.id} className="dashboard-list-row">
-                                    <div className="record-summary-main">
-                                      <div className="record-summary-topline">
-                                        <strong>{task.title}</strong>
-                                        <select value={task.status} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { tasks: opportunity.tasks.map((entry) => entry.id === task.id ? { ...entry, status: event.target.value } : entry) })}>
-                                          {taskStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
-                                        </select>
-                                      </div>
-                                      <div className="record-meta-row">
-                                        {task.checklistKey ? <span>Checklist: {checklist.find((item) => item.key === task.checklistKey)?.label || task.checklistKey}</span> : <span>No checklist link</span>}
-                                      </div>
-                                      <div className="field">
-                                        <label htmlFor={`task-assignee-${opportunity.id}-${task.id}`}>Assignee</label>
-                                        <select id={`task-assignee-${opportunity.id}-${task.id}`} value={task.assignee?.id || ""} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { tasks: opportunity.tasks.map((entry) => entry.id === task.id ? { ...entry, assignee: mapUserById(event.target.value) } : entry) })}>
-                                          <option value="">Unassigned</option>
-                                          {initialUsers.map((user) => <option key={user.id} value={user.id}>{user.name || user.email}</option>)}
-                                        </select>
-                                      </div>
-                                      <div className="field">
-                                        <label htmlFor={`task-due-${opportunity.id}-${task.id}`}>Due date</label>
-                                        <input id={`task-due-${opportunity.id}-${task.id}`} type="date" value={task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : ""} disabled={pending} onChange={(event) => void updateOpportunity(opportunity, { tasks: opportunity.tasks.map((entry) => entry.id === task.id ? { ...entry, dueDate: event.target.value || null } : entry) })} />
-                                      </div>
-                                      {task.description ? <p className="help">{task.description}</p> : null}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div className="card"><h4>Notes</h4><div className="field"><label htmlFor={`pipeline-notes-${opportunity.id}`}>Opportunity notes</label><textarea id={`pipeline-notes-${opportunity.id}`} defaultValue={opportunity.notes || ""} placeholder="Deal notes, implementation details, blockers, next-step context..." onBlur={(event) => { if ((event.target.value || "") !== (opportunity.notes || "")) { void updateOpportunity(opportunity, { notes: event.target.value.trim() || null }); } }} /></div></div>
-                          <div className="actions"><button className="button secondary" type="button" disabled={pending} onClick={() => void deleteOpportunity(opportunity)}>Delete Opportunity</button></div>
+                          </details>
                         </div>
                       </details>
                     );

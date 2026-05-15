@@ -1167,6 +1167,50 @@ main {
   flex: 0 0 auto;
 }
 
+.record-meta-stack {
+  display: grid;
+  gap: 6px;
+  color: var(--gray-500);
+  font-size: 0.9rem;
+}
+
+.pipeline-opportunity-card {
+  overflow: hidden;
+}
+
+.pipeline-opportunity-body {
+  gap: 14px;
+}
+
+.pipeline-overview-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.pipeline-overview-card {
+  background: rgba(244, 248, 255, 0.72);
+}
+
+.pipeline-section-card {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.pipeline-section-summary {
+  cursor: pointer;
+}
+
+.pipeline-checklist-row,
+.pipeline-task-row {
+  background: rgba(250, 252, 255, 0.9);
+}
+
+.pipeline-task-edit-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
 .marketing-upload-row {
   padding: 14px;
   border: 1px solid var(--line);
